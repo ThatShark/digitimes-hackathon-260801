@@ -5,13 +5,15 @@
 - **Framework**: React + Vite (JavaScript)
 - **Charting**: lightweight-charts (K-line / candlestick)
 - **Location**: `frontend/src/`
-- **Status**: Scaffolding stage (placeholder tmpfile only)
+- **Status**: Scaffolding stage
 
 ## Backend (AWS Lambda)
 
 - **Runtime**: AWS Lambda + API Gateway
+- **Language**: Python (planned)
 - **Location**: `backend/src/`
 - **Status**: Scaffolding stage
+- **Responsibilities**: S3 read/write, MAX API proxy, CoinMarketCap API, trade execution via MAX Skill
 
 ## AI Agent (AgentCore)
 
@@ -25,6 +27,7 @@
   - `mcp >= 1.19.0`
   - `aws-opentelemetry-distro`
   - `botocore[crt] >= 1.35.0`
+- **MCP Client**: Streamable HTTP (currently connected to Exa AI for web search)
 
 ## CDK Infrastructure
 
@@ -33,6 +36,26 @@
 - **CDK version**: 2.1126.0
 - **Key constructs**: `@aws/agentcore-cdk`
 - **Package manager**: npm
+
+## Cloud Services (AWS)
+
+| Service | Purpose |
+|---------|---------|
+| AWS Lambda | Serverless compute (backend APIs) |
+| AWS API Gateway | REST API routing for frontend |
+| AWS S3 | CSV storage, personality data, chat history |
+| AWS Bedrock (Claude) | LLM reasoning — personality analysis, market analysis, conversational trading |
+| AWS CDK | Infrastructure as code |
+| AWS AgentCore | Agent runtime + deployment |
+
+## External APIs
+
+| API | Purpose | Auth |
+|-----|---------|------|
+| MAX Exchange API (v3) | Real-time pricing, K-line, depth, orders | API Key (Private API for Lv2) |
+| MAX MCP Server | MCP-compatible MAX integration | — |
+| MAX Skill | Trade execution module | — |
+| CoinMarketCap | Fear & Greed Index | API Key |
 
 ## Common Commands
 
@@ -48,8 +71,12 @@ agentcore deploy
 # Validate configuration
 agentcore validate
 
-# Invoke agent
+# Invoke agent (local or deployed)
 agentcore invoke
+
+# View logs / traces
+agentcore logs
+agentcore traces list
 ```
 
 ### CDK Infrastructure
@@ -72,10 +99,19 @@ npm run dev            # Vite dev server
 npm run build          # Production build
 ```
 
-## Cloud Services
+### Python Agent Dependencies
 
-- AWS Lambda (serverless compute)
-- AWS API Gateway (REST API routing)
-- AWS S3 (CSV storage, personality data)
-- AWS Bedrock (Claude LLM)
-- AWS CDK (infrastructure as code)
+```bash
+cd CustomerSupport/app/CustomerSupport
+uv sync                # Install dependencies from uv.lock
+uv add <package>       # Add new dependency
+```
+
+## Key Reference Docs
+
+- MAX API: https://max-api.maicoin.com/doc/v3.html
+- MAX MCP Server: https://github.com/bistin/max-mcp-server
+- MAX Skill: https://github.com/bistin/max-api-skill
+- CoinMarketCap API: https://pro.coinmarketcap.com/api/documentation/
+- AgentCore CLI: https://github.com/aws/agentcore-cli
+- AgentCore CDK: https://github.com/aws/agentcore-l3-cdk-constructs

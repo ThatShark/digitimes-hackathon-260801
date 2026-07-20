@@ -1,25 +1,80 @@
 # Product Summary
 
-**智慧投資 LIVE** — An AI-powered cryptocurrency investment assistant built for the 2026 Taiwan Generative AI Hackathon (命題單位: MaiCoin).
+**智慧投資 L.I.V.E.** — An AI-powered cryptocurrency investment assistant for the 2026 雲湧智生 Taiwan Generative AI Hackathon.
+
+- 命題單位: MaiCoin 現代財富科技股份有限公司
+- 命題類別: 智慧理財 — 打造現代 AI 投資工具
+- 決賽日期: 2026/08/01
+
+## One-Liner
+
+> 第一個認識你、分析你、然後幫你下單的 AI 投資助理。
 
 ## Core Concept
 
-A YouTube live-stream styled interface where each cryptocurrency is a "channel." The AI analyzes the user's personal trading habits to produce an investor personality profile (similar to MBTI), then delivers personalized market analysis, trade suggestions, and order execution through natural-language conversation.
+A YouTube live-stream styled interface where each cryptocurrency is a "channel." The AI analyzes the user's personal trading habits from CSV records to produce an investor personality profile (similar to MBTI), then delivers personalized market analysis, trade suggestions, and order execution through natural-language conversation.
 
-## Key Features
+## Key Features (Priority Order)
 
-1. **Investor Personality System** — Analyzes historical CSV trade records to classify the user into personality types (熱衷型/安逸型/保守型/冒險型) and tailors all recommendations accordingly.
-2. **Live-Stream UI** — Main page shows coin "channels" (YouTube-style thumbnails); clicking opens a K-line chart as "live video" with an AI chat panel as the "chat room."
-3. **Conversational Trading** — Users discuss trades with the AI in natural language; after confirmation, the system executes via MAX Exchange API / MAX Skill.
-4. **Personalized Market Analysis** — Combines market sentiment (Fear & Greed Index), technical indicators, and the user's historical win rate for buy/sell suggestions.
+| Priority | Feature | Purpose |
+|----------|---------|---------|
+| P0 (Week 1) | YouTube-style Live UI | Visual impact, first impression for judges |
+| P0 (Week 1) | Investor Personality System | Core differentiator from competitors |
+| P1 (Week 2) | AI Conversational Trading | Technical depth — closed-loop order execution |
+| P2 (Stretch) | Brilliant/Blunder Review | Chess.com-style trade retrospective |
+
+## Investor Personality Types
+
+| Type | Traits | Behavior |
+|------|--------|----------|
+| 🦁 熱衷型 (Enthusiastic) | High-frequency, short holds | Panic-sells during fear |
+| 🐢 安逸型 (Comfortable) | Stablecoin-heavy, low-frequency | Misses rallies but rarely loses |
+| 🦊 保守型 (Conservative) | Selective entry, waits for conditions | High win-rate, low frequency |
+| 🎲 冒險型 (Gambler) | Concentrated bets, single-coin | Big wins or big losses |
+
+Personality is non-binary — AI reports primary + secondary types.
 
 ## Target Users
 
-Active crypto traders on the MAX Exchange who trade frequently but lack systematic analysis of their own behavior.
+Active crypto traders on MAX Exchange who trade frequently but lack systematic analysis of their own behavior.
 
 ## External Integrations
 
-- MAX Exchange API (real-time pricing, K-line data, order execution)
-- MAX Skill (trade execution)
-- CoinMarketCap API (Fear & Greed Index)
-- AWS Bedrock / Claude (AI reasoning)
+| Service | Usage |
+|---------|-------|
+| MAX Exchange API | Real-time pricing, K-line data, depth chart |
+| MAX Skill | Trade execution (buy/sell orders) |
+| MAX Private API | Extended market data (bonus points for Lv2 account) |
+| CoinMarketCap API | Fear & Greed Index |
+| AWS Bedrock (Claude) | AI reasoning, personality analysis, market analysis |
+| AWS S3 | CSV storage, personality data persistence |
+
+## API Contract (Frontend ↔ Backend)
+
+| Path | Method | Purpose |
+|------|--------|---------|
+| `/init` | GET | Check if user needs to upload CSV |
+| `/upload_csv` | POST | Upload CSV, trigger personality analysis |
+| `/candlestick_chart` | GET | Get K-line data + trade markers |
+| `/ai_chat` | POST | User ↔ AI conversation |
+| `/allow_trade` | POST | User confirms trade execution |
+
+## Critical Design Principles
+
+- **AI never auto-executes trades** — all orders require explicit user confirmation.
+- **Python does math, AI does interpretation** — CSV metrics are computed in Python, then sent to Bedrock for personality/analysis.
+- **Retry policy**: All external API calls retry up to 3 times before returning error to frontend.
+- **Personalization first**: Every recommendation is filtered through the user's personality profile and historical win rate.
+
+## Hackathon Scoring Alignment
+
+| Weight | Criterion | Our Response |
+|--------|-----------|--------------|
+| 25% | Creativity | YouTube live-stream UI + personality system |
+| 20% | Technical Feasibility | AWS Bedrock + AgentCore + MAX API + S3 |
+| 20% | Business Viability | Solves real pain: personalized insight for active traders |
+| 15% | AI Design | Context-aware agent with tools, proactive suggestions |
+| 10% | Topic Fit | Full use of GenAI + Agent + MAX API |
+| 10% | Completeness | End-to-end demo: upload → analyze → trade |
+| +5% | MAX Lv2 Private API | Planned |
+| +5% | AWS Kiro IDE | In use |
