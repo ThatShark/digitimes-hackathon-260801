@@ -186,6 +186,12 @@ If AI lacks sufficient data about a specific situation:
 | `/candlestick_chart` | GET | Get K-line data + trade markers |
 | `/ai_chat` | POST | User ↔ AI conversation |
 | `/allow_trade` | POST | User confirms trade execution |
+| `/community` | GET | Fetch community feed (personality-weighted) |
+| `/community/post` | POST | Create a community post |
+| `/questionnaire` | GET | Fetch current questionnaire |
+| `/questionnaire` | POST | Submit questionnaire answers |
+| `/danmaku` | GET | Fetch danmaku messages for a coin |
+| `/danmaku` | POST | Send a danmaku message |
 
 > Note: Additional endpoints may be needed for community features (posts, chat, questionnaire). TBD.
 
