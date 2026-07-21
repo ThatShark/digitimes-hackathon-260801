@@ -139,18 +139,13 @@ digitimes-hackathon-260801/
 - **Flat resource model**: All AgentCore resources are independent top-level arrays. No nesting.
 - **Naming = Identity**: Resource `name` fields map to CloudFormation Logical IDs. Renaming destroys + recreates.
 - **Secrets**: API keys go in `agentcore/.env.local` (gitignored). Never commit secrets.
-- **API contract**: Frontend/backend communicate via REST endpoints defined in `product.md`:
+- **API contract**: Frontend/backend communicate via REST endpoints. Core 5 defined in `Proposal.md` Section IV:
   - `GET /init` — check CSV status
   - `POST /upload_csv` — upload + trigger analysis
   - `GET /candlestick_chart` — K-line + trade markers
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution
-  - `GET /community` — fetch community feed
-  - `POST /community/post` — create community post
-  - `GET /questionnaire` — fetch questionnaire
-  - `POST /questionnaire` — submit answers
-  - `GET /danmaku` — fetch danmaku messages
-  - `POST /danmaku` — send danmaku message
+  - (Additional endpoints TBD for community, chat, questionnaire features)
 
 ## Languages by Directory
 

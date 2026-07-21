@@ -12,147 +12,159 @@
 
 ## Core Concept
 
-A YouTube live-stream styled interface where each cryptocurrency is a "channel." The AI analyzes the user's personal trading habits (from CSV records + questionnaire) to produce an investor personality profile (MBTI-style with 4 dimensions), then delivers personalized market analysis, trade suggestions, and order execution through natural-language conversation. A community system (Threads-style) lets investors interact with real-time danmaku (barrage) and social posts, with personality types shown as name prefixes.
+A YouTube/Bilibili live-stream styled interface where each cryptocurrency is a "channel." The AI analyzes the user's personal trading habits from CSV records to produce an investor personality profile (MBTI-style 4-axis system), then delivers personalized market analysis, trade suggestions, and order execution through natural-language conversation. A community layer with danmaku (barrage) chat and social feed lets users see other investors' sentiment in real time.
 
 ## Key Features (Priority Order)
 
 | Priority | Feature | Purpose |
 |----------|---------|---------|
-| P0 (Week 1) | YouTube-style Live UI | Visual impact, first impression for judges |
-| P0 (Week 1) | Investor Personality System (MBTI-style) | Core differentiator — 4 dimensions, shown as prefix/title |
+| P0 (Week 1) | YouTube/Bilibili-style Live UI + Danmaku | Visual impact, first impression for judges |
+| P0 (Week 1) | MBTI-style 4-axis Personality System | Core differentiator — title/badge system |
 | P1 (Week 2) | AI Conversational Trading | Technical depth — closed-loop order execution |
-| P1 (Week 2) | Community Page (Threads-style) | Social engagement, danmaku, personality-based feed |
-| P1 (Week 2) | Recommendation Algorithm | AI-driven personalized feed ordering |
-| P2 (Stretch) | Questionnaire System | Periodic personality refinement + shift detection |
+| P1 (Week 2) | Community / Social Feed (Threads-style) | Social engagement, sentiment sharing |
+| P1 (Week 2) | Algorithm-driven Feed Ranking | Personalized content surfacing |
+| P2 (Stretch) | Questionnaire System | Periodic personality recalibration |
 | P2 (Stretch) | Brilliant/Blunder Review | Chess.com-style trade retrospective |
 
-## Investor Personality System (MBTI-style)
+---
 
-### Design Philosophy
+## Investor Personality System (MBTI-style, 4 axes)
 
-Like MBTI, the personality system has **4 independent dimensions**. Each dimension places the user on a spectrum between two poles. The combination of 4 dimensions produces a personality "type code" (e.g., similar to INTJ/ENFP in MBTI).
+The personality system uses **4 independent axes**, each with two poles. A user's personality is a combination of where they fall on each axis (like MBTI's 4 letters). This replaces the previous 4-type model.
 
-### Four Dimensions
+### The 4 Axes
 
-| Dimension | Pole A | Pole B | What it measures |
-|-----------|--------|--------|------------------|
-| 頻率 (Frequency) | 熱衷型 (High-frequency) | 安逸型 (Low-frequency) | Trading frequency & hold duration |
-| 風險 (Risk) | 冒險型 (Risk-seeking) | 保守型 (Risk-averse) | Position concentration & loss tolerance |
-| 策略 (Strategy) | 計劃型 (Systematic) | 渾沌型 (Chaotic) | Consistency of returns & cross-coin behavior |
-| 情緒 (Sentiment) | 理性型 (Rational) | 衝動型 (Impulsive) | Tendency to chase pumps / panic-sell |
+| Axis | Pole A | Pole B | What it measures |
+|------|--------|--------|------------------|
+| 1. 頻率 (Frequency) | 熱衷 (Active) — high-frequency, short holds | 安逸 (Passive) — low-frequency, long holds | How often the user trades |
+| 2. 風險 (Risk) | 冒險 (Aggressive) — concentrated bets, high volatility | 保守 (Conservative) — diversified, low volatility | Risk tolerance |
+| 3. 紀律 (Discipline) | 計畫 (Planned) — consistent returns, stable strategy | 渾沌 (Chaotic) — erratic returns, no clear pattern | Strategy consistency |
+| 4. 情緒 (Sentiment) | 逆勢 (Contrarian) — buys in fear, sells in greed | 追勢 (Trend-follower) — chases momentum | Reaction to market sentiment |
 
-### Personality as Social Identity
+### Personality as Title/Badge
 
-- Personality type displayed as a **prefix/title** before username (e.g., `[熱衷·計劃] 使用者名稱`)
-- Visible in community posts, danmaku/barrage comments, and chat rooms
-- Enables personality-based social matching and feed recommendations
+- Each user gets a 4-letter code (e.g. 「熱冒計逆」) displayed as a **title/prefix** before their username.
+- Titles appear in: community posts, chat messages, danmaku (barrage), and profile.
+- The title is visible to other users — creates social identity and recognition.
 
-### Personality Evolution
+### Personality Determination
 
-- Personality is not static — AI tracks shifts over time
-- Questionnaire system provides additional signals for refinement
-- AI reports when significant personality shifts are detected
+- **Primary source**: CSV trade record analysis (Python computes metrics → Bedrock interprets).
+- **Secondary source**: Questionnaire responses (periodic recalibration).
+- **Per-coin variation**: AI may note different tendencies per coin (e.g. "你對 BTC 偏安逸，但對 SOL 偏熱衷").
 
-## Page Structure
+---
 
-### 1. Main Page (YouTube Homepage Style)
+## UI Design
 
-Layout: Side navigation + content area with search bar
+### Main Page (YouTube-style Home)
 
-| Section | Content | Algorithm |
-|---------|---------|-----------|
-| 平時關注 (Following) | Coins the user frequently trades | AI analyzes user's trading history |
-| 熱門 (Trending) | Popular coins across all users | Aggregate trading volume & attention |
-| 潛力 (Potential) | Coins with rising attention (optional) | Recent attention growth rate |
-| 熱門社群貼文 (Hot Posts) | Community posts with high engagement | Like count, same-personality priority |
+- Grid of coin "channel" cards — only coins the user has traded or follows.
+- Each card shows: coin name, a mini K-line chart as thumbnail (recent trend), current price.
+- Click a card → enter that coin's live stream page.
+- **Feed algorithm** determines card order:
+  - **平時關注** (Your Focus): AI analyzes user's trading frequency per coin, surfaces most relevant first.
+  - **熱門** (Trending): Most-watched/traded across all users.
+  - **潛力** (Rising): Coins with high recent attention growth rate.
 
-Each coin card shows: coin name, thumbnail (recent K-line preview), current price.
-
-### 2. Coin Trend Page (Live Stream Style)
+### Live Stream Page (Coin Detail)
 
 ```
-┌──────────────────────────────┬────────────────────┐
-│                              │ [AI對話] [彈幕留言]  │ ← Tab switcher
-│                              │                    │
-│   幣種走勢 (K-line chart)     │   Chat panel       │
-│   Large area, main focus     │   (AI or Danmaku)  │
-│                              │                    │
-│   Progress bar (draggable)   │                    │
-│   Settings: danmaku on/off,  │                    │
-│   danmaku size, time scale   │                    │
-│   (時/日/周)                  │                    │
-│                              │                    │
-├──────────────────────────────┼────────────────────┤
-│                              │                    │
-│   分析指標 (Indicators)       │   買賣 (Trade)     │
-│   Default: collapsed/off     │   Order panel      │
-│                              │                    │
-└──────────────────────────────┴────────────────────┘
+┌─────────────────────────────┬──────────────────────┐
+│                             │  [AI Chat Tab]       │
+│   K-line Chart              │  [Community Chat Tab]│
+│   (main "video" area)       │                      │
+│                             │  AI: consultation,   │
+│   ▲ buy markers             │  suggestions, trade  │
+│   ▼ sell markers            │  confirmation        │
+│   Danmaku overlay (toggle)  │                      │
+│                             │  Community: real-time│
+│   [Progress bar / scrubber] │  messages from other │
+│   [Time scale: H / D / W]  │  users, sentiment    │
+│                             │                      │
+├─────────────────────────────┤                      │
+│ Controls:                   │                      │
+│ • Toggle danmaku on/off     │                      │
+│ • Danmaku size adjustment   │                      │
+│ • Time interval (時/日/周)  │                      │
+│ • Indicator toggles (off    │                      │
+│   by default)               │                      │
+└─────────────────────────────┴──────────────────────┘
 ```
 
-**Left panel (top):** K-line chart with draggable progress bar. Time interval selector (時/日/周). Danmaku settings (toggle, size).
+**Key design points:**
+- Progress bar can scrub backward in time.
+- Time scale selector: 時 (hourly), 日 (daily), 周 (weekly) — replaces generic "倍數".
+- Technical indicators (MACD, RSI, etc.) exist but are **off by default** — user opts in.
+- Danmaku (彈幕): community chat messages fly across the K-line chart area (like Bilibili). Toggle on/off, adjust size.
 
-**Left panel (bottom):** Technical indicators panel. Default OFF, user can enable as needed.
+### Right Panel: Dual Chat System
 
-**Right panel (top):** Dual-tab chat system:
-- **AI 對話 tab:** Personal AI advisor. Provides personalized analysis and trade suggestions. If AI proposes a trade with all parameters set, user must press confirm button to execute.
-- **彈幕留言 tab:** Community barrage/chat (Bilibili-style). Messages from other investors scroll across the K-line chart as danmaku when enabled. Users can also browse messages in the chat panel. Each message shows sender's personality prefix.
+1. **AI Chat (諮詢)**: Private consultation with the AI assistant. AI provides personalized analysis, trade suggestions. When AI proposes a trade with all parameters set, user must press a **confirm button** to execute.
+2. **Community Chat (聊天室)**: Public messages from all users watching this coin. Messages can optionally display as danmaku on the chart. Shows each user's personality title as prefix.
 
-**Right panel (bottom):** Trade execution panel for confirmed orders.
+### Social/Community Page (Threads-style)
 
-### 3. Community Page (Threads-style)
+- A separate page with a Threads-like social feed.
+- Users can post thoughts, analysis, trade rationale.
+- Each post shows the user's personality title prefix.
+- **Feed algorithm**:
+  - Prioritize posts about coins the user follows.
+  - Prioritize posts from users with the **same personality type**.
+  - Surface high-engagement posts (likes, replies).
+  - Trending topics across all users.
 
-- Feed of investor posts, opinions, and market commentary
-- Each post displays user's personality type prefix
-- Feed algorithm prioritizes:
-  1. Posts from users with the same personality type
-  2. Posts about coins the user follows
-  3. High-engagement posts (likes, replies)
-- Questionnaire cards appear periodically (like ads) in the feed
+---
 
-### 4. Questionnaire System
+## Questionnaire System
 
-- Optional at registration (can be skipped)
-- Appears periodically as "ad cards" in community feed — never disappears permanently
-- Each appearance can have different questions
-- After completion, provides feedback:
-  - "你是 [personality type]"
-  - "你的人格近期有著小/大幅度的轉變，是否願意提供轉變的理由？"
-- User-provided reasons help AI better predict behavior changes in different market conditions
+- **When**: Offered at registration (skippable). Reappears periodically in the social feed like an ad/prompt — never blocks the user.
+- **Format**: Different questions each time (not repetitive).
+- **Feedback after completion**:
+  - "你是 XX 型投資人" (personality result).
+  - "你的人格近期有小/大幅度的轉變，是否願意提供轉變的理由？" (if personality shifted).
+- **Purpose of "why" follow-up**: User-provided reasoning lets AI better predict how the user's habits change under different market conditions.
+- **Data usage**: Questionnaire answers supplement CSV analysis — used to recalibrate personality axes.
 
-## Recommendation Algorithm
+---
 
-### Coin Feed (Main Page)
+## AI Behavior
 
-| Category | Logic |
-|----------|-------|
-| 平時關注 | AI analyzes user's historical trades → prioritize frequently traded coins |
-| 熱門 | Aggregate analysis of what most users are watching/trading |
-| 潛力 (optional) | Coins with rapidly increasing attention in recent period |
+### Passive Mode (Default)
 
-### Community Feed
+- AI does **not** proactively interrupt the user unless asked.
+- The algorithm handles passive recommendations (feed ranking, coin suggestions).
+- AI waits for the user to open AI chat and ask a question.
 
-| Priority | Signal |
-|----------|--------|
-| 1st | Same personality type as user |
-| 2nd | Posts about coins user follows |
-| 3rd | High engagement (likes, replies) |
+### Active Mode (When User Initiates Consultation)
 
-### AI Behavior
+When the user asks the AI for advice:
+1. AI analyzes based on: user's personality, historical win rate, market data (MAX API), Fear & Greed Index (CoinMarketCap), current holdings.
+2. AI provides a recommendation with reasoning.
+3. If AI proposes a trade: sets all parameters (coin, action, amount) → user must press **confirm** to execute.
+4. **AI never auto-executes trades.**
 
-- **Passive by default** — AI only proactively analyzes via algorithm recommendations, not unsolicited advice
-- **Active on consultation** — When user asks AI directly, it provides personalized advice based on:
-  1. User's personality profile & trading history
-  2. Current market conditions (MAX API + CoinMarketCap)
-  3. User's historical win rate in similar conditions
-- **Fallback strategy** — When AI lacks sufficient data about the user, it references:
-  1. Popular/majority behavior (what most users are doing)
-  2. Behavior of users with the same personality type
-  3. Behavior of users following the same coins
+### When AI Doesn't Know
 
-## Target Users
+If AI lacks sufficient data about a specific situation:
+- Reference how **trending/popular users** are trading.
+- Reference how users with the **same personality type** are trading.
+- Reference how users who **follow the same coins** are trading.
+- Clearly state the basis: "根據與你相似的投資人近期操作..."
 
-Active crypto traders on MAX Exchange who trade frequently but lack systematic analysis of their own behavior.
+---
+
+## Algorithm / Recommendation Engine
+
+| Context | Algorithm |
+|---------|-----------|
+| Main page coin order | User's trading frequency per coin → most relevant first |
+| Main page "熱門" | Global trading volume / attention across all users |
+| Main page "潛力" | Coins with highest recent attention growth rate |
+| Social feed | Same-coin priority → same-personality priority → high-engagement |
+| AI suggestions | User personality + market data + similar-user behavior as fallback |
+
+---
 
 ## External Integrations
 
@@ -162,8 +174,8 @@ Active crypto traders on MAX Exchange who trade frequently but lack systematic a
 | MAX Skill | Trade execution (buy/sell orders) |
 | MAX Private API | Extended market data (bonus points for Lv2 account) |
 | CoinMarketCap API | Fear & Greed Index |
-| AWS Bedrock (Claude) | LLM reasoning — personality analysis, market analysis, conversational trading |
-| AWS S3 | CSV storage, personality data, chat history, community posts |
+| AWS Bedrock (Claude) | AI reasoning, personality analysis, market analysis |
+| AWS S3 | CSV storage, personality data persistence, chat history |
 
 ## API Contract (Frontend ↔ Backend)
 
@@ -181,24 +193,27 @@ Active crypto traders on MAX Exchange who trade frequently but lack systematic a
 | `/danmaku` | GET | Fetch danmaku messages for a coin |
 | `/danmaku` | POST | Send a danmaku message |
 
+> Note: Additional endpoints may be needed for community features (posts, chat, questionnaire). TBD.
+
 ## Critical Design Principles
 
-- **AI never auto-executes trades** — all orders require explicit user confirmation button press.
+- **AI never auto-executes trades** — all orders require explicit user confirmation via confirm button.
 - **Python does math, AI does interpretation** — CSV metrics are computed in Python, then sent to Bedrock for personality/analysis.
 - **Retry policy**: All external API calls retry up to 3 times before returning error to frontend.
 - **Personalization first**: Every recommendation is filtered through the user's personality profile and historical win rate.
-- **Passive AI, active on demand**: AI does not push unsolicited advice; it responds to user consultation or operates within algorithm-driven recommendations.
-- **Personality is social**: Personality types are visible to the community and drive social interactions.
+- **Indicators off by default**: Technical indicators exist but don't clutter the UI unless user enables them.
+- **Personality is social**: Titles are visible to others — creates identity and community.
+- **AI is passive by default**: No unsolicited interruptions. User initiates consultation.
 
 ## Hackathon Scoring Alignment
 
 | Weight | Criterion | Our Response |
 |--------|-----------|--------------|
-| 25% | Creativity | YouTube live-stream UI + MBTI personality + danmaku + community |
-| 20% | Technical Feasibility | AWS Bedrock + AgentCore + MAX API + S3 + real-time danmaku |
-| 20% | Business Viability | Solves real pain: personalized insight + social engagement for active traders |
-| 15% | AI Design | Context-aware agent with tools, personality-driven recommendations, crowd fallback |
-| 10% | Topic Fit | Full use of GenAI + Agent + MAX API |
-| 10% | Completeness | End-to-end demo: upload → analyze → trade → community |
+| 25% | Creativity | YouTube/Bilibili live UI + danmaku + MBTI personality titles + social feed |
+| 20% | Technical Feasibility | AWS Bedrock + AgentCore + MAX API + S3 + recommendation algorithm |
+| 20% | Business Viability | Solves real pain: personalized insight + social layer for active traders |
+| 15% | AI Design | Context-aware agent, personality-based advice, similar-user fallback |
+| 10% | Topic Fit | Full use of GenAI + Agent + MAX API + community |
+| 10% | Completeness | End-to-end demo: upload → analyze → trade + social |
 | +5% | MAX Lv2 Private API | Planned |
 | +5% | AWS Kiro IDE | In use |
