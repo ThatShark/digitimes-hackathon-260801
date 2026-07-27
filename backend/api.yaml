@@ -1,0 +1,1172 @@
+openapi: 3.0.3
+info:
+  title: 智慧投資 L.I.V.E. API
+  description: |
+    Backend API for the 智慧投資 L.I.V.E. hackathon project.
+    Provides endpoints for personality analysis, K-line chart data,
+    AI consultation, trade execution, community features, and danmaku chat.
+  version: 1.0.0
+
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/prod
+    description: AWS API Gateway (Production)
+    variables:
+      apiId:
+        default: xxxxxxxxxx
+      region:
+        default: ap-northeast-1
+
+tags:
+  - name: Core
+    description: Core trading and analysis endpoints
+  - name: Personality
+    description: Investor personality system
+  - name: Community
+    description: Threads-style social feed
+  - name: Chat
+    description: Real-time chat and danmaku (barrage)
+  - name: Questionnaire
+    description: Periodic personality questionnaire
+  - name: Recommendation
+    description: Algorithm-driven content ranking
+  - name: User
+    description: User profile and settings
+
+paths:
+  # ─────────────────────────────────────────────
+  # Core Endpoints
+  # ─────────────────────────────────────────────
+  /init:
+    get:
+      tags: [Core]
+      summary: Check user initialization status
+      description: |
+        Called when user enters the app. Returns whether CSV has been uploaded
+        and personality analysis completed, along with the list of traded currencies.
+      operationId: getInit
+      responses:
+        "200":
+          description: User status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InitResponse"
+              examples:
+                needCsv:
+                  summary: User needs to upload CSV
+                  value:
+                    status: need_csv
+                ready:
+                  summary: User is ready
+                  value:
+                    status: ready
+                    currencies: [BTC, ETH, SOL, DOGE]
+
+  /upload_csv:
+    post:
+      tags: [Core]
+      summary: Upload CSV trade records
+      description: |
+        Upload the user's CSV trade history. Triggers personality analysis
+        pipeline (Python metrics → Bedrock interpretation). Returns the list
+        of currencies found in the CSV.
+      operationId: uploadCsv
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV file with trade records
+      responses:
+        "200":
+          description: Upload successful, analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadCsvResponse"
+        "400":
+          description: Invalid CSV format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "CSV 格式不正確，請確認欄位是否完整"
+
+  /candlestick_chart:
+    get:
+      tags: [Core]
+      summary: Get K-line chart data with trade markers
+      description: |
+        Returns candlestick data from MAX API merged with the user's
+        historical buy/sell markers from their CSV records.
+      operationId: getCandlestickChart
+      parameters:
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+            example: BTC
+          description: Currency symbol (e.g. BTC, ETH, SOL)
+        - name: start
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1719792000
+          description: Start time (Unix timestamp in seconds)
+        - name: end
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1720396800
+          description: End time (Unix timestamp in seconds)
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [1h, 1d, 1w]
+            default: 1d
+          description: "K-line interval: 1h (hourly), 1d (daily), 1w (weekly)"
+      responses:
+        "200":
+          description: Chart data with trade markers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CandlestickChartResponse"
+        "502":
+          description: MAX API unavailable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ai_chat:
+    post:
+      tags: [Core]
+      summary: Send message to AI assistant
+      description: |
+        User sends a message to the AI. The AI responds with market analysis
+        and optionally an investment suggestion. If a suggestion is returned,
+        the frontend must display a confirm button before executing.
+      operationId: aiChat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatRequest"
+      responses:
+        "200":
+          description: AI response (may include trade suggestion)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+              examples:
+                withSuggestion:
+                  summary: AI suggests a trade
+                  value:
+                    status: ready
+                    message: "根據你的交易習慣和目前恐懼貪婪指數 35，建議買入 ETH"
+                    investment_suggestion:
+                      currency: ETH
+                      action: buy
+                      amount: 500
+                chatOnly:
+                  summary: AI responds without suggestion
+                  value:
+                    status: ready
+                    message: "目前市場處於中性區間，建議觀望"
+                    investment_suggestion: null
+        "503":
+          description: AI service unavailable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /allow_trade:
+    post:
+      tags: [Core]
+      summary: Confirm and execute a trade
+      description: |
+        User confirms a trade suggested by AI. Calls MAX Skill to execute
+        the order. On success, the trade is written back to S3 CSV.
+      operationId: allowTrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllowTradeRequest"
+      responses:
+        "200":
+          description: Trade executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllowTradeResponse"
+              example:
+                status: success
+                message: "成功買入 500 TWD 的 ETH"
+                trade_id: "txn_abc123"
+        "400":
+          description: Insufficient balance or invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "餘額不足"
+        "502":
+          description: MAX API / Skill unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────────────────────────
+  # Personality Endpoints
+  # ─────────────────────────────────────────────
+  /personality:
+    get:
+      tags: [Personality]
+      summary: Get user personality profile
+      description: |
+        Returns the user's 4-axis MBTI-style personality result,
+        including the 4-letter title code and natural language description.
+      operationId: getPersonality
+      responses:
+        "200":
+          description: Personality profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalityResponse"
+        "404":
+          description: No personality data (CSV not yet uploaded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /personality/reanalyze:
+    post:
+      tags: [Personality]
+      summary: Trigger personality re-analysis
+      description: |
+        Re-runs the personality analysis pipeline using the existing CSV.
+        Useful after questionnaire completion or when user wants a refresh.
+      operationId: reanalyzePersonality
+      responses:
+        "200":
+          description: Re-analysis complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalityResponse"
+        "404":
+          description: No CSV found to analyze
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────────────────────────
+  # Community Endpoints
+  # ─────────────────────────────────────────────
+  /community/feed:
+    get:
+      tags: [Community]
+      summary: Get social feed (algorithm-ranked)
+      description: |
+        Returns community posts ranked by the recommendation algorithm.
+        Priority: same-coin → same-personality → high-engagement → trending.
+        Includes questionnaire prompts interspersed like ads.
+      operationId: getCommunityFeed
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Pagination cursor for infinite scroll
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 50
+          description: Number of posts to return
+      responses:
+        "200":
+          description: Feed items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityFeedResponse"
+
+  /community/post:
+    post:
+      tags: [Community]
+      summary: Create a community post
+      operationId: createCommunityPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostRequest"
+      responses:
+        "201":
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostItem"
+
+  /community/post/{postId}/like:
+    post:
+      tags: [Community]
+      summary: Like / unlike a post
+      operationId: toggleLike
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+                  like_count:
+                    type: integer
+
+  /community/post/{postId}/comments:
+    get:
+      tags: [Community]
+      summary: Get comments on a post
+      operationId: getPostComments
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentsResponse"
+    post:
+      tags: [Community]
+      summary: Add a comment to a post
+      operationId: addComment
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  maxLength: 500
+      responses:
+        "201":
+          description: Comment added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentItem"
+
+  # ─────────────────────────────────────────────
+  # Chat / Danmaku Endpoints
+  # ─────────────────────────────────────────────
+  /chat/{symbol}/messages:
+    get:
+      tags: [Chat]
+      summary: Get chat messages for a coin channel
+      description: |
+        Fetch recent chat/danmaku messages for a specific coin's live stream.
+        Used for both the chat room tab and danmaku overlay.
+      operationId: getChatMessages
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: BTC
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+          description: Unix timestamp — only return messages after this time (for polling)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        "200":
+          description: List of chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessagesResponse"
+
+  /chat/{symbol}/send:
+    post:
+      tags: [Chat]
+      summary: Send a chat message (also appears as danmaku)
+      description: |
+        Send a message to the coin's chat room. The message will appear
+        in the chat tab and optionally fly across the K-line chart as danmaku
+        for other users who have danmaku enabled.
+      operationId: sendChatMessage
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: ETH
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendChatRequest"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageItem"
+
+  # ─────────────────────────────────────────────
+  # Questionnaire Endpoints
+  # ─────────────────────────────────────────────
+  /questionnaire:
+    get:
+      tags: [Questionnaire]
+      summary: Get current questionnaire
+      description: |
+        Returns a set of questions for the user. Questions vary each time
+        (not repetitive). Can be served at registration or periodically
+        in the social feed.
+      operationId: getQuestionnaire
+      responses:
+        "200":
+          description: Questionnaire questions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionnaireResponse"
+
+  /questionnaire/submit:
+    post:
+      tags: [Questionnaire]
+      summary: Submit questionnaire answers
+      description: |
+        Submit answers to the questionnaire. Returns personality feedback
+        and optionally asks about personality shift reasons.
+      operationId: submitQuestionnaire
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionnaireSubmitRequest"
+      responses:
+        "200":
+          description: Submission result with feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionnaireSubmitResponse"
+
+  # ─────────────────────────────────────────────
+  # Recommendation Endpoints
+  # ─────────────────────────────────────────────
+  /recommend/coins:
+    get:
+      tags: [Recommendation]
+      summary: Get personalized coin recommendations
+      description: |
+        Returns coins ordered by the recommendation algorithm:
+        - 平時關注: based on user's trading frequency per coin
+        - 熱門: most-watched/traded across all users
+        - 潛力: highest recent attention growth rate
+      operationId: getRecommendedCoins
+      responses:
+        "200":
+          description: Categorized coin recommendations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendCoinsResponse"
+
+  /recommend/similar-users:
+    get:
+      tags: [Recommendation]
+      summary: Get similar users' trading behavior
+      description: |
+        Returns aggregated trading behavior of users with same personality
+        type or same coin interests. Used as AI fallback when insufficient
+        data for direct recommendation.
+      operationId: getSimilarUsers
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by specific coin
+      responses:
+        "200":
+          description: Similar users' behavior summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimilarUsersResponse"
+
+  # ─────────────────────────────────────────────
+  # User Endpoints
+  # ─────────────────────────────────────────────
+  /user/profile:
+    get:
+      tags: [User]
+      summary: Get user profile
+      description: |
+        Returns user info including personality title (4-letter code),
+        display name, and preferences.
+      operationId: getUserProfile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /user/settings:
+    put:
+      tags: [User]
+      summary: Update user settings
+      description: |
+        Update user preferences such as danmaku on/off, danmaku size,
+        default time interval, indicator toggles, etc.
+      operationId: updateUserSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSettingsUpdate"
+      responses:
+        "200":
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+# ═══════════════════════════════════════════════
+# Components
+# ═══════════════════════════════════════════════
+components:
+  schemas:
+    # ─── Common ───
+    ErrorResponse:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: Human-readable error message (Chinese)
+
+    # ─── Core ───
+    InitResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [need_csv, ready]
+        currencies:
+          type: array
+          items:
+            type: string
+          description: List of currencies found in user's CSV (only when status=ready)
+
+    UploadCsvResponse:
+      type: object
+      required: [status, currencies]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        currencies:
+          type: array
+          items:
+            type: string
+
+    CandlestickChartResponse:
+      type: object
+      required: [status, candles]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candle"
+        trade_markers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeMarker"
+          description: User's historical buy/sell points overlaid on chart
+
+    Candle:
+      type: object
+      required: [time, open, high, low, close, volume]
+      properties:
+        time:
+          type: integer
+          format: int64
+          description: Unix timestamp
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: number
+
+    TradeMarker:
+      type: object
+      required: [time, action, price]
+      properties:
+        time:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum: [buy, sell]
+        price:
+          type: number
+        amount:
+          type: number
+          description: Trade amount in TWD
+
+    AiChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: User's message to AI
+          maxLength: 2000
+        currency:
+          type: string
+          description: Current coin context (if on a specific coin's page)
+
+    AiChatResponse:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        message:
+          type: string
+          description: AI's response text
+        investment_suggestion:
+          nullable: true
+          $ref: "#/components/schemas/InvestmentSuggestion"
+
+    InvestmentSuggestion:
+      type: object
+      required: [currency, action, amount]
+      properties:
+        currency:
+          type: string
+          description: e.g. BTC, ETH
+        action:
+          type: string
+          enum: [buy, sell]
+        amount:
+          type: number
+          description: Suggested amount in TWD
+
+    AllowTradeRequest:
+      type: object
+      required: [currency, action, amount]
+      properties:
+        currency:
+          type: string
+        action:
+          type: string
+          enum: [buy, sell]
+        amount:
+          type: number
+          description: Amount in TWD
+
+    AllowTradeResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [success]
+        message:
+          type: string
+        trade_id:
+          type: string
+          description: Transaction ID from MAX
+
+    # ─── Personality ───
+    PersonalityResponse:
+      type: object
+      required: [title_code, axes, description]
+      properties:
+        title_code:
+          type: string
+          description: "4-letter personality title (e.g. 熱冒計逆)"
+          example: "熱冒計逆"
+        axes:
+          type: object
+          required: [frequency, risk, discipline, sentiment]
+          properties:
+            frequency:
+              $ref: "#/components/schemas/PersonalityAxis"
+            risk:
+              $ref: "#/components/schemas/PersonalityAxis"
+            discipline:
+              $ref: "#/components/schemas/PersonalityAxis"
+            sentiment:
+              $ref: "#/components/schemas/PersonalityAxis"
+        description:
+          type: string
+          description: Natural language description of investment style (Chinese)
+        per_coin_notes:
+          type: array
+          items:
+            type: object
+            properties:
+              currency:
+                type: string
+              note:
+                type: string
+          description: Per-coin personality variations
+
+    PersonalityAxis:
+      type: object
+      required: [pole, score]
+      properties:
+        pole:
+          type: string
+          description: "Which pole the user falls on (e.g. 熱衷 or 安逸)"
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: "0-100 scale indicating how strongly they lean toward pole A"
+
+    # ─── Community ───
+    CommunityFeedResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeedItem"
+        next_cursor:
+          type: string
+          nullable: true
+          description: Cursor for next page (null if no more)
+
+    FeedItem:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [post, questionnaire_prompt]
+          description: "post = user post, questionnaire_prompt = periodic questionnaire ad"
+        post:
+          $ref: "#/components/schemas/PostItem"
+        questionnaire_prompt:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Prompt text to encourage user to take questionnaire
+
+    PostItem:
+      type: object
+      required: [id, author, content, created_at]
+      properties:
+        id:
+          type: string
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        currency_tags:
+          type: array
+          items:
+            type: string
+          description: Coins mentioned in the post
+        like_count:
+          type: integer
+        comment_count:
+          type: integer
+        liked_by_me:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    PostAuthor:
+      type: object
+      required: [user_id, display_name, personality_title]
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        personality_title:
+          type: string
+          description: "4-letter personality code shown as prefix"
+          example: "安保計追"
+
+    CreatePostRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          maxLength: 1000
+        currency_tags:
+          type: array
+          items:
+            type: string
+          description: Coins to tag in the post
+
+    CommentsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentItem"
+        next_cursor:
+          type: string
+          nullable: true
+
+    CommentItem:
+      type: object
+      required: [id, author, content, created_at]
+      properties:
+        id:
+          type: string
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # ─── Chat / Danmaku ───
+    ChatMessagesResponse:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageItem"
+
+    ChatMessageItem:
+      type: object
+      required: [id, author, content, timestamp]
+      properties:
+        id:
+          type: string
+        author:
+          $ref: "#/components/schemas/PostAuthor"
+        content:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+
+    SendChatRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          maxLength: 200
+          description: Chat message text (also used as danmaku)
+
+    # ─── Questionnaire ───
+    QuestionnaireResponse:
+      type: object
+      required: [id, questions]
+      properties:
+        id:
+          type: string
+          description: Questionnaire session ID
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionItem"
+
+    QuestionItem:
+      type: object
+      required: [id, text, options]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+          description: Question text (Chinese)
+        options:
+          type: array
+          items:
+            type: object
+            required: [id, text]
+            properties:
+              id:
+                type: string
+              text:
+                type: string
+
+    QuestionnaireSubmitRequest:
+      type: object
+      required: [questionnaire_id, answers]
+      properties:
+        questionnaire_id:
+          type: string
+        answers:
+          type: array
+          items:
+            type: object
+            required: [question_id, option_id]
+            properties:
+              question_id:
+                type: string
+              option_id:
+                type: string
+        shift_reason:
+          type: string
+          nullable: true
+          description: |
+            User-provided reason for personality shift
+            (prompted if AI detects significant change)
+
+    QuestionnaireSubmitResponse:
+      type: object
+      required: [personality]
+      properties:
+        personality:
+          $ref: "#/components/schemas/PersonalityResponse"
+        shift_detected:
+          type: boolean
+          description: Whether a personality shift was detected
+        shift_message:
+          type: string
+          nullable: true
+          description: "e.g. 你的人格近期有小幅度的轉變..."
+
+    # ─── Recommendation ───
+    RecommendCoinsResponse:
+      type: object
+      required: [focus, trending, rising]
+      properties:
+        focus:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoinRecommendation"
+          description: "平時關注 — coins user trades most"
+        trending:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoinRecommendation"
+          description: "熱門 — most popular across all users"
+        rising:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoinRecommendation"
+          description: "潛力 — highest recent attention growth"
+
+    CoinRecommendation:
+      type: object
+      required: [symbol, name, price, change_24h]
+      properties:
+        symbol:
+          type: string
+          example: BTC
+        name:
+          type: string
+          example: Bitcoin
+        price:
+          type: number
+          description: Current price in TWD
+        change_24h:
+          type: number
+          description: 24h price change percentage
+        mini_chart:
+          type: array
+          items:
+            type: number
+          description: Last 7 close prices for sparkline thumbnail
+
+    SimilarUsersResponse:
+      type: object
+      properties:
+        same_personality:
+          $ref: "#/components/schemas/UserBehaviorSummary"
+        same_coin_interest:
+          $ref: "#/components/schemas/UserBehaviorSummary"
+        trending:
+          $ref: "#/components/schemas/UserBehaviorSummary"
+
+    UserBehaviorSummary:
+      type: object
+      properties:
+        user_count:
+          type: integer
+          description: Number of users in this group
+        dominant_action:
+          type: string
+          enum: [buy, sell, hold]
+          description: What most users in this group are doing
+        avg_confidence:
+          type: number
+          description: Average confidence level (0-100)
+        summary:
+          type: string
+          description: Natural language summary (Chinese)
+
+    # ─── User ───
+    UserProfile:
+      type: object
+      required: [user_id, display_name, personality_title]
+      properties:
+        user_id:
+          type: string
+        display_name:
+          type: string
+        personality_title:
+          type: string
+          description: "4-letter code (e.g. 熱冒計逆)"
+        has_csv:
+          type: boolean
+        currencies:
+          type: array
+          items:
+            type: string
+        settings:
+          $ref: "#/components/schemas/UserSettings"
+
+    UserSettings:
+      type: object
+      properties:
+        danmaku_enabled:
+          type: boolean
+          default: true
+        danmaku_size:
+          type: string
+          enum: [small, medium, large]
+          default: medium
+        default_interval:
+          type: string
+          enum: [1h, 1d, 1w]
+          default: 1d
+        indicators_enabled:
+          type: array
+          items:
+            type: string
+          description: "List of enabled indicators (empty by default)"
+          default: []
+
+    UserSettingsUpdate:
+      type: object
+      properties:
+        danmaku_enabled:
+          type: boolean
+        danmaku_size:
+          type: string
+          enum: [small, medium, large]
+        default_interval:
+          type: string
+          enum: [1h, 1d, 1w]
+        indicators_enabled:
+          type: array
+          items:
+            type: string
