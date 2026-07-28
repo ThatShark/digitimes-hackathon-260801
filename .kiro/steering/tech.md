@@ -5,7 +5,7 @@
 - **Framework**: React + Vite (JavaScript)
 - **Routing**: React Router (SPA, client-side routing)
 - **Charting**: lightweight-charts (K-line / candlestick)
-- **Danmaku**: Custom implementation or rc-danmaku / danmaku library (barrage overlay on chart)
+- **Danmaku**: Custom CSS animation implementation (pure CSS `@keyframes`, no library dependency)
 - **UI Style**: Threads-style community feed, YouTube-style card grid, Bilibili-style danmaku
 - **Location**: `frontend/src/`
 - **Status**: Scaffolding stage
@@ -77,9 +77,9 @@
 | Library | Purpose |
 |---------|---------|
 | `react-router-dom` | Client-side routing (主頁/幣種趨勢/社群/問券) |
-| `lightweight-charts` | K-line / candlestick chart rendering |
+| `lightweight-charts` | K-line / candlestick chart rendering (v5 API: `addSeries(CandlestickSeries, opts)`) |
 | `axios` or `fetch` | API communication |
-| Danmaku library (TBD) | Barrage comment overlay on K-line chart |
+| Custom `DanmakuOverlay` | CSS-animation barrage overlay on K-line chart (no external library) |
 | `lodash/debounce` | Progress bar drag debounce |
 
 ## Data Models (S3 Storage)

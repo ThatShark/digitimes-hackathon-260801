@@ -120,3 +120,145 @@
   color: var(--text-primary);
   border-color: var(--text-secondary);
 }
+
+/* Danmaku input row */
+.danmaku-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.danmaku-input {
+  flex: 1;
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.danmaku-input:focus {
+  border-color: var(--accent);
+}
+
+.danmaku-send-confirm {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.danmaku-send-confirm:hover {
+  opacity: 0.85;
+}
+
+.danmaku-send-cancel {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.danmaku-send-cancel:hover {
+  color: var(--red);
+}
+
+/* Danmaku settings */
+.danmaku-settings-wrapper {
+  position: relative;
+}
+
+.danmaku-settings-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.danmaku-settings-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.danmaku-settings-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.danmaku-settings-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.settings-options {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-option {
+  flex: 1;
+  padding: 4px 0;
+  border-radius: 5px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.settings-option:hover {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+.settings-option.active {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}

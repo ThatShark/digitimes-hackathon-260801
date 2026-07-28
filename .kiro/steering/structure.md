@@ -133,6 +133,31 @@ digitimes-hackathon-260801/
 └──────────────────────────────┴────────────────────┘
 ```
 
+## Danmaku (Barrage) System
+
+Implementation: **Pure CSS animation** (方案 A)
+
+- `DanmakuOverlay` component is positioned `absolute` over the K-line chart container
+- Each bullet is a `<span>` with `@keyframes danmaku-scroll` (right → left)
+- 6 tracks to avoid overlap; bullets get assigned to the least recently used track
+- Animation duration scales with text length (longer = slightly slower)
+- Bullets are removed from DOM via `onAnimationEnd` callback
+- Toggle on/off via `danmakuEnabled` state in CoinTrendPage
+- User can send danmaku from the chart controls bar (✉ button → inline input)
+- Mock simulator sends random messages every 2-4 seconds for demo purposes
+- `pointer-events: none` on the overlay so the chart remains interactive beneath
+- Configurable settings via popover: speed (慢/中/快), size (小/中/大), position (上方/全部/下方)
+- Default position is `top` (upper 30% of chart) to avoid blocking the candlestick data
+
+### Key Files
+
+| File | Role |
+|------|------|
+| `components/shared/DanmakuOverlay.jsx` | Overlay container + bullet rendering + mock simulator |
+| `components/shared/DanmakuOverlay.css` | `@keyframes danmaku-scroll`, positioning, text-shadow |
+| `components/trend/ChartControls.jsx` | Toggle button + send input inline |
+| `pages/CoinTrendPage.jsx` | State management, wires overlay + controls together |
+
 ## Key Conventions
 
 - **Config is source of truth**: `agentcore/agentcore.json` defines agents, memories, credentials, gateways. Never edit generated CDK code directly.

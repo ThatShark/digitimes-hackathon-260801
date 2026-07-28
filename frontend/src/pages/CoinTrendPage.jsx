@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import KLineChart from '../components/trend/KLineChart'
 import ChartControls from '../components/trend/ChartControls'
+import DanmakuOverlay from '../components/shared/DanmakuOverlay'
 import AIChatPanel from '../components/trend/AIChatPanel'
 import IndicatorPanel from '../components/trend/IndicatorPanel'
 import TradePanel from '../components/trend/TradePanel'
@@ -11,6 +12,19 @@ export default function CoinTrendPage() {
   const { symbol } = useParams()
   const [interval, setInterval] = useState('1d')
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
+  const [danmakuMessages, setDanmakuMessages] = useState([])
+  const [danmakuSettings, setDanmakuSettings] = useState({
+    speed: 'normal',
+    size: 'medium',
+    position: 'top20',
+  })
+
+  const handleSendDanmaku = useCallback((text) => {
+    setDanmakuMessages((prev) => [
+      ...prev,
+      { user: '我', text, id: Date.now() },
+    ])
+  }, [])
 
   return (
     <div className="coin-trend-page">
@@ -23,12 +37,22 @@ export default function CoinTrendPage() {
           </div>
           <div className="chart-container">
             <KLineChart symbol={symbol} interval={interval} />
+            <DanmakuOverlay
+              enabled={danmakuEnabled}
+              messages={danmakuMessages}
+              speed={danmakuSettings.speed}
+              size={danmakuSettings.size}
+              position={danmakuSettings.position}
+            />
           </div>
           <ChartControls
             interval={interval}
             onIntervalChange={setInterval}
             danmakuEnabled={danmakuEnabled}
             onDanmakuToggle={() => setDanmakuEnabled(!danmakuEnabled)}
+            onSendDanmaku={handleSendDanmaku}
+            danmakuSettings={danmakuSettings}
+            onDanmakuSettingsChange={setDanmakuSettings}
           />
         </div>
 
