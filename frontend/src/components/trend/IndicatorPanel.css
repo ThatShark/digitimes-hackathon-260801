@@ -1,0 +1,66 @@
+.indicator-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.indicator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.indicator-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.indicator-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.indicator-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.indicator-tag:hover {
+  color: var(--text-primary);
+}
+
+.indicator-tag.active {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.indicator-content {
+  flex: 1;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.indicator-placeholder {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100%;
+  width: 100%;
+}
+
+.placeholder-bar {
+  flex: 1;
+  background: linear-gradient(to top, var(--accent-dim), var(--accent));
+  border-radius: 3px 3px 0 0;
+  opacity: 0.6;
+  min-height: 10px;
+}
