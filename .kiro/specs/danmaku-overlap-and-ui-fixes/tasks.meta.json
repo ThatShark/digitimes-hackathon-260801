@@ -1,0 +1,222 @@
+{
+  "pbtResults": {
+    "1. Write preservation property tests (BEFORE implementing fix)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785312825160
+    },
+    "2.6 Verify preservation tests still pass after danmaku fix": {
+      "status": "passed",
+      "lastRunTimestamp": 1785314069013
+    }
+  },
+  "executionHistory": {
+    "1. Write preservation property tests (BEFORE implementing fix)": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815123
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310849134
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785312845126
+      }
+    ],
+    "2.1 Refactor `getTrack()` to include clearance time estimation": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815250
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785312856659
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313471327
+      }
+    ],
+    "2.2 Add drop logic for mock messages when all tracks are full": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815347
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313483479
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313641744
+      }
+    ],
+    "2.3 Add force-assign for user messages (never drop)": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815468
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313650765
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313811026
+      }
+    ],
+    "2.4 Add content deduplication (sliding window of recent texts)": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815548
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313820130
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313966884
+      }
+    ],
+    "2.5 Update `addBullet` signature to distinguish user vs mock messages": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815625
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785313971997
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314023328
+      }
+    ],
+    "2.6 Verify preservation tests still pass after danmaku fix": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815710
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314028350
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314079944
+      }
+    ],
+    "3.1 Update `.avatar-btn` CSS to use fixed positioning": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815781
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314090642
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314151608
+      }
+    ],
+    "4.1 Add `placeholder` prop to SearchBar component": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815861
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314163630
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314203265
+      }
+    ],
+    "4.2 Add route detection in Layout.jsx and pass placeholder": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310815968
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314210183
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314445589
+      }
+    ],
+    "5. Checkpoint — Ensure all tests pass": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785310816044
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314453446
+      },
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314589271
+      }
+    ],
+    "2. Fix for Danmaku overlap — refactor track assignment with clearance logic": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314080042
+      }
+    ],
+    "3. Fix for Avatar position — CSS fixed positioning": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314151694
+      }
+    ],
+    "4. Fix for SearchBar placeholder — route-aware prop": [
+      {
+        "executionId": "8435fa9c-dcb0-4e0c-94cf-bc0621ba9b62",
+        "chatSessionId": "sess_60a633d9-f9a7-4cce-a0ff-a29a810de51b",
+        "timestamp": 1785314445692
+      }
+    ]
+  }
+}

@@ -46,34 +46,82 @@ export default function DanmakuOverlay({
   position = 'top',
 }) {
   const [bullets, setBullets] = useState([])
-  const trackRef = useRef(Array(TRACK_COUNT).fill(0))
+  const trackRef = useRef(Array(TRACK_COUNT).fill(null).map(() => ({ assignedAt: 0, estimatedClearTime: 0, textLength: 0 })))
   const mockTimerRef = useRef(null)
+  const recentTextsRef = useRef([])
 
   const posConfig = POSITION_MAP[position] || POSITION_MAP.top
   const speedMult = SPEED_MAP[speed] || SPEED_MAP.normal
   const fontSize = SIZE_MAP[size] || SIZE_MAP.medium
 
-  // Find the least recently used track
-  const getTrack = useCallback(() => {
+  // Find the least recently used track with clearance check
+  const getTrack = useCallback((textLength, isUserMessage = false) => {
     const now = Date.now()
-    let bestTrack = 0
-    let bestTime = Infinity
+    const clearTracks = []
 
+    // Find tracks where the previous bullet has cleared the entry area
     for (let i = 0; i < TRACK_COUNT; i++) {
-      if (trackRef.current[i] < bestTime) {
-        bestTime = trackRef.current[i]
-        bestTrack = i
+      const track = trackRef.current[i]
+      if (now > track.estimatedClearTime) {
+        clearTracks.push({ index: i, assignedAt: track.assignedAt })
       }
     }
 
-    trackRef.current[bestTrack] = now
-    return bestTrack
-  }, [])
+    // If no clear track found: drop mock messages, force-assign user messages
+    if (clearTracks.length === 0) {
+      // Mock messages are dropped silently
+      if (!isUserMessage) {
+        return null
+      }
+      // User messages force-assign to the track with the soonest estimatedClearTime
+      let soonestTrack = 0
+      let soonestTime = Infinity
+      for (let i = 0; i < TRACK_COUNT; i++) {
+        if (trackRef.current[i].estimatedClearTime < soonestTime) {
+          soonestTime = trackRef.current[i].estimatedClearTime
+          soonestTrack = i
+        }
+      }
+      // Update the track with the new assignment
+      const duration = (8 + textLength * 0.12) * speedMult
+      const estimatedClearTime = now + duration * 0.4 * 1000
+      trackRef.current[soonestTrack] = { assignedAt: now, estimatedClearTime, textLength }
+      return soonestTrack
+    }
+
+    // Among clear tracks, select the one with lowest assignedAt (LRU)
+    clearTracks.sort((a, b) => a.assignedAt - b.assignedAt)
+    const bestTrackIndex = clearTracks[0].index
+
+    // Calculate duration and clearance time for the new bullet
+    const duration = (8 + textLength * 0.12) * speedMult
+    const estimatedClearTime = now + duration * 0.4 * 1000
+
+    // Update the track info
+    trackRef.current[bestTrackIndex] = { assignedAt: now, estimatedClearTime, textLength }
+
+    return bestTrackIndex
+  }, [speedMult])
 
   // Add a bullet
-  const addBullet = useCallback((user, text) => {
+  const addBullet = useCallback((user, text, isUserMessage = false) => {
+    // Content deduplication — skip duplicate mock messages
+    if (!isUserMessage) {
+      if (recentTextsRef.current.includes(text)) {
+        return // Skip duplicate mock message
+      }
+    }
+
+    // Add text to recent window (for both user and mock, to track what's been shown)
+    recentTextsRef.current.push(text)
+    if (recentTextsRef.current.length > 5) {
+      recentTextsRef.current.shift() // Keep only last 5
+    }
+
+    const track = getTrack(text.length, isUserMessage)
+    if (track === null) return // Skip if no clear track available (mock messages are dropped silently)
+
     const id = ++idCounter
-    const track = getTrack()
     const baseDuration = 8 + text.length * 0.12
     const duration = baseDuration * speedMult
 
@@ -87,7 +135,7 @@ export default function DanmakuOverlay({
   useEffect(() => {
     if (externalMessages && externalMessages.length > 0) {
       const latest = externalMessages[externalMessages.length - 1]
-      addBullet(latest.user, latest.text)
+      addBullet(latest.user, latest.text, true)
     }
   }, [externalMessages, addBullet])
 
