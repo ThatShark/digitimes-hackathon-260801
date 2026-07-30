@@ -4,6 +4,7 @@ import './Sidebar.css'
 const NAV_ITEMS = [
   { to: '/', label: '主頁', icon: '🏠' },
   { to: '/community', label: '社群', icon: '💬' },
+  { to: '/profile', label: '個人資料', icon: '👤' },
 ]
 
 export default function Sidebar({ open, onToggle }) {

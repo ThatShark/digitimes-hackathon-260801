@@ -38,7 +38,7 @@ The personality system uses **4 independent axes**, each with two poles. A user'
 |------|--------|--------|------------------|
 | 1. 頻率 (Frequency) | 熱衷 (Active) — high-frequency, short holds | 安逸 (Passive) — low-frequency, long holds | How often the user trades |
 | 2. 風險 (Risk) | 冒險 (Aggressive) — concentrated bets, high volatility | 保守 (Conservative) — diversified, low volatility | Risk tolerance |
-| 3. 紀律 (Discipline) | 計畫 (Planned) — consistent returns, stable strategy | 渾沌 (Chaotic) — erratic returns, no clear pattern | Strategy consistency |
+| 3. 策略 (Strategy) | 計畫 (Planned) — consistent returns, stable strategy | 渾沌 (Chaotic) — erratic returns, no clear pattern | Strategy consistency |
 | 4. 情緒 (Sentiment) | 逆勢 (Contrarian) — buys in fear, sells in greed | 追勢 (Trend-follower) — chases momentum | Reaction to market sentiment |
 
 ### Personality as Title/Badge

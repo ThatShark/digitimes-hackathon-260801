@@ -794,13 +794,13 @@ components:
           example: "熱冒計逆"
         axes:
           type: object
-          required: [frequency, risk, discipline, sentiment]
+          required: [frequency, risk, strategy, sentiment]
           properties:
             frequency:
               $ref: "#/components/schemas/PersonalityAxis"
             risk:
               $ref: "#/components/schemas/PersonalityAxis"
-            discipline:
+            strategy:
               $ref: "#/components/schemas/PersonalityAxis"
             sentiment:
               $ref: "#/components/schemas/PersonalityAxis"
