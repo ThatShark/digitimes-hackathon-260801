@@ -25,7 +25,7 @@ digitimes-hackathon-260801/
 │       │   ├── trend/
 │       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts)
 │       │   │   ├── ProgressBar.jsx      # Draggable time progress bar
-│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (時/日/周)
+│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
 │       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
 │       │   │   ├── TradePanel.jsx       # Order execution panel (買賣)
 │       │   │   ├── AIChatPanel.jsx      # AI conversation tab
