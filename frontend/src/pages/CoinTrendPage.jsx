@@ -126,7 +126,7 @@ export default function CoinTrendPage() {
       {/* Bottom row: indicators + trade */}
       <div className="trend-bottom">
         <div className="trend-indicators">
-          <IndicatorPanel symbol={symbol} />
+          <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleFrom={visibleFrom} visibleTo={visibleTo} />
         </div>
         <div className="trend-trade">
           <TradePanel symbol={symbol} />

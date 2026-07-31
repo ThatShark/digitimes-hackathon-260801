@@ -67,6 +67,9 @@ const KLineChart = forwardRef(function KLineChart({ interval, onTimeRangeChange 
         to: dataRef.current[dataRef.current.length - 1].time,
       }
     },
+    getData() {
+      return dataRef.current || []
+    },
   }))
 
   useEffect(() => {
