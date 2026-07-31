@@ -60,6 +60,37 @@
   margin: 0;
 }
 
+.profile-bio {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.personality-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 8px 0 0 0;
+}
+
+.personality-summary {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0 0 12px 0;
+}
+
+.personality-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+
 /* Grid */
 .profile-grid {
   display: grid;

@@ -24,7 +24,7 @@ const AXIS_CONFIG = [
   { key: 'S', labelLow: 'Q', labelHigh: 'I', colorLow: '#2dd4bf', colorHigh: '#f472b6', nameLow: '量化', nameHigh: '直覺' },
 ]
 
-export default function PersonalityBadge({ personality, compact = false }) {
+export default function PersonalityBadge({ personality, compact = false, showName = false }) {
   if (!personality) return null
 
   // 支援舊格式：若傳入字串，僅顯示代碼
@@ -41,7 +41,7 @@ export default function PersonalityBadge({ personality, compact = false }) {
   if (compact) {
     return (
       <span className="personality-badge personality-badge--compact" title={`${code} ${name || ''}`}>
-        {code}
+        {code}{showName && name ? ` ${name}` : ''}
       </span>
     )
   }
@@ -58,7 +58,7 @@ export default function PersonalityBadge({ personality, compact = false }) {
           return (
             <div className="pb-axis" key={axis.key}>
               <span className="pb-axis-label pb-axis-label--low" style={{ color: axis.colorLow }}>
-                {axis.labelLow}
+                {axis.labelLow} {axis.nameLow}
               </span>
               <div className="pb-bar">
                 <div
@@ -71,7 +71,7 @@ export default function PersonalityBadge({ personality, compact = false }) {
                 />
               </div>
               <span className="pb-axis-label pb-axis-label--high" style={{ color: axis.colorHigh }}>
-                {axis.labelHigh}
+                {axis.nameHigh} {axis.labelHigh}
               </span>
             </div>
           )

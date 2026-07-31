@@ -61,9 +61,10 @@
 .pb-axis-label {
   font-size: 10px;
   font-weight: 700;
-  width: 12px;
+  min-width: 42px;
   text-align: center;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .pb-bar {

@@ -1,16 +1,16 @@
+import PersonalityBadge from '../components/shared/PersonalityBadge'
 import './ProfilePage.css'
 
 // Mock user data
 const MOCK_USER = {
   displayName: '林睿瑜',
-  personalityTitle: '熱冒計逆',
-  personalityDescription: '你是高頻交易的逆勢操作者，偏好在市場恐慌時進場，策略紀律性高。',
-  axes: {
-    frequency: { label: '頻率', poleA: '熱衷', poleB: '安逸', score: 82 },
-    risk: { label: '風險', poleA: '冒險', poleB: '保守', score: 68 },
-    strategy: { label: '策略', poleA: '計畫', poleB: '渾沌', score: 75 },
-    sentiment: { label: '情緒', poleA: '逆勢', poleB: '追勢', score: 71 },
+  bio: '目標在大學畢業前賺進人生第一桶金',
+  personality: {
+    code: 'ACSI',
+    name: '弄潮兒',
+    axes: { R: 68, E: 29, F: 82, S: 71 },
   },
+  personalityDescription: '你是高頻交易的逆勢短線玩家，享受市場波動的藝術，以輕鬆寫意的心態在短線熱點中衝浪。',
   csvUploadedAt: '2025/07/28 14:30',
   stats: {
     totalTrades: 342,
@@ -32,20 +32,6 @@ const MOCK_HISTORY = [
   { id: 8, date: '2025/07/12', action: 'sell', currency: 'SOL', amount: 4000, price: 5380, pnl: +12.6 },
 ]
 
-function PersonalityAxis({ axis }) {
-  const isLeft = axis.score >= 50
-  return (
-    <div className="axis-row">
-      <span className={`axis-pole ${isLeft ? 'active' : ''}`}>{axis.poleA}</span>
-      <div className="axis-bar">
-        <div className="axis-fill" style={{ width: `${axis.score}%` }} />
-        <div className="axis-marker" style={{ left: `${axis.score}%` }} />
-      </div>
-      <span className={`axis-pole ${!isLeft ? 'active' : ''}`}>{axis.poleB}</span>
-    </div>
-  )
-}
-
 export default function ProfilePage() {
   const user = MOCK_USER
 
@@ -58,8 +44,8 @@ export default function ProfilePage() {
         </div>
         <div className="profile-header-info">
           <h1 className="profile-display-name">{user.displayName}</h1>
-          <div className="profile-title-badge">{user.personalityTitle}</div>
-          <p className="profile-description">{user.personalityDescription}</p>
+          <PersonalityBadge personality={user.personality} compact showName />
+          <p className="profile-bio">{user.bio}</p>
         </div>
       </section>
 
@@ -67,14 +53,11 @@ export default function ProfilePage() {
         {/* Personality axes */}
         <section className="profile-card personality-card">
           <h2 className="card-title">投資人格 4 軸</h2>
-          <div className="axes-container">
-            {Object.values(user.axes).map((axis) => (
-              <div key={axis.label} className="axis-group">
-                <span className="axis-label">{axis.label}</span>
-                <PersonalityAxis axis={axis} />
-              </div>
-            ))}
-          </div>
+          <p className="personality-summary">
+            <span className="personality-tag">{user.personality.code} {user.personality.name}</span>
+            {' '}{user.personalityDescription}
+          </p>
+          <PersonalityBadge personality={user.personality} />
           <div className="csv-info">
             <span className="csv-label">CSV 上傳時間：{user.csvUploadedAt}</span>
             <div className="csv-actions">
