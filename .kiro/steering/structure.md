@@ -22,33 +22,59 @@ digitimes-hackathon-260801/
 │       │   │   └── SearchBar.jsx        # Top search bar
 │       │   ├── main/
 │       │   │   ├── CoinCard.jsx         # Coin thumbnail card (used in 平時關注/熱門/潛力)
-│       │   │   └── HotPostCard.jsx      # Community post preview card
+│       │   │   ├── HotPostCard.jsx      # Community post preview card
+│       │   │   ├── MarketOverview.jsx   # 行情看板 (漲跌幅榜/成交量榜/恐懼貪婪指數)
+│       │   │   └── Watchlist.jsx        # 自選幣種清單 (add/remove coins)
 │       │   ├── trend/
 │       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts)
 │       │   │   ├── ProgressBar.jsx      # Draggable time progress bar
 │       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
 │       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
-│       │   │   ├── TradePanel.jsx       # Order execution panel (買賣)
+│       │   │   ├── TradePanel.jsx       # Order execution panel (市價/限價/止盈止損)
+│       │   │   ├── DepthChart.jsx       # Order book depth chart (MAX API)
+│       │   │   ├── RecentTrades.jsx     # Real-time trade stream (MAX API)
 │       │   │   ├── AIChatPanel.jsx      # AI conversation tab
 │       │   │   └── DanmakuPanel.jsx     # Barrage/chat room tab (Bilibili-style)
 │       │   ├── community/
-│       │   │   ├── PostCard.jsx         # Single post with personality prefix
-│       │   │   ├── PostComposer.jsx     # Create new post
-│       │   │   └── QuestionnaireCard.jsx # Questionnaire "ad card" in feed
+│       │   │   ├── PostCard.jsx         # Single post with personality prefix + verified badge
+│       │   │   ├── PostComposer.jsx     # Create new post (supports $Ticker auto-detection)
+│       │   │   ├── QuestionnaireCard.jsx # Questionnaire "ad card" in feed
+│       │   │   ├── VerifiedBadge.jsx    # 實盤驗證標籤 (Verified PnL indicator)
+│       │   │   ├── CopyTradeButton.jsx  # 「跟隨此策略」按鈕 + 金額設定 modal
+│       │   │   ├── TickerCard.jsx       # $BTC/$ETH 動態幣種互動卡片
+│       │   │   ├── WhaleAlertCard.jsx   # 巨鯨警報卡片 (mock data + 一鍵追買)
+│       │   │   ├── SentimentGauge.jsx   # 社群情緒儀表盤 (看多/看空比例)
+│       │   │   ├── TipButton.jsx        # 微額打賞按鈕 (虛擬積分)
+│       │   │   └── BountyQuestion.jsx   # 付費懸賞提問卡片
+│       │   ├── profile/
+│       │   │   ├── PortfolioOverview.jsx # 資產總覽 (holdings × price, P&L, pie chart)
+│       │   │   ├── TradeHistory.jsx     # 交易歷史明細 (filterable table)
+│       │   │   └── PersonalityChart.jsx # 4-axis personality radar/bar chart
 │       │   └── shared/
 │       │       ├── PersonalityBadge.jsx  # Personality type prefix/title display
-│       │       └── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart
+│       │       ├── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart
+│       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒)
 │       ├── hooks/                # Custom React hooks
 │       │   ├── useKLineData.js
 │       │   ├── useDanmaku.js
-│       │   └── useCommunityFeed.js
+│       │   ├── useCommunityFeed.js
+│       │   ├── useWatchlist.js      # Watchlist CRUD operations
+│       │   ├── usePortfolio.js      # Portfolio value calculation
+│       │   ├── useMarketData.js     # Market overview data (gainers/losers/volume)
+│       │   ├── useTickerData.js     # $Ticker card real-time price data
+│       │   └── useSentiment.js      # Community sentiment polling
 │       ├── services/             # API call wrappers
 │       │   ├── api.js            # Base axios/fetch config
 │       │   ├── chartApi.js       # /candlestick_chart
 │       │   ├── aiApi.js          # /ai_chat
-│       │   ├── tradeApi.js       # /allow_trade
-│       │   ├── communityApi.js   # /community, /danmaku
-│       │   └── questionnaireApi.js # /questionnaire
+│       │   ├── tradeApi.js       # /allow_trade (market/limit/TP-SL)
+│       │   ├── communityApi.js   # /community, /danmaku, /sentiment, /tipping, /bounty
+│       │   ├── questionnaireApi.js # /questionnaire
+│       │   ├── marketApi.js      # /market/overview, /market/depth, /market/trades
+│       │   ├── watchlistApi.js   # /watchlist (GET/POST)
+│       │   ├── portfolioApi.js   # /portfolio, /trade_history
+│       │   ├── copyTradeApi.js   # /copy_trade (POST)
+│       │   └── whaleAlertApi.js  # /whale_alerts (GET)
 │       └── styles/               # CSS / style files
 │
 ├── backend/                     # AWS Lambda backend
@@ -58,16 +84,27 @@ digitimes-hackathon-260801/
 │       │   ├── upload_csv.py        # POST /upload_csv
 │       │   ├── candlestick_chart.py # GET /candlestick_chart
 │       │   ├── ai_chat.py          # POST /ai_chat
-│       │   ├── allow_trade.py      # POST /allow_trade
+│       │   ├── allow_trade.py      # POST /allow_trade (market/limit/TP-SL)
 │       │   ├── community.py        # GET/POST /community
 │       │   ├── danmaku.py          # GET/POST /danmaku
-│       │   └── questionnaire.py    # GET/POST /questionnaire
+│       │   ├── questionnaire.py    # GET/POST /questionnaire
+│       │   ├── market.py           # GET /market/overview, /market/depth, /market/trades
+│       │   ├── watchlist.py        # GET/POST /watchlist
+│       │   ├── portfolio.py        # GET /portfolio
+│       │   ├── trade_history.py    # GET /trade_history
+│       │   ├── copy_trade.py       # POST /copy_trade (跟單執行)
+│       │   ├── sentiment.py        # GET /sentiment/:symbol (社群情緒分析)
+│       │   ├── whale_alert.py      # GET /whale_alerts (巨鯨警報 mock)
+│       │   ├── tipping.py          # POST /tipping (虛擬積分打賞)
+│       │   └── bounty.py           # GET/POST /bounty (懸賞提問)
 │       ├── services/
-│       │   ├── max_api.py           # MAX Exchange API client
-│       │   ├── coinmarketcap.py     # CoinMarketCap API client
+│       │   ├── max_api.py           # MAX Exchange API client (K-line, depth, trades, orders)
+│       │   ├── coinmarketcap.py     # CoinMarketCap API client (Fear&Greed, dominance)
 │       │   ├── s3_storage.py        # S3 read/write utilities
-│       │   ├── personality.py       # Personality calculation logic
-│       │   └── recommendation.py    # Feed recommendation algorithm
+│       │   ├── personality.py       # Personality calculation logic + verified PnL
+│       │   ├── recommendation.py    # Feed recommendation algorithm
+│       │   ├── sentiment.py         # AI sentiment analysis (NLP on community posts)
+│       │   └── points.py            # Virtual points system (tips + bounty accounting)
 │       └── utils/
 │           └── metrics.py           # CSV indicator computation
 │
@@ -100,7 +137,8 @@ digitimes-hackathon-260801/
         ├── tech.md              # Tech stack & commands
         ├── structure.md         # This file
         ├── proposal.md          # Full internal proposal (企劃書)
-        └── hackthon_rule.md     # Competition rules & scoring
+        ├── hackthon_rule.md     # Competition rules & scoring
+        └── platform-features.md # 完整交易平台功能對照表 (適用性篩選)
 ```
 
 ## Frontend Pages & Components
@@ -109,10 +147,10 @@ digitimes-hackathon-260801/
 
 | Page | Route | Description |
 |------|-------|-------------|
-| MainPage | `/` | YouTube-style homepage with coin cards in sections (平時關注, 熱門, 潛力, 社群貼文) |
-| CoinTrendPage | `/coin/:symbol` | Live stream page — K-line chart + AI chat + danmaku + trade panel |
+| MainPage | `/` | YouTube-style homepage with coin cards in sections (平時關注, 熱門, 潛力, 社群貼文) + Market Overview |
+| CoinTrendPage | `/coin/:symbol` | Live stream page — K-line chart + AI chat + danmaku + trade panel + depth/trades |
 | CommunityPage | `/community` | Threads-style social feed with personality-weighted algorithm |
-| ProfilePage | `/profile` | User profile — personality 4-axis, trade summary, watched coins, trade history |
+| ProfilePage | `/profile` | User profile — personality 4-axis, portfolio overview, trade history, watched coins |
 | QuestionnairePage | `/questionnaire` | Personality questionnaire (also appears as cards in community feed) |
 
 ### Layout
@@ -130,8 +168,11 @@ digitimes-hackathon-260801/
 │   + Progress Bar             │                    │
 │   + Settings (彈幕/時距)      │                    │
 ├──────────────────────────────┼────────────────────┤
-│   Indicator Panel            │   Trade Panel      │
-│   (default: off)             │   (買賣確認)        │
+│ [深度圖] [最新成交]           │   Trade Panel      │
+│  (collapsible tabs)          │ (市價/限價/止盈止損) │
+├──────────────────────────────┤                    │
+│   Indicator Panel            │                    │
+│   (default: off)             │                    │
 └──────────────────────────────┴────────────────────┘
 ```
 
@@ -166,13 +207,26 @@ Implementation: **Pure CSS animation** (方案 A)
 - **Flat resource model**: All AgentCore resources are independent top-level arrays. No nesting.
 - **Naming = Identity**: Resource `name` fields map to CloudFormation Logical IDs. Renaming destroys + recreates.
 - **Secrets**: API keys go in `agentcore/.env.local` (gitignored). Never commit secrets.
-- **API contract**: Frontend/backend communicate via REST endpoints. Core 5 defined in `Proposal.md` Section IV:
+- **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
   - `GET /init` — check CSV status
   - `POST /upload_csv` — upload + trigger analysis
   - `GET /candlestick_chart` — K-line + trade markers
   - `POST /ai_chat` — AI conversation
-  - `POST /allow_trade` — confirm trade execution
-  - (Additional endpoints TBD for community, chat, questionnaire features)
+  - `POST /allow_trade` — confirm trade execution (market/limit/TP-SL)
+  - `GET /market/overview` — gainers, losers, volume ranking, Fear & Greed
+  - `GET /market/depth` — order book depth for a coin
+  - `GET /market/trades` — recent trades for a coin
+  - `GET/POST /watchlist` — user's watchlist CRUD
+  - `GET /portfolio` — holdings, P&L, allocation
+  - `GET /trade_history` — filtered trade history
+  - `GET/POST /community` — social feed
+  - `GET/POST /danmaku` — barrage messages
+  - `GET/POST /questionnaire` — personality questionnaire
+  - `POST /copy_trade` — execute copy trade (follow strategy)
+  - `GET /sentiment/:symbol` — community sentiment gauge
+  - `GET /whale_alerts` — whale alert events (mock)
+  - `POST /tipping` — virtual tip (積分打賞)
+  - `GET/POST /bounty` — bounty Q&A (懸賞提問)
 
 ## Languages by Directory
 
