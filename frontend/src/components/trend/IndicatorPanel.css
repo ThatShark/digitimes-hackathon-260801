@@ -7,20 +7,34 @@
 .indicator-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 
 .indicator-title {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.indicator-latest {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .indicator-tags {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .indicator-tag {
@@ -31,6 +45,7 @@
   background: var(--bg-tertiary);
   cursor: pointer;
   transition: all 0.15s;
+  user-select: none;
 }
 
 .indicator-tag:hover {
@@ -42,25 +57,7 @@
   background: var(--accent-dim);
 }
 
-.indicator-content {
+.indicator-chart-container {
   flex: 1;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-}
-
-.indicator-placeholder {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  height: 100%;
-  width: 100%;
-}
-
-.placeholder-bar {
-  flex: 1;
-  background: linear-gradient(to top, var(--accent-dim), var(--accent));
-  border-radius: 3px 3px 0 0;
-  opacity: 0.6;
-  min-height: 10px;
+  min-height: 0;
 }

@@ -86,6 +86,8 @@ export default function AIChatPanel({ symbol, onDanmaku }) {
   const communityScrollRef = useRef(null)
   const messagesEndRef = useRef(null)
   const communityEndRef = useRef(null)
+  const aiScrollRef = useRef(null)
+  const communityScrollRef = useRef(null)
 
   // Auto-scroll AI chat
   useEffect(() => {
