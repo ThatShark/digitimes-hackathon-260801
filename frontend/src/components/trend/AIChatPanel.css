@@ -72,6 +72,127 @@
   border-bottom-right-radius: 4px;
 }
 
+.chat-message.system {
+  justify-content: center;
+}
+
+.chat-message.system .message-bubble {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 4px 8px;
+}
+
+/* Trade suggestion card */
+.trade-suggestion-card {
+  margin: 8px 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  overflow: hidden;
+  animation: suggestion-slide-in 0.3s ease;
+}
+
+@keyframes suggestion-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestion-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.suggestion-action {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.suggestion-action.buy {
+  color: var(--green);
+}
+
+.suggestion-action.sell {
+  color: var(--red);
+}
+
+.suggestion-details {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestion-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.suggestion-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.suggestion-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.suggestion-value.reason {
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.suggestion-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  transition: opacity 0.15s;
+}
+
+.suggestion-btn:hover {
+  opacity: 0.85;
+}
+
+.suggestion-btn.confirm {
+  background: var(--green);
+  color: #0f1117;
+}
+
+.suggestion-btn.reject {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.suggestion-btn.reject:hover {
+  color: var(--red);
+  border-color: var(--red);
+}
+
 .chat-input-area {
   display: flex;
   gap: 8px;

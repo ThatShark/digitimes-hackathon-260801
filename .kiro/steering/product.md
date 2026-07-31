@@ -38,7 +38,7 @@ The personality system uses **4 independent axes**, each with two poles. A user'
 |------|--------|--------|------------------|
 | 1. 頻率 (Frequency) | 熱衷 (Active) — high-frequency, short holds | 安逸 (Passive) — low-frequency, long holds | How often the user trades |
 | 2. 風險 (Risk) | 冒險 (Aggressive) — concentrated bets, high volatility | 保守 (Conservative) — diversified, low volatility | Risk tolerance |
-| 3. 紀律 (Discipline) | 計畫 (Planned) — consistent returns, stable strategy | 渾沌 (Chaotic) — erratic returns, no clear pattern | Strategy consistency |
+| 3. 策略 (Strategy) | 計畫 (Planned) — consistent returns, stable strategy | 渾沌 (Chaotic) — erratic returns, no clear pattern | Strategy consistency |
 | 4. 情緒 (Sentiment) | 逆勢 (Contrarian) — buys in fear, sells in greed | 追勢 (Trend-follower) — chases momentum | Reaction to market sentiment |
 
 ### Personality as Title/Badge
@@ -80,13 +80,13 @@ The personality system uses **4 independent axes**, each with two poles. A user'
 │   Danmaku overlay (toggle)  │                      │
 │                             │  Community: real-time│
 │   [Progress bar / scrubber] │  messages from other │
-│   [Time scale: H / D / W]  │  users, sentiment    │
+│   [Time scale: D / M / Y]  │  users, sentiment    │
 │                             │                      │
 ├─────────────────────────────┤                      │
 │ Controls:                   │                      │
 │ • Toggle danmaku on/off     │                      │
 │ • Danmaku size adjustment   │                      │
-│ • Time interval (時/日/周)  │                      │
+│ • Time interval (日/月/年)  │                      │
 │ • Indicator toggles (off    │                      │
 │   by default)               │                      │
 └─────────────────────────────┴──────────────────────┘
@@ -94,7 +94,7 @@ The personality system uses **4 independent axes**, each with two poles. A user'
 
 **Key design points:**
 - Progress bar can scrub backward in time.
-- Time scale selector: 時 (hourly), 日 (daily), 周 (weekly) — replaces generic "倍數".
+- Time scale selector: 日 (daily, 24h), 月 (monthly, 30d), 年 (yearly, 365d).
 - Technical indicators (MACD, RSI, etc.) exist but are **off by default** — user opts in.
 - Danmaku (彈幕): community chat messages fly across the K-line chart area (like Bilibili). Toggle on/off, adjust size.
 

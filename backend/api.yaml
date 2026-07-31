@@ -137,9 +137,9 @@ paths:
           required: false
           schema:
             type: string
-            enum: [1h, 1d, 1w]
-            default: 1d
-          description: "K-line interval: 1h (hourly), 1d (daily), 1w (weekly)"
+            enum: [1d, 1M, 1Y]
+            default: 1M
+          description: "K-line interval: 1d (daily, 24h range), 1M (monthly, 30d range), 1Y (yearly, 365d range)"
       responses:
         "200":
           description: Chart data with trade markers
@@ -794,13 +794,13 @@ components:
           example: "熱冒計逆"
         axes:
           type: object
-          required: [frequency, risk, discipline, sentiment]
+          required: [frequency, risk, strategy, sentiment]
           properties:
             frequency:
               $ref: "#/components/schemas/PersonalityAxis"
             risk:
               $ref: "#/components/schemas/PersonalityAxis"
-            discipline:
+            strategy:
               $ref: "#/components/schemas/PersonalityAxis"
             sentiment:
               $ref: "#/components/schemas/PersonalityAxis"
@@ -1146,8 +1146,8 @@ components:
           default: medium
         default_interval:
           type: string
-          enum: [1h, 1d, 1w]
-          default: 1d
+          enum: [1d, 1M, 1Y]
+          default: 1M
         indicators_enabled:
           type: array
           items:

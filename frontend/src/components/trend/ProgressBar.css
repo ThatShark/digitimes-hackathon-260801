@@ -1,0 +1,78 @@
+.progress-bar-v2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.progress-track-v2 {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+}
+
+.progress-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.progress-handle-v2 {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-primary);
+  cursor: grab;
+  transition: transform 0.1s, box-shadow 0.1s;
+  z-index: 2;
+}
+
+.progress-handle-v2:hover {
+  transform: translate(-50%, -50%) scale(1.25);
+  box-shadow: 0 0 0 4px var(--accent-dim);
+}
+
+.progress-handle-v2.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.35);
+  box-shadow: 0 0 0 6px var(--accent-dim);
+}
+
+.progress-handle-v2.handle-right {
+  background: var(--green);
+  border-color: var(--bg-primary);
+}
+
+.handle-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}

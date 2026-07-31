@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
+import ProgressBar from './ProgressBar'
 import './ChartControls.css'
 
 const INTERVALS = [
-  { value: '1h', label: '時' },
   { value: '1d', label: '日' },
-  { value: '1w', label: '周' },
+  { value: '1M', label: '月' },
+  { value: '1Y', label: '年' },
 ]
 
 export default function ChartControls({
@@ -15,6 +16,12 @@ export default function ChartControls({
   onSendDanmaku,
   danmakuSettings,
   onDanmakuSettingsChange,
+  // Progress bar props
+  dataFrom,
+  dataTo,
+  visibleFrom,
+  visibleTo,
+  onRangeCommit,
 }) {
   const [danmakuInput, setDanmakuInput] = useState('')
   const [showInput, setShowInput] = useState(false)
@@ -77,14 +84,13 @@ export default function ChartControls({
             </button>
           </div>
         ) : (
-          <div className="progress-bar">
-            <div className="progress-track">
-              <div className="progress-fill" style={{ width: '70%' }} />
-              <div className="progress-handle" style={{ left: '70%' }} />
-            </div>
-            <span className="progress-time">2025/07/01</span>
-            <span className="progress-time">2025/07/30</span>
-          </div>
+          <ProgressBar
+            dataFrom={dataFrom}
+            dataTo={dataTo}
+            visibleFrom={visibleFrom}
+            visibleTo={visibleTo}
+            onRangeCommit={onRangeCommit}
+          />
         )}
       </div>
 
@@ -117,7 +123,6 @@ export default function ChartControls({
           ✉
         </button>
 
-        {/* Danmaku settings button */}
         <div className="danmaku-settings-wrapper" ref={settingsRef}>
           <button
             className={`danmaku-settings-btn ${showSettings ? 'active' : ''}`}

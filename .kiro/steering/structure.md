@@ -14,6 +14,7 @@ digitimes-hackathon-260801/
 │       │   ├── MainPage.jsx         # YouTube-style homepage (平時關注/熱門/潛力/社群貼文)
 │       │   ├── CoinTrendPage.jsx    # Live stream page (K-line + AI chat + danmaku)
 │       │   ├── CommunityPage.jsx    # Threads-style social feed
+│       │   ├── ProfilePage.jsx      # User profile (personality, stats, history)
 │       │   └── QuestionnairePage.jsx # Personality questionnaire flow
 │       ├── components/
 │       │   ├── layout/
@@ -25,7 +26,7 @@ digitimes-hackathon-260801/
 │       │   ├── trend/
 │       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts)
 │       │   │   ├── ProgressBar.jsx      # Draggable time progress bar
-│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (時/日/周)
+│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
 │       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
 │       │   │   ├── TradePanel.jsx       # Order execution panel (買賣)
 │       │   │   ├── AIChatPanel.jsx      # AI conversation tab
@@ -111,6 +112,7 @@ digitimes-hackathon-260801/
 | MainPage | `/` | YouTube-style homepage with coin cards in sections (平時關注, 熱門, 潛力, 社群貼文) |
 | CoinTrendPage | `/coin/:symbol` | Live stream page — K-line chart + AI chat + danmaku + trade panel |
 | CommunityPage | `/community` | Threads-style social feed with personality-weighted algorithm |
+| ProfilePage | `/profile` | User profile — personality 4-axis, trade summary, watched coins, trade history |
 | QuestionnairePage | `/questionnaire` | Personality questionnaire (also appears as cards in community feed) |
 
 ### Layout

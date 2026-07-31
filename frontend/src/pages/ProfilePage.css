@@ -1,0 +1,355 @@
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 900px;
+}
+
+/* Header */
+.profile-header-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.profile-avatar-large {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-display-name {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.profile-title-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.profile-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Grid */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.profile-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+/* Personality card spans full width */
+.personality-card {
+  grid-column: 1 / -1;
+}
+
+/* Axes */
+.axes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.axis-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.axis-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 36px;
+  flex-shrink: 0;
+}
+
+.axis-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.axis-pole {
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.axis-pole.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.axis-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  position: relative;
+}
+
+.axis-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--accent), var(--accent));
+  border-radius: 4px;
+  opacity: 0.4;
+}
+
+.axis-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-secondary);
+}
+
+/* CSV info */
+.csv-info {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.csv-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.csv-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.csv-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.csv-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.csv-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.csv-btn.primary:hover {
+  opacity: 0.85;
+}
+
+/* Stats */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.top-coins {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-coins-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.coin-tags {
+  display: flex;
+  gap: 6px;
+}
+
+.coin-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Watched coins */
+.watched-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.watched-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.watched-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.watched-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Trade history */
+.history-card {
+  grid-column: 1 / -1;
+}
+
+.history-table-wrapper {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.history-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-table td {
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.history-table tbody tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+.trade-action-label {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.trade-action-label.buy {
+  color: var(--green);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.trade-action-label.sell {
+  color: var(--red);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.trade-currency {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pnl-positive {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.pnl-negative {
+  color: var(--red);
+  font-weight: 500;
+}
