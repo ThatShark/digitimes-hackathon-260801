@@ -27,7 +27,7 @@ const COLORS = {
   histogram: 'rgba(192, 132, 252, 0.4)',
 }
 
-export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleTo }) {
+export default function IndicatorPanel({ symbol, chartRef, visibleTimeRange }) {
   const [active, setActive] = useState('MACD')
   const containerRef = useRef(null)
   const chartInstanceRef = useRef(null)
@@ -40,7 +40,7 @@ export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleT
     const candles = chartRef?.current?.getData?.() || []
     if (candles.length === 0) return
 
-    // Create chart
+    // Create chart with all interaction disabled
     const chart = createChart(containerRef.current, {
       layout: {
         background: { type: 'solid', color: 'transparent' },
@@ -58,6 +58,12 @@ export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleT
         borderColor: '#2e303a',
         timeVisible: true,
       },
+      handleScroll: false,
+      handleScale: false,
+      crosshair: {
+        vertLine: { visible: true },
+        horzLine: { visible: true },
+      },
       height: containerRef.current.clientHeight,
       width: containerRef.current.clientWidth,
     })
@@ -66,6 +72,15 @@ export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleT
 
     // Render indicator based on active selection
     renderIndicator(chart, candles, active)
+
+    // Set initial visible range if available
+    if (visibleTimeRange) {
+      try {
+        chart.timeScale().setVisibleRange(visibleTimeRange)
+      } catch { /* ignore */ }
+    } else {
+      chart.timeScale().fitContent()
+    }
 
     // Resize handling
     const handleResize = () => {
@@ -79,8 +94,6 @@ export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleT
     const observer = new ResizeObserver(handleResize)
     observer.observe(containerRef.current)
 
-    chart.timeScale().fitContent()
-
     return () => {
       observer.disconnect()
       chart.remove()
@@ -88,27 +101,17 @@ export default function IndicatorPanel({ symbol, chartRef, visibleFrom, visibleT
     }
   }, [active, chartRef, symbol])
 
-  // Sync indicator chart visible range with main chart
+  // Sync indicator chart visible range with main chart whenever it changes
   useEffect(() => {
     const chart = chartInstanceRef.current
-    if (!chart) return
-    const candles = chartRef?.current?.getData?.() || []
-    if (candles.length === 0) return
-
-    const dataFrom = candles[0].time
-    const dataTo = candles[candles.length - 1].time
-    const totalSpan = dataTo - dataFrom
-    if (totalSpan <= 0) return
-
-    const from = dataFrom + totalSpan * visibleFrom
-    const to = dataFrom + totalSpan * visibleTo
+    if (!chart || !visibleTimeRange) return
 
     try {
-      chart.timeScale().setVisibleRange({ from, to })
+      chart.timeScale().setVisibleRange(visibleTimeRange)
     } catch {
       // Ignore if range is invalid
     }
-  }, [visibleFrom, visibleTo, chartRef])
+  }, [visibleTimeRange])
 
   function renderIndicator(chart, candles, type) {
     let latest = null

@@ -36,6 +36,8 @@ export default function CoinTrendPage() {
   // Visible range as fractions of the data range (0 = dataFrom, 1 = dataTo)
   const [visibleFrom, setVisibleFrom] = useState(0)
   const [visibleTo, setVisibleTo] = useState(1)
+  // Actual timestamps of the visible range (for indicator sync)
+  const [visibleTimeRange, setVisibleTimeRange] = useState(null)
   const chartRef = useRef(null)
 
   // Reset visible range when interval changes
@@ -69,6 +71,7 @@ export default function CoinTrendPage() {
     const to = (visibleRange.to - chartDataRange.from) / totalSpan
     setVisibleFrom(Math.max(0, Math.min(1, from)))
     setVisibleTo(Math.max(0, Math.min(1, to)))
+    setVisibleTimeRange({ from: visibleRange.from, to: visibleRange.to })
   }, [])
 
   // Called when user releases the progress bar handles
@@ -134,7 +137,7 @@ export default function CoinTrendPage() {
       {/* Bottom row: indicators + trade */}
       <div className="trend-bottom">
         <div className="trend-indicators">
-          <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleFrom={visibleFrom} visibleTo={visibleTo} />
+          <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
         </div>
         <div className="trend-trade">
           <TradePanel symbol={symbol} />
