@@ -226,3 +226,56 @@
 .chat-send-btn:hover {
   opacity: 0.85;
 }
+
+/* Community chat tab styles */
+.community-chat {
+  gap: 6px;
+}
+
+.community-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+}
+
+.community-msg {
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.community-msg:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.community-msg.me {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.community-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.community-msg-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.community-msg-time {
+  font-size: 10px;
+  color: var(--text-muted, #64748b);
+  margin-left: auto;
+}
+
+.community-msg-text {
+  font-size: 13px;
+  color: var(--text-primary, #f1f5f9);
+  padding-left: 2px;
+}

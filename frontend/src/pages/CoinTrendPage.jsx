@@ -6,6 +6,8 @@ import DanmakuOverlay from '../components/shared/DanmakuOverlay'
 import AIChatPanel from '../components/trend/AIChatPanel'
 import IndicatorPanel from '../components/trend/IndicatorPanel'
 import TradePanel from '../components/trend/TradePanel'
+import DepthChart from '../components/trend/DepthChart'
+import RecentTrades from '../components/trend/RecentTrades'
 import './CoinTrendPage.css'
 
 // Interval determines how far back the data goes
@@ -129,6 +131,12 @@ export default function CoinTrendPage() {
         <div className="trend-trade">
           <TradePanel symbol={symbol} />
         </div>
+      </div>
+
+      {/* Depth + Recent Trades */}
+      <div className="trend-market-data">
+        <DepthChart symbol={symbol} />
+        <RecentTrades symbol={symbol} />
       </div>
     </div>
   )

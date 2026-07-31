@@ -1,0 +1,143 @@
+.portfolio-overview {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  grid-column: 1 / -1;
+}
+
+.portfolio-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 14px;
+}
+
+.portfolio-summary {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.portfolio-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.portfolio-stat-label {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.portfolio-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.portfolio-stat-value.up { color: #10b981; }
+.portfolio-stat-value.down { color: #ef4444; }
+
+/* Allocation bar */
+.allocation-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  background: var(--bg-secondary, #0f172a);
+}
+
+.allocation-segment {
+  transition: width 0.3s ease;
+  min-width: 4px;
+}
+
+.allocation-legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Holdings grid */
+.holdings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.holding-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-secondary, #0f172a);
+  border: 1px solid var(--border-color, #334155);
+}
+
+.holding-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.holding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.holding-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.holding-pnl {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.holding-pnl.up { color: #10b981; }
+.holding-pnl.down { color: #ef4444; }
+
+.holding-card-body {
+  display: flex;
+  justify-content: space-between;
+}
+
+.holding-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.holding-detail-label {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.holding-detail-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #f1f5f9);
+}

@@ -1,0 +1,43 @@
+.notification-banner {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.notification-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.notification-text {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+  animation: notificationScroll 20s linear infinite;
+}
+
+@keyframes notificationScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.notification-dismiss {
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+}
+
+.notification-dismiss:hover {
+  background: rgba(255, 255, 255, 0.05);
+}

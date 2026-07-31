@@ -93,6 +93,70 @@
   color: #0f1117;
 }
 
-.trade-confirm-btn:hover {
+.trade-confirm-btn:hover:not(:disabled) {
   opacity: 0.85;
+}
+
+.trade-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Order type tabs */
+.order-type-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-secondary, #0f172a);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.order-type-tab {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  color: var(--text-muted, #64748b);
+  transition: all 0.15s;
+}
+
+.order-type-tab.active {
+  background: var(--bg-card, #1e293b);
+  color: var(--text-primary, #f1f5f9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.order-type-tab:not(.active):hover {
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* TP/SL inputs */
+.tpsl-input.tp {
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tpsl-input.tp:focus {
+  border-color: #10b981;
+}
+
+.tpsl-input.sl {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.tpsl-input.sl:focus {
+  border-color: #ef4444;
+}
+
+/* Order summary */
+.order-summary {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.order-summary-label {
+  font-size: 11px;
+  color: #60a5fa;
 }

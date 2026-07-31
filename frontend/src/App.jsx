@@ -4,6 +4,7 @@ import MainPage from './pages/MainPage'
 import CoinTrendPage from './pages/CoinTrendPage'
 import CommunityPage from './pages/CommunityPage'
 import ProfilePage from './pages/ProfilePage'
+import QuestionnairePage from './pages/QuestionnairePage'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/coin/:symbol" element={<CoinTrendPage />} />
         <Route path="/community" element={<CommunityPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/questionnaire" element={<QuestionnairePage />} />
       </Route>
     </Routes>
   )
