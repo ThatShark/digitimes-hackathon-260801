@@ -83,18 +83,20 @@ export default function AIChatPanel({ symbol }) {
   const [pendingSuggestion, setPendingSuggestion] = useState(null)
   const messagesEndRef = useRef(null)
   const communityEndRef = useRef(null)
+  const aiScrollRef = useRef(null)
+  const communityScrollRef = useRef(null)
 
-  // Auto-scroll AI messages
+  // Auto-scroll AI messages (only scroll the chat container, not the page)
   useEffect(() => {
-    if (activeTab === 'ai') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (activeTab === 'ai' && aiScrollRef.current) {
+      aiScrollRef.current.scrollTop = aiScrollRef.current.scrollHeight
     }
   }, [messages, pendingSuggestion, activeTab])
 
-  // Auto-scroll community messages
+  // Auto-scroll community messages (only scroll the chat container, not the page)
   useEffect(() => {
-    if (activeTab === 'community') {
-      communityEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (activeTab === 'community' && communityScrollRef.current) {
+      communityScrollRef.current.scrollTop = communityScrollRef.current.scrollHeight
     }
   }, [communityMessages, activeTab])
 
@@ -182,7 +184,7 @@ export default function AIChatPanel({ symbol }) {
 
       {/* AI Chat tab */}
       {activeTab === 'ai' && (
-        <div className="chat-messages">
+        <div className="chat-messages" ref={aiScrollRef}>
           {messages.map((msg, i) => (
             <div key={i} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">{msg.content}</div>
@@ -227,7 +229,7 @@ export default function AIChatPanel({ symbol }) {
 
       {/* Community Chat tab */}
       {activeTab === 'community' && (
-        <div className="chat-messages community-chat">
+        <div className="chat-messages community-chat" ref={communityScrollRef}>
           {communityMessages.length === 0 && (
             <div className="community-empty">
               <span>等待群友加入聊天...</span>
