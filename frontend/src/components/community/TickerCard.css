@@ -1,0 +1,138 @@
+.ticker-card-wrapper {
+  position: relative;
+  display: inline;
+}
+
+.ticker-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ticker-tag.up {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.ticker-tag.down {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.ticker-tag.ticker-unknown {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary, #94a3b8);
+}
+
+.ticker-tag:hover {
+  filter: brightness(1.1);
+}
+
+.ticker-inline-price {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.ticker-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: tickerFadeIn 0.15s ease;
+}
+
+@keyframes tickerFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.ticker-popup-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ticker-popup-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.ticker-popup-symbol {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.ticker-popup-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ticker-popup-current {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.ticker-popup-change {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ticker-popup-change.up { color: #10b981; }
+.ticker-popup-change.down { color: #ef4444; }
+
+.ticker-popup-range {
+  display: flex;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-color, #334155);
+  margin-bottom: 8px;
+}
+
+.ticker-range-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.range-label {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.range-value {
+  font-size: 12px;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.ticker-popup-link {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: var(--accent, #3b82f6);
+  text-decoration: none;
+  padding: 4px 0;
+  border-top: 1px solid var(--border-color, #334155);
+  margin-top: 4px;
+}
+
+.ticker-popup-link:hover {
+  text-decoration: underline;
+}

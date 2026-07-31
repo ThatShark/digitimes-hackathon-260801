@@ -1,0 +1,77 @@
+.market-overview {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.market-stats-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #334155);
+}
+
+.market-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.stat-label-sm {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.stat-value-sm {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.market-movers {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.mover-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mover-title {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  white-space: nowrap;
+}
+
+.mover-list {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mover-chip {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mover-chip.up {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.mover-chip.down {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}

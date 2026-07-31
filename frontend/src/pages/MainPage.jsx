@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import MarketOverview from '../components/main/MarketOverview'
 import './MainPage.css'
 
 const MOCK_COINS = [
@@ -45,6 +46,9 @@ function CoinCard({ coin }) {
 export default function MainPage() {
   return (
     <div className="main-page">
+      {/* 行情看板 */}
+      <MarketOverview />
+
       <section className="coin-section">
         <h2 className="section-title">平時關注</h2>
         <div className="coin-grid">
