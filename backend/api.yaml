@@ -34,6 +34,81 @@ tags:
 
 paths:
   # ─────────────────────────────────────────────
+  # Coin Endpoints
+  # ─────────────────────────────────────────────
+  /coin/price:
+    get:
+      tags: [Core]
+      summary: Get latest price for a currency
+      description: |
+        Returns the latest ticker data for the given currency from the MAX
+        public API (no authentication required).
+        Default quote currency is TWD (e.g. BTC → btctwd market).
+      operationId: getCoinPrice
+      parameters:
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+            example: BTC
+          description: "Coin symbol (e.g. BTC, ETH, SOL, DOGE)"
+        - name: quote
+          in: query
+          required: false
+          schema:
+            type: string
+            default: TWD
+            example: TWD
+          description: "Quote currency (default: TWD)"
+      responses:
+        "200":
+          description: Latest ticker data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoinPriceResponse"
+              example:
+                status: ready
+                currency: BTC
+                market: btctwd
+                last: 2059233.9
+                buy: 2059000.0
+                sell: 2061197.9
+                open: 2101373.9
+                high: 2117830.3
+                low: 2059000.0
+                vol: 26.5657
+                at: 1785504705
+        "400":
+          description: Missing currency parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "缺少幣種參數 currency"
+        "404":
+          description: Market not found on MAX
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "找不到市場 btcusd，請確認幣種是否正確"
+        "502":
+          description: MAX API unavailable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "無法取得幣種價格，請稍後再試"
+
+  # ─────────────────────────────────────────────
   # Core Endpoints
   # ─────────────────────────────────────────────
   /init:
@@ -590,6 +665,98 @@ paths:
                 $ref: "#/components/schemas/QuestionnaireSubmitResponse"
 
   # ─────────────────────────────────────────────
+  # Market Endpoints
+  # ─────────────────────────────────────────────
+  /market/fear-greed:
+    get:
+      tags: [Core]
+      summary: Get Fear & Greed Index
+      description: |
+        Returns the CoinMarketCap Crypto Fear & Greed Index.
+        Uses the keyless public endpoint by default; set the CMC_API_KEY
+        environment variable to switch to the authenticated endpoint.
+
+        **mode=latest** (default): single current reading (updates ~15 min).
+        **mode=historical**: paginated daily history, newest-first.
+      operationId: getFearGreed
+      parameters:
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [latest, historical]
+            default: latest
+          description: "latest = current value, historical = paginated history"
+        - name: start
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: "Historical mode: starting offset (1-indexed)"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 30
+          description: "Historical mode: number of records to return"
+      responses:
+        "200":
+          description: Fear & Greed Index data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FearGreedResponse"
+              examples:
+                latest:
+                  summary: Latest index value
+                  value:
+                    status: ready
+                    mode: latest
+                    data:
+                      value: 40
+                      value_classification: Fear
+                      update_time: "2024-09-19T02:54:56.017Z"
+                historical:
+                  summary: Historical values
+                  value:
+                    status: ready
+                    mode: historical
+                    data:
+                      - timestamp: "2024-09-02T12:00:00.000Z"
+                        value: 50
+                        value_classification: Neutral
+                      - timestamp: "2024-09-01T12:00:00.000Z"
+                        value: 35
+                        value_classification: Fear
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: CMC API unreachable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: error
+                message: "無法取得恐懼貪婪指數，請稍後再試"
+        "503":
+          description: CMC API returned an unexpected response shape
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────────────────────────
   # Recommendation Endpoints
   # ─────────────────────────────────────────────
   /recommend/coins:
@@ -681,6 +848,97 @@ paths:
 components:
   schemas:
     # ─── Common ───
+    FearGreedResponse:
+      type: object
+      required: [status, mode, data]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        mode:
+          type: string
+          enum: [latest, historical]
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/FearGreedLatest"
+            - type: array
+              items:
+                $ref: "#/components/schemas/FearGreedHistoricalEntry"
+
+    FearGreedLatest:
+      type: object
+      required: [value, value_classification, update_time]
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Fear & Greed score (0 = Extreme Fear, 100 = Extreme Greed)
+        value_classification:
+          type: string
+          enum: [Extreme Fear, Fear, Neutral, Greed, Extreme Greed]
+        update_time:
+          type: string
+          format: date-time
+          description: ISO-8601 UTC timestamp of last update
+
+    FearGreedHistoricalEntry:
+      type: object
+      required: [timestamp, value, value_classification]
+      properties:
+        timestamp:
+          type: string
+          description: |
+            Timestamp for this reading. The keyless public endpoint returns
+            a Unix epoch seconds string (e.g. "1785369600"); the authenticated
+            endpoint returns ISO-8601 UTC. Consumers should handle both forms.
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+        value_classification:
+          type: string
+          enum: [Extreme Fear, Fear, Neutral, Greed, Extreme Greed]
+
+    CoinPriceResponse:
+      type: object
+      required: [status, currency, market, last, buy, sell, open, high, low, vol, at]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        currency:
+          type: string
+          description: Requested coin symbol (e.g. BTC)
+        market:
+          type: string
+          description: MAX market ID (e.g. btctwd)
+        last:
+          type: number
+          description: Latest trade price
+        buy:
+          type: number
+          description: Best bid price
+        sell:
+          type: number
+          description: Best ask price
+        open:
+          type: number
+          description: 24h open price
+        high:
+          type: number
+          description: 24h high price
+        low:
+          type: number
+          description: 24h low price
+        vol:
+          type: number
+          description: 24h volume (base currency)
+        at:
+          type: integer
+          format: int64
+          description: Server timestamp (Unix seconds)
+
     ErrorResponse:
       type: object
       required: [status, message]
