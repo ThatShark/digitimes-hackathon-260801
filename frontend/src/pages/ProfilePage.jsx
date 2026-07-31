@@ -1,4 +1,5 @@
 import PersonalityBadge from '../components/shared/PersonalityBadge'
+import PortfolioOverview from '../components/profile/PortfolioOverview'
 import './ProfilePage.css'
 
 // Mock user data
@@ -50,6 +51,9 @@ export default function ProfilePage() {
       </section>
 
       <div className="profile-grid">
+        {/* Portfolio Overview */}
+        <PortfolioOverview />
+
         {/* Personality axes */}
         <section className="profile-card personality-card">
           <h2 className="card-title">投資人格 4 軸</h2>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import MarketOverview from '../components/main/MarketOverview'
+import Watchlist from '../components/main/Watchlist'
 import './MainPage.css'
 
 const MOCK_COINS = [
@@ -48,6 +49,9 @@ export default function MainPage() {
     <div className="main-page">
       {/* 行情看板 */}
       <MarketOverview />
+
+      {/* 自選清單 */}
+      <Watchlist />
 
       <section className="coin-section">
         <h2 className="section-title">平時關注</h2>

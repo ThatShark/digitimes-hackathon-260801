@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import PersonalityBadge from '../shared/PersonalityBadge'
 import './AIChatPanel.css'
 
 // Keywords that trigger a mock trade suggestion
@@ -35,7 +36,6 @@ function generateMockAIResponse(symbol, userMessage) {
     }
   }
 
-  // Generic responses
   const responses = [
     `${symbol} 目前處於盤整區間，短期 7 日均線持平。建議觀望，等待明確方向再行動。`,
     `根據你的投資人格（熱衷型），你通常在這種盤勢下容易追漲。建議耐心等待回調。`,
@@ -53,56 +53,105 @@ const INITIAL_MESSAGES = [
   { role: 'ai', content: '你好！我是你的 AI 投資助理。你可以問我任何關於投資的問題，或者跟我說「我想買」/「我想賣」來取得建議。' },
 ]
 
+// Mock community chat messages
+const MOCK_COMMUNITY_USERS = [
+  { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
+  { name: '陳Ｊ哥', personality: { code: 'AESI', name: '探險家', axes: { R: 82, E: 78, F: 85, S: 70 } } },
+  { name: '李小雨', personality: { code: 'DELI', name: '造夢者', axes: { R: 25, E: 65, F: 20, S: 72 } } },
+  { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
+]
+
+const MOCK_CHAT_MESSAGES = [
+  '支撐位在 282 萬附近',
+  '看多🚀',
+  '剛加倉了一些',
+  '量能不太夠啊',
+  '等突破再說',
+  '穩穩抱住就好',
+  '有人知道為什麼突然漲了嗎',
+  '恐懼指數還很低 可以衝',
+  '小心追高',
+  '底部確認了嗎',
+  '我覺得還會再跌',
+]
+
 export default function AIChatPanel({ symbol }) {
+  const [activeTab, setActiveTab] = useState('ai')
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
+  const [communityMessages, setCommunityMessages] = useState([])
   const [input, setInput] = useState('')
   const [pendingSuggestion, setPendingSuggestion] = useState(null)
   const messagesEndRef = useRef(null)
+  const communityEndRef = useRef(null)
 
-  // Auto-scroll to bottom
+  // Auto-scroll AI messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, pendingSuggestion])
+    if (activeTab === 'ai') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, pendingSuggestion, activeTab])
+
+  // Auto-scroll community messages
+  useEffect(() => {
+    if (activeTab === 'community') {
+      communityEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [communityMessages, activeTab])
+
+  // Mock community chat auto-generation
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const user = MOCK_COMMUNITY_USERS[Math.floor(Math.random() * MOCK_COMMUNITY_USERS.length)]
+      const text = MOCK_CHAT_MESSAGES[Math.floor(Math.random() * MOCK_CHAT_MESSAGES.length)]
+      setCommunityMessages((prev) => [
+        ...prev.slice(-30),
+        { id: Date.now(), user, text, time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }) },
+      ])
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [])
 
   const handleSend = () => {
     if (!input.trim()) return
-
     const userMsg = input.trim()
     setInput('')
 
-    // Add user message
-    setMessages((prev) => [...prev, { role: 'user', content: userMsg }])
-
-    // Simulate AI thinking delay
-    setTimeout(() => {
-      const response = generateMockAIResponse(symbol, userMsg)
-      setMessages((prev) => [...prev, { role: 'ai', content: response.content }])
-
-      if (response.suggestion) {
-        setPendingSuggestion(response.suggestion)
-      }
-    }, 600)
+    if (activeTab === 'ai') {
+      setMessages((prev) => [...prev, { role: 'user', content: userMsg }])
+      setTimeout(() => {
+        const response = generateMockAIResponse(symbol, userMsg)
+        setMessages((prev) => [...prev, { role: 'ai', content: response.content }])
+        if (response.suggestion) {
+          setPendingSuggestion(response.suggestion)
+        }
+      }, 600)
+    } else {
+      // Send to community chat
+      setCommunityMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          user: { name: '我', personality: { code: 'ACSI', name: '弄潮兒', axes: { R: 68, E: 30, F: 75, S: 62 } } },
+          text: userMsg,
+          time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+          isMe: true,
+        },
+      ])
+    }
   }
 
   const handleConfirmTrade = () => {
     if (!pendingSuggestion) return
     const { action, currency, amount } = pendingSuggestion
-
     setMessages((prev) => [
       ...prev,
-      {
-        role: 'system',
-        content: `✅ 已成功${action === 'buy' ? '買入' : '賣出'} NT$${amount.toLocaleString()} 的 ${currency}`,
-      },
+      { role: 'system', content: `✅ 已成功${action === 'buy' ? '買入' : '賣出'} NT$${amount.toLocaleString()} 的 ${currency}` },
     ])
     setPendingSuggestion(null)
   }
 
   const handleRejectTrade = () => {
-    setMessages((prev) => [
-      ...prev,
-      { role: 'system', content: '❌ 已取消交易建議' },
-    ])
+    setMessages((prev) => [...prev, { role: 'system', content: '❌ 已取消交易建議' }])
     setPendingSuggestion(null)
   }
 
@@ -115,58 +164,95 @@ export default function AIChatPanel({ symbol }) {
 
   return (
     <div className="ai-chat-panel">
+      {/* Tab header */}
       <div className="chat-panel-header">
-        <span className="chat-tab active">AI 對話</span>
+        <button
+          className={`chat-tab ${activeTab === 'ai' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ai')}
+        >
+          🤖 AI 對話
+        </button>
+        <button
+          className={`chat-tab ${activeTab === 'community' ? 'active' : ''}`}
+          onClick={() => setActiveTab('community')}
+        >
+          💬 彈幕聊天
+        </button>
       </div>
 
-      <div className="chat-messages">
-        {messages.map((msg, i) => (
-          <div key={i} className={`chat-message ${msg.role}`}>
-            <div className="message-bubble">{msg.content}</div>
-          </div>
-        ))}
-
-        {/* Trade suggestion card */}
-        {pendingSuggestion && (
-          <div className="trade-suggestion-card">
-            <div className="suggestion-header">
-              <span className={`suggestion-action ${pendingSuggestion.action}`}>
-                {pendingSuggestion.action === 'buy' ? '📈 建議買入' : '📉 建議賣出'}
-              </span>
+      {/* AI Chat tab */}
+      {activeTab === 'ai' && (
+        <div className="chat-messages">
+          {messages.map((msg, i) => (
+            <div key={i} className={`chat-message ${msg.role}`}>
+              <div className="message-bubble">{msg.content}</div>
             </div>
-            <div className="suggestion-details">
-              <div className="suggestion-row">
-                <span className="suggestion-label">幣種</span>
-                <span className="suggestion-value">{pendingSuggestion.currency}</span>
+          ))}
+
+          {pendingSuggestion && (
+            <div className="trade-suggestion-card">
+              <div className="suggestion-header">
+                <span className={`suggestion-action ${pendingSuggestion.action}`}>
+                  {pendingSuggestion.action === 'buy' ? '📈 建議買入' : '📉 建議賣出'}
+                </span>
               </div>
-              <div className="suggestion-row">
-                <span className="suggestion-label">金額</span>
-                <span className="suggestion-value">NT$ {pendingSuggestion.amount.toLocaleString()}</span>
+              <div className="suggestion-details">
+                <div className="suggestion-row">
+                  <span className="suggestion-label">幣種</span>
+                  <span className="suggestion-value">{pendingSuggestion.currency}</span>
+                </div>
+                <div className="suggestion-row">
+                  <span className="suggestion-label">金額</span>
+                  <span className="suggestion-value">NT$ {pendingSuggestion.amount.toLocaleString()}</span>
+                </div>
+                <div className="suggestion-row">
+                  <span className="suggestion-label">原因</span>
+                  <span className="suggestion-value reason">{pendingSuggestion.reason}</span>
+                </div>
               </div>
-              <div className="suggestion-row">
-                <span className="suggestion-label">原因</span>
-                <span className="suggestion-value reason">{pendingSuggestion.reason}</span>
+              <div className="suggestion-actions">
+                <button className="suggestion-btn confirm" onClick={handleConfirmTrade}>
+                  ✓ 確認執行
+                </button>
+                <button className="suggestion-btn reject" onClick={handleRejectTrade}>
+                  ✕ 取消
+                </button>
               </div>
             </div>
-            <div className="suggestion-actions">
-              <button className="suggestion-btn confirm" onClick={handleConfirmTrade}>
-                ✓ 確認執行
-              </button>
-              <button className="suggestion-btn reject" onClick={handleRejectTrade}>
-                ✕ 取消
-              </button>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      )}
+
+      {/* Community Chat tab */}
+      {activeTab === 'community' && (
+        <div className="chat-messages community-chat">
+          {communityMessages.length === 0 && (
+            <div className="community-empty">
+              <span>等待群友加入聊天...</span>
             </div>
-          </div>
-        )}
+          )}
+          {communityMessages.map((msg) => (
+            <div key={msg.id} className={`community-msg ${msg.isMe ? 'me' : ''}`}>
+              <div className="community-msg-header">
+                <PersonalityBadge personality={msg.user.personality} compact />
+                <span className="community-msg-name">{msg.user.name}</span>
+                <span className="community-msg-time">{msg.time}</span>
+              </div>
+              <div className="community-msg-text">{msg.text}</div>
+            </div>
+          ))}
+          <div ref={communityEndRef} />
+        </div>
+      )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
+      {/* Input area */}
       <div className="chat-input-area">
         <input
           type="text"
           className="chat-input"
-          placeholder={`詢問關於 ${symbol} 的問題...`}
+          placeholder={activeTab === 'ai' ? `詢問關於 ${symbol} 的問題...` : '發送彈幕...'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

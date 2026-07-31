@@ -1,0 +1,115 @@
+.watchlist {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.watchlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.watchlist-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.watchlist-add-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.watchlist-add-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.watchlist-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.watchlist-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--bg-secondary, #0f172a);
+  border: 1px solid var(--border-color, #334155);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #f1f5f9);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.watchlist-chip:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.chip-change {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chip-change.up { color: #10b981; }
+.chip-change.down { color: #ef4444; }
+
+.watchlist-remove {
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+  margin-left: 2px;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.watchlist-remove:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Add modal */
+.watchlist-add-dropdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--bg-secondary, #0f172a);
+  border-radius: 8px;
+}
+
+.watchlist-option {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid var(--border-color, #334155);
+  transition: all 0.15s;
+}
+
+.watchlist-option:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
