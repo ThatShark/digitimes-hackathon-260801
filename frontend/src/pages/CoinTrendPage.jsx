@@ -52,6 +52,14 @@ export default function CoinTrendPage() {
     ])
   }, [])
 
+  // 彈幕聊天室的訊息同步到 K 線彈幕 overlay
+  const handleCommunityDanmaku = useCallback((msg) => {
+    setDanmakuMessages((prev) => [
+      ...prev,
+      { user: msg.user, text: msg.text, id: msg.id },
+    ])
+  }, [])
+
   // Called by chart when user scrolls/zooms — sync progress bar
   const handleTimeRangeChange = useCallback((visibleRange, chartDataRange) => {
     const totalSpan = chartDataRange.to - chartDataRange.from
@@ -119,7 +127,7 @@ export default function CoinTrendPage() {
         </div>
 
         <div className="trend-chat-area">
-          <AIChatPanel symbol={symbol} />
+          <AIChatPanel symbol={symbol} onDanmaku={handleCommunityDanmaku} />
         </div>
       </div>
 

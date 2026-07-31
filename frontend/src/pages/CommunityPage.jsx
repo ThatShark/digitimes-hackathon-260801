@@ -5,6 +5,7 @@ import QuestionnaireCard from '../components/community/QuestionnaireCard'
 import SentimentGauge from '../components/community/SentimentGauge'
 import BountyQuestion from '../components/community/BountyQuestion'
 import WhaleAlertCard from '../components/community/WhaleAlertCard'
+import NotificationBanner from '../components/shared/NotificationBanner'
 import './CommunityPage.css'
 
 // 模擬當前使用者
@@ -241,6 +242,9 @@ export default function CommunityPage() {
 
   return (
     <div className="community-page">
+      {/* 通知條 */}
+      <NotificationBanner />
+
       <div className="community-header">
         <h1 className="community-title">社群</h1>
         <div className="community-tabs">
