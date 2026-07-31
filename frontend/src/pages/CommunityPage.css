@@ -1,0 +1,53 @@
+.community-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.community-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.community-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.community-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.community-tab {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.community-tab:hover {
+  color: var(--text-secondary);
+}
+
+.community-tab.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.community-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

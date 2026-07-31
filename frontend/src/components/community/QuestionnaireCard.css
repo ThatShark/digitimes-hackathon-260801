@@ -1,0 +1,91 @@
+.questionnaire-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.08), rgba(52, 211, 153, 0.06));
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.questionnaire-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  background: var(--accent-dim);
+  border-radius: 0 0 0 80px;
+  opacity: 0.5;
+}
+
+.questionnaire-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent-dim);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.questionnaire-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.questionnaire-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.questionnaire-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.questionnaire-cta:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.questionnaire-dismiss {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+  z-index: 1;
+}
+
+.questionnaire-dismiss:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
