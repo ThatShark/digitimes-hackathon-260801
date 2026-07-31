@@ -1,0 +1,89 @@
+/* Compact mode (inline badge, 用於彈幕/留言等) */
+.personality-badge--compact {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Full mode (含占比條) */
+.personality-badge--full {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 180px;
+}
+
+.pb-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pb-code {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.pb-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.pb-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pb-axis {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pb-axis-label {
+  font-size: 10px;
+  font-weight: 700;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.pb-bar {
+  flex: 1;
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.pb-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.pb-bar-fill--low {
+  border-radius: 3px 0 0 3px;
+}
+
+.pb-bar-fill--high {
+  border-radius: 0 3px 3px 0;
+}

@@ -3,16 +3,16 @@ import './DanmakuOverlay.css'
 
 const TRACK_COUNT = 6
 const MOCK_MESSAGES = [
-  { user: '安保計追', text: 'BTC 要起飛了吧' },
-  { user: '熱冒渾逆', text: '剛剛進場 SOL' },
-  { user: '安保計追', text: '恐懼指數 35，可以買？' },
-  { user: '熱冒計逆', text: '我覺得再等等比較好' },
-  { user: '安冒渾追', text: '這波多頭不會那麼快結束' },
-  { user: '熱保計追', text: '停損設好就不怕' },
-  { user: '安冒計逆', text: 'ETH 看起來要突破了' },
-  { user: '熱保渾追', text: '大家小心槓桿' },
-  { user: '熱冒計追', text: '剛獲利了結一半' },
-  { user: '安保渾逆', text: '穩定幣先放著觀望' },
+  { user: 'DCLQ', text: 'BTC 要起飛了吧' },
+  { user: 'AESQ', text: '剛剛進場 SOL' },
+  { user: 'DCLI', text: '恐懼指數 35，可以買？' },
+  { user: 'ACSQ', text: '我覺得再等等比較好' },
+  { user: 'AELI', text: '這波多頭不會那麼快結束' },
+  { user: 'DELQ', text: '停損設好就不怕' },
+  { user: 'ACLI', text: 'ETH 看起來要突破了' },
+  { user: 'DCSI', text: '大家小心槓桿' },
+  { user: 'ACSQ', text: '剛獲利了結一半' },
+  { user: 'DELI', text: '穩定幣先放著觀望' },
 ]
 
 // Position presets: what percentage range of the chart height to use
