@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import MarketOverview from '../components/main/MarketOverview'
 import Watchlist from '../components/main/Watchlist'
+import NotificationBanner from '../components/shared/NotificationBanner'
 import './MainPage.css'
 
 const MOCK_COINS = [
@@ -47,6 +48,9 @@ function CoinCard({ coin }) {
 export default function MainPage() {
   return (
     <div className="main-page">
+      {/* 通知條 */}
+      <NotificationBanner />
+
       {/* 行情看板 */}
       <MarketOverview />
 

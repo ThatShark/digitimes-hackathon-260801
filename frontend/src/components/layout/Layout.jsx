@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import SearchBar from './SearchBar'
-import NotificationBanner from '../shared/NotificationBanner'
 import './Layout.css'
 
 export default function Layout() {
@@ -16,7 +15,6 @@ export default function Layout() {
     <div className={`layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="layout-main">
-        <NotificationBanner />
         <header className="layout-header">
           <SearchBar placeholder={searchPlaceholder} />
           <button className="avatar-btn" title="設定 / 個人資料">

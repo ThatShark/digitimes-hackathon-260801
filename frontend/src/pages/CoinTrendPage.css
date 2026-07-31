@@ -68,7 +68,7 @@
 .trend-bottom {
   display: flex;
   gap: 12px;
-  height: 200px;
+  min-height: 280px;
   flex-shrink: 0;
 }
 
