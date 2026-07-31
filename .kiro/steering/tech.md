@@ -92,6 +92,11 @@
 | Danmaku Messages | `danmaku/{symbol}/{timestamp}.json` | JSON |
 | Questionnaire Responses | `users/{userId}/questionnaire/{id}.json` | JSON |
 | Chat History | `users/{userId}/chat_history.json` | JSON |
+| Watchlist | `users/{userId}/watchlist.json` | JSON |
+| User Points (積分) | `users/{userId}/points.json` | JSON |
+| Sentiment Cache | `sentiment/{symbol}/latest.json` | JSON |
+| Bounty Questions | `community/bounties/{bountyId}.json` | JSON |
+| Copy Trade Log | `users/{userId}/copy_trades.json` | JSON |
 
 ## Common Commands
 
