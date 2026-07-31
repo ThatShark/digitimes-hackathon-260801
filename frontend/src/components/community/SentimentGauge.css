@@ -1,0 +1,90 @@
+.sentiment-gauge {
+  background: var(--bg-card, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.sentiment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sentiment-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.sentiment-coin {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  margin-left: 6px;
+}
+
+.sentiment-label {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.sentiment-label.bullish {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.sentiment-label.bearish {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.sentiment-label.neutral {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
+
+.sentiment-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-secondary, #0f172a);
+  margin-bottom: 8px;
+}
+
+.sentiment-bar-bull {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  transition: width 0.3s ease;
+}
+
+.sentiment-bar-bear {
+  background: linear-gradient(90deg, #f87171, #ef4444);
+  transition: width 0.3s ease;
+}
+
+.sentiment-legends {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sentiment-legend {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.sentiment-legend.bull { color: #10b981; }
+.sentiment-legend.bear { color: #ef4444; }
+
+.sentiment-empty {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  text-align: center;
+  margin-top: 4px;
+}
