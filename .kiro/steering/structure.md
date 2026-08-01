@@ -14,7 +14,7 @@ digitimes-hackathon-260801/
 │       │   ├── MainPage.jsx         # YouTube-style homepage (平時關注/熱門/潛力/社群貼文)
 │       │   ├── CoinTrendPage.jsx    # Live stream page (K-line + AI chat + danmaku) — owns chat/danmaku state
 │       │   ├── CommunityPage.jsx    # Threads-style social feed
-│       │   ├── ProfilePage.jsx      # User profile (personality, stats, history)
+│       │   ├── ProfilePage.jsx      # User profile — backend-driven (GET /init → /personality + /portfolio + /trade_history), shows 讀取中 while loading, upload CTA when need_csv
 │       │   └── QuestionnairePage.jsx # Personality questionnaire flow
 │       ├── components/
 │       │   ├── layout/
@@ -64,13 +64,14 @@ digitimes-hackathon-260801/
 │       │   ├── indicators.js     # Technical indicator math: MA/EMA/MACD/BOLL/RSI/KDJ/STOCH/VOL/OBV/ATR (pure functions, candles in → {time,value}[] out)
 │       │   ├── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
 │       │   ├── mockCommunity.js  # Shared mock posts/comments/bounties — single source so CommunityPage (feed) and PostDetailPage (thread) never diverge
-│       │   ├── currentUser.js    # MVP single-user identity: CURRENT_USER_NAME ('王大帥') + CURRENT_USER_AVATAR (src/assets/icon.png) + isCurrentUser(name)
+│       │   ├── currentUser.js    # MVP single-user identity: CURRENT_USER_NAME ('王大帥') + CURRENT_USER_AVATAR (src/assets/icon.png) + CURRENT_USER_ID ('demo-user', used as the user_id query param on every backend call) + isCurrentUser(name)
 │       │   └── userPersonality.js # Reads/writes the current user's 4-axis personality to localStorage (set by questionnaire or CSV upload)
 │       ├── services/             # API client layer — see tech.md "Backend Connection"
 │       │   ├── api.js            # Base fetch wrapper (apiFetch/ApiError/isBackendConfigured), reads VITE_API_BASE_URL
 │       │   ├── coinApi.js        # /coin/price, /market/fear-greed, /market/overview, /candlestick_chart, /notifications
 │       │   ├── aiApi.js          # /ai_chat, /allow_trade
-│       │   └── communityApi.js   # /community/feed, /community/post, likes, comments, /tipping
+│       │   ├── communityApi.js   # /community/feed, /community/post, likes, comments, /tipping
+│       │   └── personalityApi.js # /init, /upload_csv, /personality (GET read-only + POST save), /portfolio, /trade_history — all default userId param to CURRENT_USER_ID
 │       └── __tests__/
 │           └── preservation.test.jsx
 │
@@ -81,7 +82,12 @@ digitimes-hackathon-260801/
 │   ├── template.yaml             # SAM template — Lambda functions + API Gateway routes + S3 bucket
 │   ├── src/
 │   │   ├── handlers/
-│   │   │   ├── upload_csv.py         # POST /upload_csv — S3 read CSV → compute_metrics_json → S3 write → response
+│   │   │   ├── upload_csv.py         # POST /upload_csv — raw CSV body → S3 write → compute_metrics_json (+ Bedrock description) → S3 write trade_metrics.json → response; empty body = re-analyze existing S3 CSV instead of uploading
+│   │   │   ├── init.py               # GET /init — lightweight existence check only (no analysis): does users/{userId}/trades.csv exist in S3? need_csv or ready+currencies
+│   │   │   ├── get_personality.py    # GET /personality — pure read of trade_metrics.json from S3 (no Bedrock call); 404 need_csv if missing/corrupt
+│   │   │   ├── save_personality.py   # POST /personality — save questionnaire-derived r/e/f/s scores + Bedrock description to trade_metrics.json
+│   │   │   ├── portfolio.py          # GET /portfolio — S3 CSV → compute_open_positions (FIFO) → live MAX price per holding → total_value/total_pnl_pct/holdings[]; per-holding price lookup is best-effort (omit holding, don't fail whole request)
+│   │   │   ├── trade_history.py      # GET /trade_history — S3 CSV → compute_trade_summary + build_trade_history → summary + per-transaction history (newest first)
 │   │   │   ├── coin_price.py         # GET /coin/price — MAX ticker lookup for one currency
 │   │   │   ├── fear_greed.py         # GET /market/fear-greed — CoinMarketCap latest/historical index
 │   │   │   ├── market_overview.py    # GET /market/overview — Fear&Greed + BTC dominance + market cap/volume + gainers/losers (each field best-effort, only 502s if ALL CMC sources fail)
@@ -92,15 +98,19 @@ digitimes-hackathon-260801/
 │   │   │   ├── coinmarketcap.py     # CoinMarketCap keyless public API client (fear&greed, global-metrics, listings) — no API key needed unless CMC_API_KEY env var is set
 │   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
 │   │   └── utils/
-│   │       ├── metrics.py           # CSV → FIFO trade matching → trading metrics (chase_up_index/avg_return_pct/etc), no I/O
+│   │       ├── metrics.py           # CSV → FIFO trade matching → personality scores (r/e/f/s) AND portfolio helpers (compute_open_positions/compute_trade_summary/build_trade_history), no I/O
 │   │       └── http.py              # json_response()/cors_headers() — every handler must use this, see tech.md "CORS gotcha"
 │   └── tests/
 │       ├── handlers/
 │       │   ├── test_candlestick_chart.py  # Mocked MAX API + S3; validation, range filtering, malformed rows, marker merge
 │       │   ├── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk
-│       │   └── test_notifications.py      # Mocked CMC calls; threshold/limit validation, price_mover sorting, fear_greed hints, always-200-with-mocks even if all CMC sources fail
+│       │   ├── test_notifications.py      # Mocked CMC calls; threshold/limit validation, price_mover sorting, fear_greed hints, always-200-with-mocks even if all CMC sources fail
+│       │   ├── test_init.py               # Mocked S3; need_csv vs ready+currencies, TWD excluded, corrupt CSV treated as need_csv
+│       │   ├── test_portfolio.py          # Mocked S3 + MAX API; holdings priced/totaled, failed price lookup omits just that holding, empty positions
+│       │   ├── test_get_personality.py    # Mocked S3; read-only trade_metrics.json lookup, 404 need_csv if missing/corrupt
+│       │   └── test_trade_history.py      # Mocked S3; summary + history shape, limit validation, 404 need_csv
 │       └── utils/
-│           ├── test_metrics_unit.py
+│           ├── test_metrics_unit.py       # Includes compute_open_positions/compute_trade_summary/build_trade_history unit tests
 │           └── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
 │
 ├── CustomerSupport/             # AgentCore AI agent project
@@ -214,11 +224,12 @@ Chat-like scrolling containers (AI chat, community chat) must **never** use `scr
 
 ## Single-User Identity (MVP, no login)
 
-This hackathon MVP has no login/auth — there is exactly one "current user" across the whole app, defined once in `utils/currentUser.js` (`CURRENT_USER_NAME = '王大帥'`, `CURRENT_USER_AVATAR` = `src/assets/icon.png`). Everything that needs to display "who is using the app right now" imports from there rather than hardcoding a name string, to avoid the name drifting out of sync across pages (this happened before — ProfilePage and CommunityPage each hardcoded a different name).
+This hackathon MVP has no login/auth — there is exactly one "current user" across the whole app, defined once in `utils/currentUser.js` (`CURRENT_USER_NAME = '王大帥'`, `CURRENT_USER_AVATAR` = `src/assets/icon.png`, `CURRENT_USER_ID = 'demo-user'`). Everything that needs to display "who is using the app right now" imports from there rather than hardcoding a name string, to avoid the name drifting out of sync across pages (this happened before — ProfilePage and CommunityPage each hardcoded a different name).
 
 - `components/shared/Avatar.jsx` — renders the real avatar image if `name === CURRENT_USER_NAME`, otherwise falls back to an initial-letter circle (used for all the mock/other users in `mockCommunity.js`). Use this instead of `{name.charAt(0)}` divs anywhere a user avatar is shown.
 - `utils/mockCommunity.js`'s `CURRENT_USER.name` reads from `CURRENT_USER_NAME`, so community posts/comments authored by "yourself" show the correct name and avatar automatically.
-- If real multi-user auth is added later, `currentUser.js` is the single place to swap in "read the logged-in user" logic.
+- `CURRENT_USER_ID` is the `user_id` query param sent on every `services/personalityApi.js` call (`/init`, `/upload_csv`, `/personality`, `/portfolio`, `/trade_history`) — it's what ties S3 reads/writes (`users/{userId}/...`) to "the" user since there's no real auth to derive an id from.
+- If real multi-user auth is added later, `currentUser.js` is the single place to swap in "read the logged-in user" logic (including deriving a real per-user id instead of the fixed `CURRENT_USER_ID`).
 
 ## Community Comment Threads
 
@@ -246,9 +257,12 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
 - **api.yaml is the single source of truth for the API contract.** Before adding a new endpoint, grep `backend/api.yaml` first — duplicate/conflicting path or schema definitions have happened before (e.g. `/coin/price` was defined twice with different response shapes) when steering docs and actual handler code drifted apart. When a handler already exists in `backend/src/handlers/`, the spec must match that implementation, not a hypothetical one.
 - **CoinMarketCap keyless `listings/latest` returns `quote` as a LIST, not a dict.** Unlike the authenticated Pro API (`quote.USD.percent_change_24h`), the keyless public endpoint's `quote` field is `[{"symbol": "USD", "percent_change_24h": ..., ...}]` — find the entry by `symbol == "USD"` rather than indexing `quote["USD"]` directly. Also, never sort the full CMC universe directly by `percent_change_24h` for "top movers" — near-zero-market-cap tokens post meaningless four-digit % swings; rank within a market-cap-ranked pool instead (see `market_overview.py`'s `_RANKING_POOL_SIZE`).
 - **New Lambda handlers must be registered in `backend/template.yaml`** (SAM function + API Gateway route) in addition to matching `api.yaml` — the spec alone does not deploy anything.
+- **CSV upload / re-check flow (no login, single fixed `user_id`)**: `frontend/src/utils/currentUser.js`'s `CURRENT_USER_ID` (`'demo-user'`) is sent as the `user_id` query param on every one of these calls — there's no auth, so this is what ties all S3 reads/writes to "the" user in this MVP. `ProfilePage.jsx` calls `GET /init` on mount to check whether `users/{userId}/trades.csv` already exists; if so it skips straight to fetching personality/portfolio/trade_history instead of asking the user to upload again. Only shows the upload CTA when `/init` returns `need_csv` (or the backend isn't configured).
 - **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
-  - `GET /init` — check CSV status
-  - `POST /upload_csv` — upload + trigger analysis
+  - `GET /init` — lightweight check: has this user already uploaded a CSV? (`need_csv` | `ready`+currencies). Does NOT trigger analysis.
+  - `POST /upload_csv` — send raw CSV as body to upload + trigger analysis; send with no body to re-run analysis on the already-stored CSV (404 `need_csv` if none exists)
+  - `GET /portfolio` — current holdings (FIFO open positions from CSV) × live MAX price → total value/P&L/per-coin breakdown
+  - `GET /trade_history` — trade summary (count/win rate/avg hold days/top coins) + per-transaction history with realized P&L
   - `GET /coin/price` — real-time single-currency ticker (MAX API)
   - `GET /market/fear-greed` — Fear & Greed Index, latest or historical (CoinMarketCap)
   - `GET /market/overview` — 行情看板: Fear & Greed + BTC dominance + market cap/volume + top gainers/losers (CoinMarketCap, keyless)
@@ -256,7 +270,7 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
   - `GET /notifications` — dynamic NotificationBanner alerts: price_mover + fear_greed (real CMC data), whale_alert + social_buzz (mock, hour-seeded, no real data source yet)
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution
-  - `GET/POST /personality`, `/personality/reanalyze` — 4-axis personality profile
+  - `GET /personality` — read-only lookup of previously-computed r/e/f/s scores + AI description from S3 (no Bedrock call); `POST /personality` — save questionnaire-derived scores (triggers Bedrock description)
   - `GET/POST /community/feed`, `/community/post`, `/community/post/{id}/like`, `/community/post/{id}/comments`, `/community/post/{id}/comments/{commentId}/like`
   - `POST /tipping` — virtual point tip on a post or comment
   - `GET/POST /chat/{symbol}/messages`, `/chat/{symbol}/send` — chat/danmaku

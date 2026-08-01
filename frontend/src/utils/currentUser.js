@@ -10,6 +10,13 @@ import avatarIcon from '../assets/icon.png'
 export const CURRENT_USER_NAME = '王大帥'
 export const CURRENT_USER_AVATAR = avatarIcon
 
+/**
+ * 後端目前沒有登入機制，所有 user_id 相關的 API（/init, /upload_csv,
+ * /personality, /portfolio, /trade_history）都需要一個固定的 user_id
+ * 來對應 S3 上的 users/{userId}/... 路徑。單人 MVP 直接寫死一個值即可。
+ */
+export const CURRENT_USER_ID = 'demo-user'
+
 /** 判斷這個名字是否為目前使用者本人（用於決定顯示大頭貼圖片還是字母圓形） */
 export function isCurrentUser(name) {
   return name === CURRENT_USER_NAME

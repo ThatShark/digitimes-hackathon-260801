@@ -256,6 +256,160 @@ def match_fifo_trades(trades: list[RawTrade]) -> list[ClosedTrade]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Portfolio — open positions, trade summary, trade history
+# (used by GET /portfolio, GET /trade_history — separate from the personality
+# scoring pipeline above, but built on the same RawTrade/FIFO primitives)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def compute_open_positions(trades: list[RawTrade]) -> dict[str, dict]:
+    """FIFO-reduce buy/deposit lots by sell/withdrawal volume, per currency.
+    Returns {CURRENCY: {"quantity": float, "avg_cost": float}} for currencies
+    with a non-zero remaining position. "twd" (cash) is excluded — it's the
+    funding currency, not a coin holding.
+
+    Note: deposit/withdrawal are treated as acquisition/reduction of the
+    position at that transaction's price (best available proxy — the CSV
+    doesn't tell us the true origin cost of coins transferred in from
+    elsewhere)."""
+    by_currency: dict[str, list[RawTrade]] = {}
+    for t in trades:
+        if t.currency.lower() == "twd":
+            continue
+        by_currency.setdefault(t.currency, []).append(t)
+
+    positions: dict[str, dict] = {}
+    for currency, group in by_currency.items():
+        sorted_group = sorted(group, key=lambda t: t.timestamp_ms)
+        open_lots: list[_OpenLot] = []
+        for t in sorted_group:
+            if t.action in _BUY_ACTIONS or t.action in _DEPOSIT_ACTIONS:
+                qty = abs(t.change)
+                if qty > 1e-12:
+                    open_lots.append(_OpenLot(qty, t.price, t.timestamp_ms))
+            elif t.action in _SELL_ACTIONS or t.action in _WITHDRAW_ACTIONS:
+                reduce_vol = abs(t.change)
+                while reduce_vol > 1e-12 and open_lots:
+                    lot = open_lots[0]
+                    matched = min(lot.remaining, reduce_vol)
+                    lot.remaining -= matched
+                    reduce_vol -= matched
+                    if lot.remaining < 1e-12:
+                        open_lots.pop(0)
+
+        total_qty = sum(lot.remaining for lot in open_lots)
+        if total_qty > 1e-12:
+            total_cost = sum(lot.remaining * lot.price for lot in open_lots)
+            positions[currency.upper()] = {
+                "quantity": round(total_qty, 8),
+                "avg_cost": round(total_cost / total_qty, 8),
+            }
+    return positions
+
+
+def compute_trade_summary(
+    trades: list[RawTrade],
+    closed_trades: "list[ClosedTrade] | None" = None,
+    top_n: int = 3,
+) -> dict:
+    """Aggregate stats for the 交易摘要 card: total trade count, win rate
+    (% of FIFO-closed round-trips with positive pnl), average holding period
+    in days, and the most-traded currencies by trade count."""
+    buy_sell = _buy_sell_only(trades)
+    total_trades = len(buy_sell)
+
+    if closed_trades is None:
+        closed_trades = match_fifo_trades(trades)
+
+    if closed_trades:
+        wins = sum(1 for ct in closed_trades if ct.pnl_pct > 0)
+        win_rate = round(wins / len(closed_trades) * 100, 1)
+        avg_hold_days = round(
+            statistics.mean(ct.holding_hours for ct in closed_trades) / 24.0, 1
+        )
+    else:
+        win_rate = 0.0
+        avg_hold_days = 0.0
+
+    counts: dict[str, int] = {}
+    for t in buy_sell:
+        counts[t.currency] = counts.get(t.currency, 0) + 1
+    top_coins = [
+        c.upper() for c, _ in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
+    ]
+
+    return {
+        "total_trades": total_trades,
+        "win_rate": win_rate,
+        "avg_hold_days": avg_hold_days,
+        "top_coins": top_coins,
+    }
+
+
+def build_trade_history(
+    trades: list[RawTrade],
+    limit: "int | None" = None,
+) -> list[dict]:
+    """Per-trade history rows (newest first) for the 交易歷史 table.
+
+    Each sell row's pnl_pct is derived from its own FIFO-matched cost basis
+    (weighted average of the buy lots it consumed) — this is a separate FIFO
+    walk from match_fifo_trades() because we need the result attached to the
+    *sell transaction* as a single row, not split into one row per matched lot."""
+    by_currency: dict[str, list[RawTrade]] = {}
+    for t in trades:
+        if t.action in _BUY_ACTIONS or t.action in _SELL_ACTIONS:
+            by_currency.setdefault(t.currency, []).append(t)
+
+    rows: list[dict] = []
+    for currency, group in by_currency.items():
+        sorted_group = sorted(group, key=lambda t: t.timestamp_ms)
+        open_lots: list[_OpenLot] = []
+        for t in sorted_group:
+            if t.action in _BUY_ACTIONS:
+                open_lots.append(_OpenLot(abs(t.change), t.price, t.timestamp_ms))
+                rows.append({
+                    "timestamp_ms": t.timestamp_ms,
+                    "action": "buy",
+                    "currency": currency.upper(),
+                    "amount_twd": round(t.amount_twd, 2),
+                    "price": t.price,
+                    "pnl_pct": None,
+                })
+            elif t.action in _SELL_ACTIONS:
+                sell_vol = abs(t.change)
+                matched_cost = 0.0
+                matched_vol = 0.0
+                while sell_vol > 1e-12 and open_lots:
+                    lot = open_lots[0]
+                    matched = min(lot.remaining, sell_vol)
+                    matched_cost += matched * lot.price
+                    matched_vol += matched
+                    lot.remaining -= matched
+                    sell_vol -= matched
+                    if lot.remaining < 1e-12:
+                        open_lots.pop(0)
+
+                pnl_pct = None
+                if matched_vol > 1e-12 and matched_cost > 0:
+                    avg_buy_price = matched_cost / matched_vol
+                    pnl_pct = round((t.price - avg_buy_price) / avg_buy_price * 100.0, 2)
+
+                rows.append({
+                    "timestamp_ms": t.timestamp_ms,
+                    "action": "sell",
+                    "currency": currency.upper(),
+                    "amount_twd": round(t.amount_twd, 2),
+                    "price": t.price,
+                    "pnl_pct": pnl_pct,
+                })
+
+    rows.sort(key=lambda r: r["timestamp_ms"], reverse=True)
+    if limit is not None:
+        rows = rows[:limit]
+    return rows
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # R — Risk (Defensive 0 vs. Aggressive 100)
 # ═══════════════════════════════════════════════════════════════════════════════
 

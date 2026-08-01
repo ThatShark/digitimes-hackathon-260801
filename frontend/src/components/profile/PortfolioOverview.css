@@ -40,6 +40,17 @@
 
 .portfolio-stat-value.up { color: #10b981; }
 .portfolio-stat-value.down { color: #ef4444; }
+.portfolio-stat-value.loading {
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 500;
+  font-size: 15px;
+}
+
+.portfolio-empty {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  margin: 4px 0 0;
+}
 
 /* Allocation bar */
 .allocation-bar {

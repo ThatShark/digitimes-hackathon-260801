@@ -158,3 +158,151 @@ def test_parse_klines_json_empty():
 def test_parse_klines_json_invalid_raises():
     with pytest.raises(TradeDataError):
         parse_klines_json("not json")
+
+
+# ── Portfolio: open positions ───────────────────────────────────────────────
+
+from src.utils.metrics import build_trade_history, compute_open_positions, compute_trade_summary
+
+
+def test_open_positions_basic_buy_sell():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.02, 0.02),
+        RawTrade(1700100000000, "BTC", 2100000, "賣", -0.005, 0.015),
+    ]
+    positions = compute_open_positions(trades)
+    assert positions["BTC"]["quantity"] == pytest.approx(0.015)
+    # Remaining lot is entirely from the first buy at 2,000,000
+    assert positions["BTC"]["avg_cost"] == pytest.approx(2000000)
+
+
+def test_open_positions_excludes_twd_cash():
+    trades = [
+        RawTrade(1700000000000, "twd", 1.0, "充值", 50000, 50000),
+        RawTrade(1700100000000, "BTC", 2000000, "買", 0.01, 0.01),
+    ]
+    positions = compute_open_positions(trades)
+    assert "TWD" not in positions
+    assert "BTC" in positions
+
+
+def test_open_positions_fully_closed_position_omitted():
+    trades = [
+        RawTrade(1700000000000, "ETH", 60000, "買", 1.0, 1.0),
+        RawTrade(1700100000000, "ETH", 62000, "賣", -1.0, 0.0),
+    ]
+    positions = compute_open_positions(trades)
+    assert "ETH" not in positions
+
+
+def test_open_positions_deposit_withdrawal_treated_as_position_change():
+    trades = [
+        RawTrade(1700000000000, "SOL", 5000, "充值", 2.0, 2.0),
+        RawTrade(1700100000000, "SOL", 5200, "提領", -0.5, 1.5),
+    ]
+    positions = compute_open_positions(trades)
+    assert positions["SOL"]["quantity"] == pytest.approx(1.5)
+    assert positions["SOL"]["avg_cost"] == pytest.approx(5000)
+
+
+def test_open_positions_weighted_avg_cost_across_multiple_buys():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01),
+        RawTrade(1700100000000, "BTC", 3000000, "買", 0.01, 0.02),
+    ]
+    positions = compute_open_positions(trades)
+    assert positions["BTC"]["quantity"] == pytest.approx(0.02)
+    assert positions["BTC"]["avg_cost"] == pytest.approx(2500000)
+
+
+def test_open_positions_empty_trades_returns_empty_dict():
+    assert compute_open_positions([]) == {}
+
+
+# ── Portfolio: trade summary ─────────────────────────────────────────────────
+
+def test_trade_summary_counts_and_win_rate():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01),
+        RawTrade(1700100000000, "BTC", 2200000, "賣", -0.01, 0.0),  # win
+        RawTrade(1700200000000, "ETH", 60000, "買", 1.0, 1.0),
+        RawTrade(1700300000000, "ETH", 55000, "賣", -1.0, 0.0),  # loss
+    ]
+    summary = compute_trade_summary(trades)
+    assert summary["total_trades"] == 4
+    assert summary["win_rate"] == 50.0
+    assert summary["top_coins"] == ["BTC", "ETH"] or summary["top_coins"] == ["ETH", "BTC"]
+
+
+def test_trade_summary_ignores_deposit_withdrawal_from_trade_count():
+    trades = [
+        RawTrade(1700000000000, "twd", 1.0, "充值", 50000, 50000),
+        RawTrade(1700100000000, "BTC", 2000000, "買", 0.01, 0.01),
+    ]
+    summary = compute_trade_summary(trades)
+    assert summary["total_trades"] == 1
+
+
+def test_trade_summary_no_closed_trades_has_zero_win_rate():
+    trades = [RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01)]
+    summary = compute_trade_summary(trades)
+    assert summary["win_rate"] == 0.0
+    assert summary["avg_hold_days"] == 0.0
+
+
+def test_trade_summary_top_n_respected():
+    trades = [
+        RawTrade(1700000000000 + i * 1000, cur, 100, "買", 0.01, 0.01)
+        for i, cur in enumerate(["BTC", "BTC", "ETH", "SOL", "DOGE"])
+    ]
+    summary = compute_trade_summary(trades, top_n=2)
+    assert len(summary["top_coins"]) == 2
+    assert summary["top_coins"][0] == "BTC"
+
+
+# ── Portfolio: trade history ─────────────────────────────────────────────────
+
+def test_trade_history_buy_row_has_null_pnl():
+    trades = [RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01)]
+    rows = build_trade_history(trades)
+    assert len(rows) == 1
+    assert rows[0]["action"] == "buy"
+    assert rows[0]["pnl_pct"] is None
+
+
+def test_trade_history_sell_row_has_computed_pnl():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01),
+        RawTrade(1700100000000, "BTC", 2200000, "賣", -0.01, 0.0),
+    ]
+    rows = build_trade_history(trades)
+    sell_row = next(r for r in rows if r["action"] == "sell")
+    assert sell_row["pnl_pct"] == pytest.approx(10.0)
+
+
+def test_trade_history_sorted_newest_first():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01),
+        RawTrade(1700100000000, "ETH", 60000, "買", 1.0, 1.0),
+    ]
+    rows = build_trade_history(trades)
+    assert rows[0]["timestamp_ms"] > rows[1]["timestamp_ms"]
+
+
+def test_trade_history_limit_trims_rows():
+    trades = [
+        RawTrade(1700000000000 + i * 1000, "BTC", 2000000, "買", 0.01, 0.01)
+        for i in range(5)
+    ]
+    rows = build_trade_history(trades, limit=2)
+    assert len(rows) == 2
+
+
+def test_trade_history_ignores_deposit_withdrawal():
+    trades = [
+        RawTrade(1700000000000, "twd", 1.0, "充值", 50000, 50000),
+        RawTrade(1700100000000, "BTC", 2000000, "買", 0.01, 0.01),
+    ]
+    rows = build_trade_history(trades)
+    assert len(rows) == 1
+    assert rows[0]["currency"] == "BTC"

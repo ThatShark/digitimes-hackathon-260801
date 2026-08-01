@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatPrice, currencyLabel } from '../../utils/currency'
+import { getRecentTrades } from '../../services/coinApi'
+import { isBackendConfigured } from '../../services/api'
 import './RecentTrades.css'
 
 const BASE_PRICES = {
@@ -40,13 +42,40 @@ function generateInitialTrades(symbol, count = 12) {
  */
 export default function RecentTrades({ symbol, currency = 'TWD' }) {
   const [trades, setTrades] = useState(() => generateInitialTrades(symbol))
+  const liveLoadedRef = useRef(false)
 
+  // 嘗試從後端取得即時成交明細
+  useEffect(() => {
+    if (!isBackendConfigured()) return
+    getRecentTrades(symbol, 20).then((data) => {
+      if (!data || !data.trades) return
+      const liveTrades = data.trades.map((t, i) => ({
+        id: `live-${i}-${t.timestamp}`,
+        side: t.side || (Math.random() > 0.5 ? 'buy' : 'sell'),
+        price: t.price,
+        volume: t.volume,
+        time: new Date(t.timestamp * 1000).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      }))
+      setTrades(liveTrades)
+      liveLoadedRef.current = true
+    }).catch(() => {})
+  }, [symbol])
+
+  // Mock 模擬（僅在後端未載入時）
   useEffect(() => {
     const timer = setInterval(() => {
-      setTrades((prev) => {
-        const newTrade = generateTrade(symbol)
-        return [newTrade, ...prev.slice(0, 19)]
-      })
+      if (liveLoadedRef.current) {
+        // 後端有資料時也模擬新的成交（因為沒有 WebSocket）
+        setTrades((prev) => {
+          const newTrade = generateTrade(symbol)
+          return [newTrade, ...prev.slice(0, 19)]
+        })
+      } else {
+        setTrades((prev) => {
+          const newTrade = generateTrade(symbol)
+          return [newTrade, ...prev.slice(0, 19)]
+        })
+      }
     }, 2000)
     return () => clearInterval(timer)
   }, [symbol])
