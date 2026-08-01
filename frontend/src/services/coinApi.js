@@ -94,3 +94,25 @@ export async function fetchLivePriceInfo(symbol) {
     return null
   }
 }
+
+/**
+ * 取得深度圖（訂單簿）資料
+ * @param {string} currency - 例如 'BTC'
+ * @param {number} [limit] - 每邊幾檔，預設 20
+ * @returns {Promise<{bids: Array<[price, volume]>, asks: Array<[price, volume]>}>}
+ */
+export function getOrderBook(currency, limit = 20) {
+  const params = new URLSearchParams({ currency, limit: String(limit) })
+  return apiFetch(`/market/depth?${params}`)
+}
+
+/**
+ * 取得最新成交明細
+ * @param {string} currency - 例如 'BTC'
+ * @param {number} [limit] - 幾筆，預設 20
+ * @returns {Promise<{trades: Array<{price, volume, side, timestamp}>}>}
+ */
+export function getRecentTrades(currency, limit = 20) {
+  const params = new URLSearchParams({ currency, limit: String(limit) })
+  return apiFetch(`/market/trades?${params}`)
+}

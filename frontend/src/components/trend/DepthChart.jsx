@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { formatPrice, currencyLabel } from '../../utils/currency'
+import { getOrderBook } from '../../services/coinApi'
+import { isBackendConfigured } from '../../services/api'
 import './DepthChart.css'
 
 const BASE_PRICES = {
@@ -28,7 +30,31 @@ function generateOrderBook(basePrice, levels = 20) {
 export default function DepthChart({ symbol, currency = 'TWD' }) {
   const basePrice = BASE_PRICES[symbol] || 1000
   const [hoverInfo, setHoverInfo] = useState(null)
-  const { bids, asks } = useMemo(() => generateOrderBook(basePrice), [basePrice])
+  const [orderBookData, setOrderBookData] = useState(null)
+
+  // 嘗試從後端取得即時訂單簿
+  useEffect(() => {
+    if (!isBackendConfigured()) return
+    let cancelled = false
+    getOrderBook(symbol, 20).then((data) => {
+      if (cancelled || !data) return
+      // 後端回傳 {bids: [[price, vol], ...], asks: [[price, vol], ...]}
+      let bidCum = 0, askCum = 0
+      const bids = (data.bids || []).map(([price, vol]) => {
+        bidCum += vol
+        return { price, volume: vol, cumulative: bidCum }
+      })
+      const asks = (data.asks || []).map(([price, vol]) => {
+        askCum += vol
+        return { price, volume: vol, cumulative: askCum }
+      })
+      setOrderBookData({ bids, asks })
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [symbol])
+
+  const mockData = useMemo(() => generateOrderBook(basePrice), [basePrice])
+  const { bids, asks } = orderBookData || mockData
 
   const maxCum = Math.max(
     bids[bids.length - 1]?.cumulative || 0,

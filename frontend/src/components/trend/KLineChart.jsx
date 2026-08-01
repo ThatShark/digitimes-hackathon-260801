@@ -26,7 +26,7 @@ const INTERVAL_SECONDS = {
   '4h': 14400,
   '1D': 86400,
   '1W': 604800,
-  '1M': 259200,    // 月視圖使用 3 日 K（每根 = 3 天）
+  '1M': 2592000,   // 30 天
 }
 
 // 基準價格
@@ -49,7 +49,7 @@ function generateMockData(interval, symbol) {
   const totalCandles = Math.floor(totalSpan / seconds)
 
   // 限制最大 K 棒數量避免效能問題，但保留第一根一定是上市日期
-  const maxCandles = 2000
+  const maxCandles = 5000
   const candleCount = Math.min(totalCandles, maxCandles)
 
   // 起始時間：如果超過 maxCandles，從 now - maxCandles * seconds 開始
