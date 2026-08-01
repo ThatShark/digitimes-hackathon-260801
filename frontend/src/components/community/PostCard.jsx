@@ -8,12 +8,10 @@ import { parseTickerTags } from './TickerCard'
 import ShareButton from './ShareButton'
 import './PostCard.css'
 
-// 模擬當前用戶人格（用於跟單風險比對）
-const CURRENT_USER_PERSONALITY = {
-  code: 'ACSI',
-  name: '弄潮兒',
-  axes: { R: 68, E: 30, F: 75, S: 62 },
-}
+import { getUserPersonality } from '../../utils/userPersonality'
+
+// 動態讀取當前用戶人格（從 localStorage）
+const CURRENT_USER_PERSONALITY = getUserPersonality()
 
 /**
  * 單篇社群貼文卡片

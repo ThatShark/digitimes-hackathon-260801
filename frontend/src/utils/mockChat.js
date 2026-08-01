@@ -2,6 +2,7 @@
  * 共用的模擬聊天資料 — 彈幕與聊天室共用同一份來源，
  * 確保兩邊顯示的內容完全一致。
  */
+import { getUserPersonality } from './userPersonality'
 
 export const MOCK_COMMUNITY_USERS = [
   { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
@@ -33,10 +34,10 @@ export const MOCK_CHAT_TEXTS = [
   '穩定幣先放著觀望',
 ]
 
-/** 目前使用者（模擬） */
+/** 目前使用者（人格從 localStorage 動態讀取） */
 export const ME_USER = {
   name: '我',
-  personality: { code: 'ACSI', name: '弄潮兒', axes: { R: 68, E: 30, F: 75, S: 62 } },
+  get personality() { return getUserPersonality() },
 }
 
 /** 隨機挑一則模擬訊息 */

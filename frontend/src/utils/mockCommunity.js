@@ -1,12 +1,14 @@
+import { getUserPersonality } from './userPersonality'
+
 /**
  * 共用的社群模擬資料 — CommunityPage（列表）與 PostDetailPage（詳情+留言）
  * 共用同一份來源，確保兩邊顯示的貼文內容一致。
  */
 
-// 模擬當前使用者
+// 當前使用者（人格從 localStorage 動態讀取）
 export const CURRENT_USER = {
   name: '林小明',
-  personality: { code: 'ACSI', name: '弄潮兒', axes: { R: 68, E: 30, F: 75, S: 62 } },
+  get personality() { return getUserPersonality() },
   coins: ['BTC', 'ETH', 'SOL'],
 }
 
@@ -149,8 +151,8 @@ export const MOCK_POSTS = [
     verified: false,
     commentList: [
       {
-        id: 'c7-1', floor: 1, author: '林小明',
-        personality: { code: 'ACSI', name: '弄潮兒', axes: { R: 68, E: 30, F: 75, S: 62 } },
+        id: 'c7-1', floor: 1, author: CURRENT_USER.name,
+        personality: CURRENT_USER.personality,
         content: '簡單說就是你買在相對高點的頻率，越常追高數值越高', images: [], time: '10 小時前', likes: 5, tips: 1,
       },
     ],

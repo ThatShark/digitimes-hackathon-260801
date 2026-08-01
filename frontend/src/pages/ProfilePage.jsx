@@ -1,18 +1,14 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
 import PortfolioOverview from '../components/profile/PortfolioOverview'
 import { analyzePersonality, uploadCsvFile } from '../services/personalityApi'
+import { getUserPersonality } from '../utils/userPersonality'
 import './ProfilePage.css'
 
-// Mock user data (personality will be updated after CSV analysis)
+// Mock user data (personality will be read from localStorage)
 const MOCK_USER = {
   displayName: '林睿瑜',
   bio: '目標在大學畢業前賺進人生第一桶金',
-  personality: {
-    code: 'ACSI',
-    name: '弄潮兒',
-    axes: { R: 68, E: 29, F: 82, S: 71 },
-  },
   personalityDescription: '',
   csvUploadedAt: '2025/07/28 14:30',
   stats: {
@@ -35,11 +31,35 @@ const MOCK_HISTORY = [
   { id: 8, date: '2025/07/12', action: 'sell', currency: 'SOL', amount: 4000, price: 5380, pnl: +12.6 },
 ]
 
+const PERSONALITY_NAMES = {
+  ACSI: '弄潮兒', ACSQ: '狙擊手', ACLI: '拓荒者', ACLQ: '獵手',
+  AESI: '探險家', AESQ: '追風者', AELI: '造夢者', AELQ: '賭徒',
+  DCSI: '風向球', DCSQ: '守望者', DCLI: '長青樹', DCLQ: '磐石',
+  DESI: '隱者', DESQ: '觀察家', DELI: '守夜人', DELQ: '冬眠者',
+}
+
+function _buildPersonalityFromScores(r, e, f, s) {
+  const code =
+    (r >= 50 ? 'A' : 'D') +
+    (e >= 50 ? 'E' : 'C') +
+    (f >= 50 ? 'S' : 'L') +
+    (s >= 50 ? 'Q' : 'I')
+  return { code, name: PERSONALITY_NAMES[code] || '未知', axes: { R: r, E: e, F: f, S: s } }
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState(MOCK_USER)
+  const [personality, setPersonality] = useState(getUserPersonality())
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
   const fileInputRef = useRef(null)
+
+  // Listen for personality updates from other pages (e.g. QuestionnairePage)
+  useEffect(() => {
+    const handleUpdate = () => setPersonality(getUserPersonality())
+    window.addEventListener('personality-updated', handleUpdate)
+    return () => window.removeEventListener('personality-updated', handleUpdate)
+  }, [])
 
   const handleUploadClick = () => {
     fileInputRef.current?.click()
@@ -48,27 +68,26 @@ export default function ProfilePage() {
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Reset input so same file can be re-selected
     e.target.value = ''
 
     setIsAnalyzing(true)
     setAnalysisError('')
     try {
       const data = await uploadCsvFile(file, 'demo-user')
+      if (data.scores) {
+        const r = data.scores.r_score ?? 50
+        const eScore = data.scores.e_score ?? 50
+        const f = data.scores.f_score ?? 50
+        const s = data.scores.s_score ?? 50
+        const newPersonality = _buildPersonalityFromScores(r, eScore, f, s)
+        setPersonality(newPersonality)
+        localStorage.setItem('user_personality', JSON.stringify(newPersonality))
+      }
       if (data.personality_description) {
         setUser((prev) => ({
           ...prev,
           personalityDescription: data.personality_description,
           csvUploadedAt: new Date().toLocaleString('zh-TW'),
-          personality: {
-            ...prev.personality,
-            axes: {
-              R: data.scores?.r_score ?? prev.personality.axes.R,
-              E: data.scores?.e_score ?? prev.personality.axes.E,
-              F: data.scores?.f_score ?? prev.personality.axes.F,
-              S: data.scores?.s_score ?? prev.personality.axes.S,
-            },
-          },
         }))
       }
     } catch (err) {
@@ -83,19 +102,19 @@ export default function ProfilePage() {
     setAnalysisError('')
     try {
       const data = await analyzePersonality('demo-user')
+      if (data.scores) {
+        const r = data.scores.r_score ?? 50
+        const eScore = data.scores.e_score ?? 50
+        const f = data.scores.f_score ?? 50
+        const s = data.scores.s_score ?? 50
+        const newPersonality = _buildPersonalityFromScores(r, eScore, f, s)
+        setPersonality(newPersonality)
+        localStorage.setItem('user_personality', JSON.stringify(newPersonality))
+      }
       if (data.personality_description) {
         setUser((prev) => ({
           ...prev,
           personalityDescription: data.personality_description,
-          personality: {
-            ...prev.personality,
-            axes: {
-              R: data.scores?.r_score ?? prev.personality.axes.R,
-              E: data.scores?.e_score ?? prev.personality.axes.E,
-              F: data.scores?.f_score ?? prev.personality.axes.F,
-              S: data.scores?.s_score ?? prev.personality.axes.S,
-            },
-          },
         }))
       }
     } catch (err) {
@@ -114,7 +133,7 @@ export default function ProfilePage() {
         </div>
         <div className="profile-header-info">
           <h1 className="profile-display-name">{user.displayName}</h1>
-          <PersonalityBadge personality={user.personality} compact showName />
+          <PersonalityBadge personality={personality} compact showName />
           <p className="profile-bio">{user.bio}</p>
         </div>
       </section>
@@ -127,8 +146,8 @@ export default function ProfilePage() {
         <section className="profile-card personality-card">
           <h2 className="card-title">投資人格 4 軸</h2>
           <p className="personality-summary">
-            <span className="personality-tag">{user.personality.code} {user.personality.name}</span>
-            {' '}{user.personalityDescription || '上傳 CSV 後，AI 將為你生成專屬投資人格描述。'}
+            <span className="personality-tag">{personality.code} {personality.name}</span>
+            {' '}{user.personalityDescription || '完成問卷或上傳 CSV 後，AI 將為你生成專屬投資人格描述。'}
           </p>
           {isAnalyzing && (
             <p className="personality-loading">AI 正在分析你的投資人格...</p>
@@ -136,7 +155,7 @@ export default function ProfilePage() {
           {analysisError && (
             <p className="personality-error">{analysisError}</p>
           )}
-          <PersonalityBadge personality={user.personality} />
+          <PersonalityBadge personality={personality} />
           <div className="csv-info">
             <span className="csv-label">CSV 上傳時間：{user.csvUploadedAt}</span>
             <div className="csv-actions">
