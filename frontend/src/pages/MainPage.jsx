@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import MarketOverview from '../components/main/MarketOverview'
 import Watchlist from '../components/main/Watchlist'
 import NotificationBanner from '../components/shared/NotificationBanner'
+import BookmarkButton from '../components/shared/BookmarkButton'
 import { getCoinPrice } from '../services/coinApi'
 import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
@@ -69,8 +70,11 @@ function CoinCard({ coin }) {
         <div className={`coin-price ${isUp ? 'up' : 'down'}`}>
           NT$ {coin.price.toLocaleString()}
         </div>
-        <div className={`coin-change ${isUp ? 'up' : 'down'}`}>
-          {isUp ? '+' : ''}{coin.change}%
+        <div className="coin-card-bottom-row">
+          <span className={`coin-change ${isUp ? 'up' : 'down'}`}>
+            {isUp ? '+' : ''}{coin.change}%
+          </span>
+          <BookmarkButton symbol={coin.symbol} size="sm" />
         </div>
       </div>
     </Link>

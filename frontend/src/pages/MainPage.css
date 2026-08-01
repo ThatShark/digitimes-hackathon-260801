@@ -111,6 +111,12 @@
   font-size: 12px;
 }
 
+.coin-card-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .coin-change.up {
   color: var(--green);
 }

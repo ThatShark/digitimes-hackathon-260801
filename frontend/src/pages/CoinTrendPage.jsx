@@ -15,7 +15,50 @@ import StrategyHub from '../components/trend/StrategyHub'
 import KeyEvents from '../components/trend/KeyEvents'
 import ShareButton from '../components/trend/ShareButton'
 import CoinSocialFeed from '../components/trend/CoinSocialFeed'
+import BookmarkButton from '../components/shared/BookmarkButton'
 import './CoinTrendPage.css'
+
+const COIN_PRICES = {
+  BTC: { price: 2850000, change: 2.3 },
+  ETH: { price: 98500, change: -1.2 },
+  SOL: { price: 5420, change: 5.7 },
+  DOGE: { price: 8.2, change: 0.4 },
+  ADA: { price: 21.5, change: -0.8 },
+  DOT: { price: 245, change: 3.1 },
+  PEPE: { price: 0.032, change: 15.2 },
+  WIF: { price: 12.8, change: 8.9 },
+  ARB: { price: 38.5, change: 4.2 },
+}
+
+const MARKET_DATA_TABS = [
+  { key: 'depth', label: '深度圖' },
+  { key: 'trades', label: '最新成交' },
+  { key: 'events', label: '關鍵事件' },
+]
+
+function MarketDataTabs({ symbol }) {
+  const [activeTab, setActiveTab] = useState('depth')
+  return (
+    <div className="market-data-panel">
+      <div className="market-data-tab-bar">
+        {MARKET_DATA_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            className={`md-tab ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="market-data-content">
+        {activeTab === 'depth' && <DepthChart symbol={symbol} />}
+        {activeTab === 'trades' && <RecentTrades symbol={symbol} />}
+        {activeTab === 'events' && <KeyEvents symbol={symbol} />}
+      </div>
+    </div>
+  )
+}
 
 const INTERVAL_SECONDS = {
   '1d': 24 * 3600,
@@ -130,7 +173,23 @@ export default function CoinTrendPage() {
       <div className="coin-page-header">
         <div className="coin-page-title-row">
           <h1 className="coin-page-title">{symbol}/TWD</h1>
-          <ShareButton symbol={symbol} />
+          {(() => {
+            const info = COIN_PRICES[symbol]
+            if (!info) return null
+            const isUp = info.change >= 0
+            return (
+              <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
+                NT$ {info.price.toLocaleString()}
+                <span className="coin-page-change">
+                  {isUp ? '+' : ''}{info.change}%
+                </span>
+              </span>
+            )
+          })()}
+          <div className="coin-page-actions">
+            <BookmarkButton symbol={symbol} />
+            <ShareButton symbol={symbol} />
+          </div>
         </div>
         <nav className="coin-page-tabs">
           {TABS.map((tab) => (
@@ -204,10 +263,8 @@ export default function CoinTrendPage() {
             </div>
           </div>
           <div className="trend-market-data">
-            <DepthChart symbol={symbol} />
-            <RecentTrades symbol={symbol} />
+            <MarketDataTabs symbol={symbol} />
           </div>
-          <KeyEvents symbol={symbol} />
         </>
       )}
 
