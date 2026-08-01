@@ -784,6 +784,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /market/overview:
+    get:
+      tags: [Core]
+      summary: Get market overview (行情看板)
+      description: |
+        Powers the main page's market overview widget: Fear & Greed index,
+        BTC dominance, total market cap, 24h volume, and top gainers/losers.
+        All data sourced from CoinMarketCap's keyless public endpoints.
+
+        Each data source is fetched independently — a failure in one does
+        NOT fail the whole response; that field is simply omitted (null or
+        []) so the frontend can fall back to mock data for just that piece.
+        Only returns 502 if every data source failed.
+      operationId: getMarketOverview
+      parameters:
+        - name: top_n
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 3
+          description: Number of entries to return in top_gainers/top_losers
+      responses:
+        "200":
+          description: Market overview data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketOverviewResponse"
+              example:
+                status: ready
+                fear_greed: { value: 38, label: Fear }
+                btc_dominance: 58.2
+                total_market_cap: 3120000000000.0
+                volume_24h: 98500000000.0
+                top_gainers:
+                  - { symbol: PEPE, change_24h: 15.2 }
+                  - { symbol: WIF, change_24h: 8.9 }
+                  - { symbol: SOL, change_24h: 5.7 }
+                top_losers:
+                  - { symbol: ETH, change_24h: -1.2 }
+                  - { symbol: ADA, change_24h: -0.8 }
+                  - { symbol: LINK, change_24h: -2.1 }
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: All CoinMarketCap data sources unreachable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─────────────────────────────────────────────
   # Recommendation Endpoints
   # ─────────────────────────────────────────────
@@ -927,6 +985,65 @@ components:
         value_classification:
           type: string
           enum: [Extreme Fear, Fear, Neutral, Greed, Extreme Greed]
+
+    MarketOverviewResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        fear_greed:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MarketOverviewFearGreed"
+          description: null if the Fear & Greed data source failed
+        btc_dominance:
+          type: number
+          nullable: true
+          description: "BTC dominance as a percentage (e.g. 58.2), null if unavailable"
+        total_market_cap:
+          type: number
+          nullable: true
+          description: Total crypto market cap in USD, null if unavailable
+        volume_24h:
+          type: number
+          nullable: true
+          description: Total 24h trading volume in USD, null if unavailable
+        top_gainers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketMover"
+          description: Top N coins by 24h % change, descending (empty if unavailable)
+        top_losers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketMover"
+          description: Bottom N coins by 24h % change, ascending (empty if unavailable)
+
+    MarketOverviewFearGreed:
+      type: object
+      required: [value, label]
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+        label:
+          type: string
+          description: "e.g. Fear, Neutral, Greed"
+
+    MarketMover:
+      type: object
+      required: [symbol, change_24h]
+      properties:
+        symbol:
+          type: string
+          example: PEPE
+        change_24h:
+          type: number
+          description: 24h price change percentage
+          example: 15.2
 
     CoinPriceResponse:
       type: object

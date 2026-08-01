@@ -1,6 +1,7 @@
 /**
  * GET /coin/price — 對應 backend/api.yaml operationId getCoinPrice
  * GET /market/fear-greed — 對應 backend/api.yaml operationId getFearGreed
+ * GET /market/overview — 對應 backend/api.yaml operationId getMarketOverview
  * GET /candlestick_chart — 對應 backend/api.yaml operationId getCandlestickChart
  */
 import { apiFetch, isBackendConfigured } from './api'
@@ -41,6 +42,15 @@ export function getCandlestickChart(currency, start, end, interval = '1M') {
     interval,
   })
   return apiFetch(`/candlestick_chart?${params}`)
+}
+
+/**
+ * 取得行情看板資料（恐懼貪婪指數、BTC 佔比、全球市值、24H 成交量、漲跌幅榜）
+ * @param {number} [topN] - 漲幅榜/跌幅榜各回傳幾筆，預設 3
+ */
+export function getMarketOverview(topN = 3) {
+  const params = new URLSearchParams({ top_n: String(topN) })
+  return apiFetch(`/market/overview?${params}`)
 }
 
 /**

@@ -71,6 +71,20 @@ Resources:
             Path: /market/fear-greed
             Method: GET
 
+  MarketOverviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-market-overview"
+      Handler: src.handlers.market_overview.lambda_handler
+      CodeUri: .
+      Events:
+        GetMarketOverview:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /market/overview
+            Method: GET
+
   CandlestickChartFunction:
     Type: AWS::Serverless::Function
     Properties:

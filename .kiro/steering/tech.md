@@ -17,8 +17,8 @@
 - **Location**: `backend/src/`
 - **API spec**: `backend/api.yaml` (OpenAPI 3.0.3) — source of truth for the contract; check it before adding new handlers
 - **Testing**: pytest + hypothesis (property-based tests independently re-derive each metric formula)
-- **Implemented handlers**: `upload_csv.py` (CSV → metrics → S3), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical)
-- **In progress**: `candlestick_chart.py`, `ai_chat.py`, `allow_trade.py`, community/chat/questionnaire handlers
+- **Implemented handlers**: `upload_csv.py` (CSV → metrics → S3), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical), `market_overview.py` (行情看板: Fear&Greed + dominance + market cap/volume + gainers/losers), `candlestick_chart.py` (MAX K-line + S3 CSV buy/sell markers merged)
+- **In progress**: `ai_chat.py`, `allow_trade.py`, community/chat/questionnaire handlers
 - **Responsibilities**:
   - S3 read/write (CSV, personality data, community posts, danmaku messages)
   - MAX API proxy (K-line, real-time pricing, orders)
@@ -113,7 +113,15 @@ Once Lambda + API Gateway are deployed, the frontend only needs **one URL**:
 
 API Gateway's "Enable CORS" console action / OPTIONS mock integration only adds `Access-Control-Allow-*` headers to the **OPTIONS preflight** response. It does **not** add them to the actual GET/POST response coming back from the Lambda function — that response is passed straight through unmodified. A request can return `200 OK` with the correct JSON body and still get blocked by the browser as a CORS error, because the browser checks the headers on the *real* response, not just the preflight.
 
-**Every Lambda handler must add CORS headers to every response it returns — success and error alike.** Use `backend/src/utils/http.py`'s `json_response(status_code, body)` instead of hand-building `{"statusCode": ..., "headers": {...}, "body": ...}` dicts — it merges in `Access-Control-Allow-Origin: *` (overridable via the `ALLOWED_ORIGIN` env var) automatically. `coin_price.py`, `fear_greed.py`, and `upload_csv.py` already use it; any new handler should too.
+**Every Lambda handler must add CORS headers to every response it returns — success and error alike.** Use `backend/src/utils/http.py`'s `json_response(status_code, body)` instead of hand-building `{"statusCode": ..., "headers": {...}, "body": ...}` dicts — it merges in `Access-Control-Allow-Origin: *` (overridable via the `ALLOWED_ORIGIN` env var) automatically. All current handlers (`coin_price.py`, `fear_greed.py`, `upload_csv.py`, `market_overview.py`, `candlestick_chart.py`) already use it; any new handler should too.
+
+### CoinMarketCap keyless endpoint quirk: `quote` is a list, not a dict
+
+The authenticated CMC Pro API returns `quote: {"USD": {...}}`. The **keyless public endpoint** (`/public-api/...`, no `CMC_API_KEY` set) returns `quote: [{"symbol": "USD", ...}]` for `listings/latest` — a list you must search by `symbol == "USD"`, not a dict you can index directly. See `market_overview.py`'s `_extract_usd_quote_field()`. Also: never rank the full CMC universe directly by `percent_change_24h` for a "top movers" feature — that surfaces near-zero-market-cap tokens with meaningless four-digit swings. Pull a market-cap-ranked pool first (`_RANKING_POOL_SIZE`), then sort within it.
+
+### New handlers need a `template.yaml` entry too
+
+Adding a handler file under `backend/src/handlers/` is not enough to deploy it — it must also be registered as an `AWS::Serverless::Function` (with its API Gateway route) in `backend/template.yaml`, matching the `Handler: src.handlers.<module>.lambda_handler` convention already used by the other functions.
 
 ## Data Models (S3 Storage)
 

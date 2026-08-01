@@ -75,20 +75,25 @@ digitimes-hackathon-260801/
 │   ├── api.yaml                 # OpenAPI 3.0.3 spec — source of truth for all endpoints
 │   ├── pytest.ini
 │   ├── requirements.txt / requirements-dev.txt
+│   ├── template.yaml             # SAM template — Lambda functions + API Gateway routes + S3 bucket
 │   ├── src/
 │   │   ├── handlers/
-│   │   │   ├── upload_csv.py        # POST /upload_csv — S3 read CSV → compute_metrics_json → S3 write → response
-│   │   │   ├── coin_price.py        # GET /coin/price — MAX ticker lookup for one currency
-│   │   │   ├── fear_greed.py        # GET /market/fear-greed — CoinMarketCap latest/historical index
-│   │   │   └── candlestick_chart.py # GET /candlestick_chart (in progress)
+│   │   │   ├── upload_csv.py         # POST /upload_csv — S3 read CSV → compute_metrics_json → S3 write → response
+│   │   │   ├── coin_price.py         # GET /coin/price — MAX ticker lookup for one currency
+│   │   │   ├── fear_greed.py         # GET /market/fear-greed — CoinMarketCap latest/historical index
+│   │   │   ├── market_overview.py    # GET /market/overview — Fear&Greed + BTC dominance + market cap/volume + gainers/losers (each field best-effort, only 502s if ALL CMC sources fail)
+│   │   │   └── candlestick_chart.py  # GET /candlestick_chart — MAX K-line + user's S3 CSV buy/sell markers merged (trade_markers is best-effort, never fails the chart)
 │   │   ├── services/
-│   │   │   ├── max_api.py           # MAX Exchange API client
-│   │   │   ├── coinmarketcap.py     # CoinMarketCap API client
+│   │   │   ├── max_api.py           # MAX Exchange API client (ticker, tickers, klines, markets)
+│   │   │   ├── coinmarketcap.py     # CoinMarketCap keyless public API client (fear&greed, global-metrics, listings) — no API key needed unless CMC_API_KEY env var is set
 │   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
 │   │   └── utils/
 │   │       ├── metrics.py           # CSV → FIFO trade matching → trading metrics (chase_up_index/avg_return_pct/etc), no I/O
 │   │       └── http.py              # json_response()/cors_headers() — every handler must use this, see tech.md "CORS gotcha"
 │   └── tests/
+│       ├── handlers/
+│       │   ├── test_candlestick_chart.py  # Mocked MAX API + S3; validation, range filtering, malformed rows, marker merge
+│       │   └── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk
 │       └── utils/
 │           ├── test_metrics_unit.py
 │           └── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
@@ -226,11 +231,14 @@ Chat-like scrolling containers (AI chat, community chat) must **never** use `scr
 - **Naming = Identity**: Resource `name` fields map to CloudFormation Logical IDs. Renaming destroys + recreates.
 - **Secrets**: API keys go in `agentcore/.env.local` (gitignored). Never commit secrets.
 - **api.yaml is the single source of truth for the API contract.** Before adding a new endpoint, grep `backend/api.yaml` first — duplicate/conflicting path or schema definitions have happened before (e.g. `/coin/price` was defined twice with different response shapes) when steering docs and actual handler code drifted apart. When a handler already exists in `backend/src/handlers/`, the spec must match that implementation, not a hypothetical one.
+- **CoinMarketCap keyless `listings/latest` returns `quote` as a LIST, not a dict.** Unlike the authenticated Pro API (`quote.USD.percent_change_24h`), the keyless public endpoint's `quote` field is `[{"symbol": "USD", "percent_change_24h": ..., ...}]` — find the entry by `symbol == "USD"` rather than indexing `quote["USD"]` directly. Also, never sort the full CMC universe directly by `percent_change_24h` for "top movers" — near-zero-market-cap tokens post meaningless four-digit % swings; rank within a market-cap-ranked pool instead (see `market_overview.py`'s `_RANKING_POOL_SIZE`).
+- **New Lambda handlers must be registered in `backend/template.yaml`** (SAM function + API Gateway route) in addition to matching `api.yaml` — the spec alone does not deploy anything.
 - **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
   - `GET /init` — check CSV status
   - `POST /upload_csv` — upload + trigger analysis
   - `GET /coin/price` — real-time single-currency ticker (MAX API)
   - `GET /market/fear-greed` — Fear & Greed Index, latest or historical (CoinMarketCap)
+  - `GET /market/overview` — 行情看板: Fear & Greed + BTC dominance + market cap/volume + top gainers/losers (CoinMarketCap, keyless)
   - `GET /candlestick_chart` — K-line + trade markers
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution

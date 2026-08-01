@@ -80,6 +80,47 @@ class CoinMarketCapClient:
             {"start": start, "limit": limit},
         )
 
+    def get_global_metrics(self, convert: str = "USD") -> dict:
+        """Return global cryptocurrency market metrics.
+
+        Response shape (data sub-object, keys relevant to this project):
+            btc_dominance                      : float (%)
+            eth_dominance                      : float (%)
+            quote[convert].total_market_cap    : float
+            quote[convert].total_volume_24h    : float
+
+        Raises CoinMarketCapError on non-200 or after RETRY_ATTEMPTS failures.
+        """
+        return self._get("/v1/global-metrics/quotes/latest", {"convert": convert})
+
+    def get_listings(
+        self,
+        start: int = 1,
+        limit: int = 20,
+        convert: str = "USD",
+        sort: str = "market_cap",
+        sort_dir: "str | None" = None,
+    ) -> dict:
+        """Return ranked cryptocurrency listings.
+
+        Used for top-gainers/top-losers by passing
+        sort="percent_change_24h" with sort_dir="desc" (gainers) or
+        sort_dir="asc" (losers).
+
+        Response shape (data field is a list); each entry has (relevant
+        keys): symbol, name, and a **quote list** (not a dict keyed by
+        currency, despite that being the shape on the authenticated Pro
+        API) — quote is [{"symbol": "USD", "percent_change_24h": ...,
+        "price": ...}, ...]. Callers must find the matching entry by its
+        "symbol" field rather than indexing quote[convert] directly.
+
+        Raises CoinMarketCapError on non-200 or after RETRY_ATTEMPTS failures.
+        """
+        params = {"start": start, "limit": limit, "convert": convert, "sort": sort}
+        if sort_dir:
+            params["sort_dir"] = sort_dir
+        return self._get("/v3/cryptocurrency/listings/latest", params)
+
     # ─────────────────────────────────────────────────────────────────────────
     # Internal helpers
     # ─────────────────────────────────────────────────────────────────────────
