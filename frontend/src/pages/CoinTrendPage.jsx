@@ -14,6 +14,7 @@ import FundFlowChart from '../components/trend/FundFlowChart'
 import StrategyHub from '../components/trend/StrategyHub'
 import KeyEvents from '../components/trend/KeyEvents'
 import ShareButton from '../components/trend/ShareButton'
+import CoinSocialFeed from '../components/trend/CoinSocialFeed'
 import './CoinTrendPage.css'
 
 const INTERVAL_SECONDS = {
@@ -81,6 +82,16 @@ export default function CoinTrendPage() {
   const handleSendDanmaku = useCallback((text) => {
     addCommunityMessage(ME_USER, text, true)
   }, [addCommunityMessage])
+
+  const handleFullscreen = useCallback(() => {
+    const el = document.querySelector('.trend-chart-area')
+    if (!el) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      el.requestFullscreen?.()
+    }
+  }, [])
 
   // 模擬其他使用者發言（唯一的假資料來源）
   useEffect(() => {
@@ -153,6 +164,13 @@ export default function CoinTrendPage() {
                   size={danmakuSettings.size}
                   position={danmakuSettings.position}
                 />
+                <button
+                  className="chart-fullscreen-btn"
+                  onClick={handleFullscreen}
+                  title="全螢幕"
+                >
+                  ⛶
+                </button>
               </div>
               <ChartControls
                 interval={interval}
@@ -201,13 +219,7 @@ export default function CoinTrendPage() {
 
       {/* 動態 tab */}
       {activeTab === 'social' && (
-        <div className="trend-chat-area full-width">
-          <AIChatPanel
-            symbol={symbol}
-            communityMessages={communityMessages}
-            onSendCommunity={(text) => addCommunityMessage(ME_USER, text, true)}
-          />
-        </div>
+        <CoinSocialFeed symbol={symbol} />
       )}
 
       {/* 交易 tab */}

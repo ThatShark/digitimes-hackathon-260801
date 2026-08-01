@@ -157,3 +157,39 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Fullscreen button */
+.chart-fullscreen-btn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 10;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-color, #334155);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.chart-fullscreen-btn:hover {
+  background: rgba(15, 23, 42, 0.95);
+  color: var(--text-primary, #f1f5f9);
+  border-color: #3b82f6;
+}
+
+/* Fullscreen mode overrides */
+.trend-chart-area:fullscreen {
+  background: var(--bg-primary, #0f172a);
+  border-radius: 0;
+}
+
+.trend-chart-area:fullscreen .chart-container {
+  height: 100vh;
+}
