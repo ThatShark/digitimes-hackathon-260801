@@ -1,109 +1,67 @@
-"""Trade metrics computation module.
+"""Personality metrics computation module (16-type investor personality).
 
-Pure computation: parses a user's raw trade fill history, uploaded as a CSV
-file with Chinese column headers (時間, 交易對, 類型, 價格, 數量, 總金額,
-手續費, 手續費幣種), into FIFO-matched TradeRecord round-trips, computes a
-set of quantitative trading metrics (MetricsResult, split into overall +
-per-currency sections), and serializes the result to JSON. No AWS/S3
-dependency, no I/O beyond in-memory strings/bytes (Requirement 5.3, 7.1).
+Computes 4-axis personality scores (R/E/F/S) from a user's trade history CSV:
+  R — Risk:      Defensive (0) vs. Aggressive (100)
+  E — Emotion:   Calm (0) vs. Emotional (100)
+  F — Frequency: Long-term (0) vs. Short-term (100)
+  S — Strategy:  Intuitive (0) vs. Quantitative (100)
+
+CSV columns: timestamp (ms), currency, price (TWD), action, change, balance.
+External data (K-line candles, volatility) is passed in by the caller.
+This module performs no I/O.
 """
 
-import bisect
 import csv
 import io
-from collections import deque
+import json
+import math
+import statistics
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-import json
-import statistics
+from typing import Optional
 
 
 class TradeDataError(Exception):
-    """Raised by parse_trades_csv, match_fifo_trades, or calculate_metrics
-    on invalid or incomplete input."""
+    """Raised on invalid or incomplete input data."""
 
 
-# All 8 documented CSV columns, and the subset actually required to
-# construct a RawFill (總金額/手續費/手續費幣種 are ignored for computation,
-# see parse_trades_csv's docstring for the header-strictness judgment call).
-_CSV_ALL_COLUMNS = ("時間", "交易對", "類型", "價格", "數量", "總金額", "手續費", "手續費幣種")
+# ═══════════════════════════════════════════════════════════════════════════════
+# Data classes
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# Marker key used to detect data rows with MORE fields than the header via
-# csv.DictReader's restkey mechanism.
-_CSV_EXTRA_FIELD_MARKER = "__extra_fields__"
+_CSV_COLUMNS = ("timestamp", "currency", "price", "action", "change", "balance")
 
-# 類型 values that normalize to "buy" / "sell" respectively.
-_BUY_SIDE_VALUES = {"買入"}
-_SELL_SIDE_VALUES = {"賣出"}
-
-# Currencies treated as stablecoins for is_stablecoin / stablecoin_ratio_pct.
-_STABLECOIN_CURRENCIES = {"TWD", "USDT", "USDC"}
-
-# --- Chase-up index (追漲指數) constants --------------------------------
-#
-# Naive-vs-aware datetime judgment call: TradeRecord.buy_time/sell_time
-# (parsed from the CSV's 時間 column by _parse_created_at) are naive
-# datetimes -- there is no timezone info in that data. Candle.timestamp
-# below is derived from a true Unix epoch (K-line timestamp_seconds), so
-# it is unambiguous UTC. To keep every datetime in this module mutually
-# comparable/subtractable (required by calculate_chase_up_indices's price
-# lookups, which subtract/compare Candle timestamps against TradeRecord
-# buy_time), we convert the epoch to a NAIVE UTC wall-clock datetime
-# (tzinfo stripped after conversion) rather than attaching tzinfo. This
-# matches how the CSV times are already treated as naive throughout the
-# module. Note: datetime.utcfromtimestamp() is deprecated since Python
-# 3.12, so we use fromtimestamp(..., tz=timezone.utc) and then drop the
-# tzinfo, which is equivalent but avoids the deprecation warning.
-_NORMAL_VOLATILITY_WINDOW_DAYS = 30
-_MTI_LOOKBACK_COUNT = 500
-_VOLATILITY_EPSILON = 0.001
-
-# (mti_upper_bound_hours_exclusive, delta_t_hours) tiers, checked in order.
-# MTI < 2h -> scalper (0.25h); 2h <= MTI < 24h -> day trader (1h);
-# 24h <= MTI < 168h -> swing trader (4h); MTI >= 168h -> HODLER/DCA (24h).
-_MTI_CLASSIFICATION_TABLE = (
-    (2.0, 0.25),
-    (24.0, 1.0),
-    (24.0 * 7, 4.0),
-    (float("inf"), 24.0),
-)
-
-# Fallback Δt (hours) used when MTI cannot be computed (fewer than 2 buy
-# fills exist). Defaults to the Day Trader tier -- a judgment call flagged
-# to and accepted by the user, since there isn't enough history to infer
-# an actual trading style yet.
-_DEFAULT_DELTA_T_HOURS = 1.0
+_BUY_ACTIONS = {"買"}
+_SELL_ACTIONS = {"賣"}
+_DEPOSIT_ACTIONS = {"充值"}
+_WITHDRAW_ACTIONS = {"提領"}
+_ALL_ACTIONS = _BUY_ACTIONS | _SELL_ACTIONS | _DEPOSIT_ACTIONS | _WITHDRAW_ACTIONS
 
 
 @dataclass(frozen=True)
-class RawFill:
+class RawTrade:
+    """A single row from the trade CSV."""
+    timestamp_ms: int
     currency: str
-    quote_currency: str
-    side: str
     price: float
-    volume: float
-    timestamp: datetime
+    action: str
+    change: float
+    balance: float
 
+    @property
+    def timestamp_dt(self) -> datetime:
+        return datetime.fromtimestamp(
+            self.timestamp_ms / 1000.0, tz=timezone.utc
+        ).replace(tzinfo=None)
 
-@dataclass(frozen=True)
-class TradeRecord:
-    buy_time: datetime
-    sell_time: datetime
-    amount: float
-    is_stablecoin: bool
-    buy_price: float
-    sell_price: float
-    currency: str
+    @property
+    def amount_twd(self) -> float:
+        return abs(self.change) * self.price
 
 
 @dataclass(frozen=True)
 class Candle:
-    """A single K-line (candlestick) data point. timestamp is a NAIVE
-    UTC datetime (see module-level comment above _NORMAL_VOLATILITY_WINDOW_DAYS
-    for why it is naive rather than timezone-aware -- this keeps it
-    comparable/subtractable against TradeRecord.buy_time/sell_time, which
-    are also naive)."""
-
+    """A single K-line data point (naive UTC datetime)."""
     timestamp: datetime
     open: float
     high: float
@@ -113,686 +71,496 @@ class Candle:
 
 
 @dataclass(frozen=True)
-class OverallMetrics:
-    trading_frequency_per_day: float
-    stablecoin_ratio_pct: float
+class PersonalityScores:
+    """Final 4-axis personality result (each 0-100)."""
+    r_score: float
+    e_score: float
+    f_score: float
+    s_score: float
+    r_s1_volatility: float
+    r_s2_concentration: float
+    r_s3_drawdown: float
+    e_s1_fomo: float
+    e_s2_revenge: float
+    e_s3_impulsive: float
+    f_mti_hours: float
+    s_s1_regularity: float
+    s_s2_discipline: float
 
 
-@dataclass(frozen=True)
-class CurrencyMetrics:
-    # Volume-weighted, volatility-normalized "chase-up index" (追漲指數):
-    # CR_score = sum(V_i * S_i) / sum(V_i) across the currency's buy-side
-    # records, where S_i is each buy's lookback return (relative to Δt
-    # hours earlier) normalized by the currency's 30-day return volatility
-    # at Δt granularity. This is a continuous score (NOT a percentage, no
-    # upper bound in principle) -- higher means the user tends to buy
-    # after larger, volatility-adjusted upward moves ("chasing the pump").
-    # None if no K-line data was supplied for this currency, or if no
-    # record's price data could be resolved from the supplied candles.
-    chase_up_index: "float | None"
-    avg_stop_loss_pct: float
-    avg_holding_days: float
-    avg_return_pct: float
-    return_std_dev: float
+# ═══════════════════════════════════════════════════════════════════════════════
+# CSV Parsing
+# ═══════════════════════════════════════════════════════════════════════════════
 
-
-@dataclass(frozen=True)
-class MetricsResult:
-    overall: OverallMetrics
-    by_currency: "dict[str, CurrencyMetrics]"
-
-
-def _normalize_side(raw_value: object, row_number: int) -> str:
-    normalized = str(raw_value).strip()
-    if normalized in _BUY_SIDE_VALUES:
-        return "buy"
-    if normalized in _SELL_SIDE_VALUES:
-        return "sell"
-    raise TradeDataError(
-        f"Row {row_number} has an unrecognized '類型' value: {raw_value!r}"
-    )
-
-
-def _parse_numeric_field(raw_value: object, field_name: str, row_number: int) -> float:
-    try:
-        # 價格/數量 may contain thousands-separator commas per the field
-        # spec (e.g. "2,150,000"), so strip them before converting.
-        return float(str(raw_value).replace(",", ""))
-    except (TypeError, ValueError) as exc:
-        raise TradeDataError(
-            f"Row {row_number} has an invalid value for field "
-            f"'{field_name}': {raw_value!r}"
-        ) from exc
-
-
-def _parse_market_pair(raw_value: object, row_number: int) -> tuple[str, str]:
-    if not isinstance(raw_value, str):
-        raise TradeDataError(
-            f"Row {row_number} has an invalid '交易對' value: {raw_value!r}"
-        )
-    parts = raw_value.split("/")
-    if len(parts) != 2 or not parts[0].strip() or not parts[1].strip():
-        raise TradeDataError(
-            f"Row {row_number} has a '交易對' that does not split into "
-            f"exactly two non-empty parts: {raw_value!r}"
-        )
-    return parts[0].strip(), parts[1].strip()
-
-
-def _parse_created_at(raw_value: object, row_number: int) -> datetime:
-    # The 時間 column is a naive "YYYY/MM/DD HH:MM:SS" string with no
-    # explicit timezone offset in the data itself (even though it is
-    # typically Taiwan time, UTC+8, by convention upstream). Parsed as a
-    # naive datetime rather than attaching a timezone -- see task notes.
-    try:
-        return datetime.strptime(str(raw_value).strip(), "%Y/%m/%d %H:%M:%S")
-    except (TypeError, ValueError) as exc:
-        raise TradeDataError(
-            f"Row {row_number} has an invalid '時間' value: {raw_value!r}"
-        ) from exc
-
-
-def parse_trades_csv(csv_content: "str | bytes") -> list[RawFill]:
-    """Parses raw trade fill CSV content into a list of RawFill.
-
-    Expects a header row with the exact documented Chinese columns:
-    時間,交易對,類型,價格,數量,總金額,手續費,手續費幣種 (see module docstring).
-    總金額/手續費/手續費幣種 are parsed but not used to construct RawFill
-    (see task notes: matched amount is recomputed independently by
-    match_fifo_trades, and fees are excluded from P&L entirely).
-
-    Judgment call: the header must contain ALL 8 documented columns, not
-    just the 5 required to build a RawFill (時間/交易對/類型/價格/數量).
-    This is stricter than strictly necessary for computation, but matches
-    "the documented format" as instructed; relax this later if partial
-    headers (e.g. missing 總金額) should be tolerated instead.
-
-    Row numbers in error messages are 1-indexed over DATA rows only (the
-    header row itself is not counted, so the first data row is row 1).
-
-    Raises TradeDataError on malformed input: undecodable bytes, missing
-    required header column(s), a data row whose field count doesn't match
-    the header's field count, or an unparsable field value (identifying
-    the row number and column name). Returns [] for a header-only CSV
-    (zero data rows).
-    """
+def parse_trades_csv(csv_content: "str | bytes") -> list[RawTrade]:
+    """Parse CSV into list of RawTrade. Raises TradeDataError on bad input."""
     if isinstance(csv_content, bytes):
         try:
             text = csv_content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise TradeDataError(f"Unable to decode content as UTF-8: {exc}") from exc
+            raise TradeDataError(f"Unable to decode CSV as UTF-8: {exc}") from exc
     else:
         text = csv_content
 
-    try:
-        reader = csv.DictReader(
-            io.StringIO(text), restkey=_CSV_EXTRA_FIELD_MARKER
-        )
-        fieldnames = reader.fieldnames
-    except csv.Error as exc:
-        raise TradeDataError(f"Unable to parse content as CSV: {exc}") from exc
+    reader = csv.DictReader(io.StringIO(text))
+    fieldnames = reader.fieldnames
 
     if fieldnames is None:
-        # Completely empty content: no header at all.
         raise TradeDataError("CSV content is missing a header row")
 
-    missing_columns = [
-        column for column in _CSV_ALL_COLUMNS if column not in fieldnames
-    ]
-    if missing_columns:
-        raise TradeDataError(
-            "CSV header is missing required column(s): " + ", ".join(missing_columns)
-        )
+    missing = [c for c in _CSV_COLUMNS if c not in fieldnames]
+    if missing:
+        raise TradeDataError(f"CSV header missing required column(s): {', '.join(missing)}")
 
-    fills: list[RawFill] = []
-    try:
-        rows = list(reader)
-    except csv.Error as exc:
-        raise TradeDataError(f"Unable to parse content as CSV: {exc}") from exc
+    trades: list[RawTrade] = []
+    for row_num, row in enumerate(reader, start=1):
+        try:
+            timestamp_ms = int(row["timestamp"])
+            currency = row["currency"].strip()
+            price = float(row["price"])
+            action = row["action"].strip()
+            change = float(row["change"])
+            balance = float(row["balance"])
+        except (TypeError, ValueError, KeyError) as exc:
+            raise TradeDataError(f"Row {row_num}: invalid field value — {exc}") from exc
 
-    for offset, row in enumerate(rows):
-        row_number = offset + 1  # 1-indexed over data rows, header excluded
+        if action not in _ALL_ACTIONS:
+            raise TradeDataError(f"Row {row_num}: unrecognized action '{action}'")
 
-        if _CSV_EXTRA_FIELD_MARKER in row or None in row.values():
-            raise TradeDataError(
-                f"Row {row_number} has a field count that does not match "
-                f"the header's field count"
-            )
-
-        currency, quote_currency = _parse_market_pair(row["交易對"], row_number)
-        side = _normalize_side(row["類型"], row_number)
-        price = _parse_numeric_field(row["價格"], "價格", row_number)
-        volume = _parse_numeric_field(row["數量"], "數量", row_number)
-        timestamp = _parse_created_at(row["時間"], row_number)
-
-        fills.append(
-            RawFill(
-                currency=currency,
-                quote_currency=quote_currency,
-                side=side,
-                price=price,
-                volume=volume,
-                timestamp=timestamp,
-            )
-        )
-
-    return fills
+        trades.append(RawTrade(
+            timestamp_ms=timestamp_ms, currency=currency, price=price,
+            action=action, change=change, balance=balance,
+        ))
+    return trades
 
 
-def parse_klines_json(json_content: "str | bytes") -> "list[Candle]":
-    """Parses raw K-line (candlestick) JSON content into a list of Candle.
-
-    Expects a top-level JSON array of arrays, each inner array exactly
-    [timestamp_seconds, open, high, low, close, volume] (see module task
-    notes for the documented format). OHLCV values may arrive as numeric
-    strings or already-numeric; both are accepted. timestamp_seconds is
-    always Unix seconds (no magnitude-based ms/s detection, unlike the CSV
-    時間 column's ambiguity elsewhere) and is converted to a NAIVE UTC
-    datetime (see the module-level comment above _NORMAL_VOLATILITY_WINDOW_DAYS
-    for why naive rather than timezone-aware).
-
-    Raises TradeDataError on: undecodable bytes, invalid JSON, a
-    non-list top-level value, or any element that is not a list/tuple of
-    exactly 6 items whose values can't be converted (timestamp to int,
-    the rest to float) -- identifying the offending candle's 1-indexed
-    position in the error message. Returns [] for an empty top-level
-    array ([]).
-    """
+def parse_klines_json(json_content: "str | bytes") -> list[Candle]:
+    """Parse K-line JSON: [[ts_sec, O, H, L, C, V], ...] -> list[Candle]."""
     if isinstance(json_content, bytes):
         try:
             text = json_content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise TradeDataError(f"Unable to decode content as UTF-8: {exc}") from exc
+            raise TradeDataError(f"Unable to decode as UTF-8: {exc}") from exc
     else:
         text = json_content
 
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise TradeDataError(f"Unable to parse content as JSON: {exc}") from exc
+        raise TradeDataError(f"Invalid JSON: {exc}") from exc
 
     if not isinstance(parsed, list):
-        raise TradeDataError(
-            f"K-line JSON content must be a top-level list, got {type(parsed).__name__}"
-        )
+        raise TradeDataError("K-line JSON must be a top-level list")
 
     candles: list[Candle] = []
-    for offset, element in enumerate(parsed):
-        position = offset + 1  # 1-indexed
-
-        if not isinstance(element, (list, tuple)) or len(element) != 6:
-            raise TradeDataError(
-                f"Candle {position} must be a list/tuple of exactly 6 items, "
-                f"got {element!r}"
-            )
-
-        raw_timestamp, raw_open, raw_high, raw_low, raw_close, raw_volume = element
-
+    for i, elem in enumerate(parsed, start=1):
+        if not isinstance(elem, (list, tuple)) or len(elem) != 6:
+            raise TradeDataError(f"Candle {i}: expected list of 6, got {elem!r}")
         try:
-            timestamp_seconds = int(raw_timestamp)
+            ts = int(elem[0])
+            o, h, l, c, v = (float(x) for x in elem[1:])
         except (TypeError, ValueError) as exc:
-            raise TradeDataError(
-                f"Candle {position} has an invalid timestamp value: {raw_timestamp!r}"
-            ) from exc
-
-        try:
-            open_price = float(raw_open)
-            high_price = float(raw_high)
-            low_price = float(raw_low)
-            close_price = float(raw_close)
-            volume = float(raw_volume)
-        except (TypeError, ValueError) as exc:
-            raise TradeDataError(
-                f"Candle {position} has a non-numeric OHLCV value: {element!r}"
-            ) from exc
-
-        # Convert epoch seconds to a naive UTC datetime (tzinfo stripped
-        # after conversion) -- see module-level comment for rationale.
-        timestamp = datetime.fromtimestamp(
-            timestamp_seconds, tz=timezone.utc
-        ).replace(tzinfo=None)
-
-        candles.append(
-            Candle(
-                timestamp=timestamp,
-                open=open_price,
-                high=high_price,
-                low=low_price,
-                close=close_price,
-                volume=volume,
-            )
-        )
-
+            raise TradeDataError(f"Candle {i}: non-numeric value — {exc}") from exc
+        dt = datetime.fromtimestamp(ts, tz=timezone.utc).replace(tzinfo=None)
+        candles.append(Candle(timestamp=dt, open=o, high=h, low=l, close=c, volume=v))
     return candles
 
 
-def calculate_mti_hours(buy_timestamps: "list[datetime]") -> "float | None":
-    """Median Trade Interval in hours, over the most recent 500 buy
-    timestamps (across the whole account).
+# ═══════════════════════════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    Sorts ascending, takes the last _MTI_LOOKBACK_COUNT (most recent),
-    computes consecutive gaps in hours, and returns statistics.median of
-    those gaps. Returns None if fewer than 2 timestamps are provided (no
-    interval can be computed from 0 or 1 timestamps).
-    """
-    if len(buy_timestamps) < 2:
-        return None
-
-    ordered = sorted(buy_timestamps)[-_MTI_LOOKBACK_COUNT:]
-
-    gaps_hours = [
-        (later - earlier).total_seconds() / 3600
-        for earlier, later in zip(ordered[:-1], ordered[1:])
-    ]
-
-    return statistics.median(gaps_hours)
+def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
+    return min(hi, max(lo, value))
 
 
-def determine_delta_t_hours(mti_hours: "float | None") -> float:
-    """Maps MTI (hours) to the Δt lookback window (hours) per the
-    trading-style classification table (_MTI_CLASSIFICATION_TABLE).
-
-    Defaults to _DEFAULT_DELTA_T_HOURS (Day Trader, 1.0h) if mti_hours is
-    None -- this is the judgment call for when fewer than 2 buy fills
-    exist and MTI cannot be computed at all (see the constant's comment
-    above and the module-level comment near _NORMAL_VOLATILITY_WINDOW_DAYS).
-    """
-    if mti_hours is None:
-        return _DEFAULT_DELTA_T_HOURS
-
-    for upper_bound, delta_t in _MTI_CLASSIFICATION_TABLE:
-        if mti_hours < upper_bound:
-            return delta_t
-
-    # Unreachable: the table's last tier is (inf, ...), always matched.
-    return _MTI_CLASSIFICATION_TABLE[-1][1]
+def _percentile(sorted_values: list[float], pct: float) -> float:
+    if not sorted_values:
+        return 0.0
+    n = len(sorted_values)
+    k = (pct / 100.0) * (n - 1)
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return sorted_values[int(k)]
+    return sorted_values[f] * (c - k) + sorted_values[c] * (k - f)
 
 
-def _compute_normal_volatility(candles_sorted_by_time: "list[Candle]") -> float:
-    """Sample stdev (divide by M-1) of consecutive-candle close-to-close
-    returns, floored at _VOLATILITY_EPSILON.
-
-    Requires at least 2 return values (i.e. 3+ candles) to compute a
-    meaningful sample stdev; returns _VOLATILITY_EPSILON directly if fewer
-    are available.
-    """
-    if len(candles_sorted_by_time) < 3:
-        return _VOLATILITY_EPSILON
-
-    returns = []
-    for earlier, later in zip(candles_sorted_by_time[:-1], candles_sorted_by_time[1:]):
-        if earlier.close == 0:
-            continue
-        returns.append((later.close - earlier.close) / earlier.close)
-
-    if len(returns) < 2:
-        return _VOLATILITY_EPSILON
-
-    sigma = statistics.stdev(returns)  # sample stdev, divides by (M-1)
-    return max(sigma, _VOLATILITY_EPSILON)
+def _buy_sell_only(trades: list[RawTrade]) -> list[RawTrade]:
+    return [t for t in trades if t.action in (_BUY_ACTIONS | _SELL_ACTIONS)]
 
 
-def _find_price_at_or_before(
-    candles_sorted_by_time: "list[Candle]", target_time: datetime
-) -> "float | None":
-    """Returns the close price of the latest candle with timestamp <=
-    target_time, or None if no such candle exists (target_time is before
-    all available candles, or the candle list is empty).
-    """
-    if not candles_sorted_by_time:
-        return None
-
-    timestamps = [candle.timestamp for candle in candles_sorted_by_time]
-    # bisect_right gives the insertion point after any candles exactly at
-    # target_time, so index-1 is the latest candle with timestamp <=
-    # target_time.
-    index = bisect.bisect_right(timestamps, target_time) - 1
-    if index < 0:
-        return None
-
-    return candles_sorted_by_time[index].close
+def _buy_only(trades: list[RawTrade]) -> list[RawTrade]:
+    return [t for t in trades if t.action in _BUY_ACTIONS]
 
 
-def calculate_chase_up_indices(
-    records_by_currency: "dict[str, list[TradeRecord]]",
-    buy_timestamps: "list[datetime]",
-    klines_by_currency: "dict[str, list[Candle]]",
-) -> "dict[str, float | None]":
-    """For each currency in records_by_currency, computes the
-    volume-weighted chase-up index (CR_score) using that currency's
-    records and candle data.
-
-    Δt is determined ONCE (globally, from buy_timestamps via MTI) and
-    applied to all currencies -- Δt reflects the user's overall trading
-    cadence, not a per-currency property.
-
-    Returns None for a currency if:
-      - klines_by_currency has no entry (or an empty list) for that
-        currency, OR
-      - after attempting price lookups for every record, zero records had
-        both P(t) and P(t-Δt) resolvable from the candle data (i.e. total
-        weight is 0).
-
-    Records with unresolvable P(t) or P(t-Δt) (e.g. buy_time falls outside
-    the supplied candle coverage), or with P(t-Δt) == 0 (division-by-zero
-    guard, mirroring the buy_price==0 exclusion pattern used elsewhere in
-    this module), are silently excluded from that currency's weighted
-    average (both numerator and denominator) rather than causing an
-    error -- partial candle coverage degrades gracefully.
-    """
-    mti_hours = calculate_mti_hours(buy_timestamps)
-    delta_t_hours = determine_delta_t_hours(mti_hours)
-    delta_t = timedelta(hours=delta_t_hours)
-
-    results: "dict[str, float | None]" = {}
-
-    for currency, records in records_by_currency.items():
-        candles = klines_by_currency.get(currency)
-        if not candles:
-            results[currency] = None
-            continue
-
-        candles_sorted = sorted(candles, key=lambda candle: candle.timestamp)
-        sigma_effective = _compute_normal_volatility(candles_sorted)
-
-        weighted_sum = 0.0
-        total_weight = 0.0
-
-        for record in records:
-            price_at_t = _find_price_at_or_before(candles_sorted, record.buy_time)
-            price_at_t_minus_dt = _find_price_at_or_before(
-                candles_sorted, record.buy_time - delta_t
-            )
-
-            if price_at_t is None or price_at_t_minus_dt is None:
-                continue
-            if price_at_t_minus_dt == 0:
-                continue
-
-            lookback_return = (price_at_t - price_at_t_minus_dt) / price_at_t_minus_dt
-            lookback_return_positive = max(0.0, lookback_return)
-            chase_intensity = lookback_return_positive / sigma_effective
-
-            weight = record.amount
-            weighted_sum += weight * chase_intensity
-            total_weight += weight
-
-        if total_weight == 0:
-            results[currency] = None
-        else:
-            results[currency] = round(weighted_sum / total_weight, 2)
-
-    return results
-
+# ═══════════════════════════════════════════════════════════════════════════════
+# FIFO matching
+# ═══════════════════════════════════════════════════════════════════════════════
 
 @dataclass
 class _OpenLot:
-    remaining_volume: float
+    remaining: float
     price: float
-    timestamp: datetime
+    timestamp_ms: int
 
 
-def match_fifo_trades(fills: list[RawFill]) -> list[TradeRecord]:
-    """Matches raw buy/sell fills into closed round-trip TradeRecords via FIFO.
+@dataclass(frozen=True)
+class ClosedTrade:
+    currency: str
+    buy_price: float
+    sell_price: float
+    volume: float
+    buy_time_ms: int
+    sell_time_ms: int
 
-    Groups fills by currency (base asset), and within each currency group
-    matches sell volume against the earliest still-open buy lots first.
-    Only closed round-trips are emitted; any buy volume left unmatched at
-    the end (an open position) does not produce a TradeRecord. Raises
-    TradeDataError if a sell fill's volume cannot be fully matched against
-    prior buy fills for that currency (incomplete fill history).
-    """
-    # Group fill original indices by currency, preserving input order.
-    indices_by_currency: dict[str, list[int]] = {}
-    for index, fill in enumerate(fills):
-        indices_by_currency.setdefault(fill.currency, []).append(index)
+    @property
+    def pnl_pct(self) -> float:
+        if self.buy_price == 0:
+            return 0.0
+        return (self.sell_price - self.buy_price) / self.buy_price
 
-    records: list[TradeRecord] = []
-
-    for currency in sorted(indices_by_currency.keys()):
-        indices = indices_by_currency[currency]
-        # Sort chronologically, tie-break by original input order/index.
-        ordered_indices = sorted(indices, key=lambda i: (fills[i].timestamp, i))
-
-        open_lots: deque[_OpenLot] = deque()
-
-        for index in ordered_indices:
-            fill = fills[index]
-
-            if fill.side == "buy":
-                open_lots.append(
-                    _OpenLot(
-                        remaining_volume=fill.volume,
-                        price=fill.price,
-                        timestamp=fill.timestamp,
-                    )
-                )
-                continue
-
-            # side == "sell"
-            unmatched_sell_volume = fill.volume
-            while unmatched_sell_volume > 0:
-                if not open_lots:
-                    raise TradeDataError(
-                        f"Sell of {unmatched_sell_volume} {currency} could not be "
-                        f"matched to any prior buy fill (fill history is likely "
-                        f"incomplete for this currency)"
-                    )
-
-                lot = open_lots[0]
-                matched_volume = min(lot.remaining_volume, unmatched_sell_volume)
-
-                records.append(
-                    TradeRecord(
-                        buy_time=lot.timestamp,
-                        sell_time=fill.timestamp,
-                        amount=matched_volume * lot.price,
-                        currency=currency,
-                        is_stablecoin=currency.upper() in _STABLECOIN_CURRENCIES,
-                        buy_price=lot.price,
-                        sell_price=fill.price,
-                    )
-                )
-
-                lot.remaining_volume -= matched_volume
-                unmatched_sell_volume -= matched_volume
-                if lot.remaining_volume <= 0:
-                    open_lots.popleft()
-
-    return records
+    @property
+    def holding_hours(self) -> float:
+        return (self.sell_time_ms - self.buy_time_ms) / 3_600_000.0
 
 
-def calculate_metrics(
-    records: "list[TradeRecord]",
-    fills: "list[RawFill] | None" = None,
-    klines_by_currency: "dict[str, list[Candle]] | None" = None,
-) -> MetricsResult:
-    """Computes overall + per-currency MetricsResult from TradeRecord entries.
+def match_fifo_trades(trades: list[RawTrade]) -> list[ClosedTrade]:
+    """FIFO-match buy/sell into closed round-trips. Ignores deposit/withdraw."""
+    by_currency: dict[str, list[RawTrade]] = {}
+    for t in trades:
+        by_currency.setdefault(t.currency, []).append(t)
 
-    Raises TradeDataError if records is empty.
-
-    chase_up_index (per currency) requires cross-cutting data beyond a
-    single currency's own records: the account-wide buy timestamps (to
-    determine Δt via MTI) and K-line candle data (to resolve prices at
-    buy time and Δt earlier). If BOTH fills and klines_by_currency are
-    provided, buy-side timestamps are extracted from fills and
-    calculate_chase_up_indices computes a real chase_up_index per
-    currency. If either is None (the default), every currency's
-    chase_up_index is None -- this is the case for the existing CSV-only
-    compute_metrics_json pipeline, which has no K-line data source; see
-    that function's docstring/comment for confirmation this is expected,
-    not a bug.
-    """
-    if not records:
-        raise TradeDataError("No trade data found")
-
-    overall = _calculate_overall_metrics(records)
-
-    records_by_currency: dict[str, list[TradeRecord]] = {}
-    for record in records:
-        records_by_currency.setdefault(record.currency, []).append(record)
-
-    non_stablecoin_groups: dict[str, list[TradeRecord]] = {
-        currency: currency_records
-        for currency, currency_records in records_by_currency.items()
-        # Stablecoin groups (TWD/USDT/USDC) are excluded from by_currency:
-        # their contribution is already captured via overall's
-        # stablecoin_ratio_pct.
-        if not currency_records[0].is_stablecoin
-    }
-
-    chase_up_indices: "dict[str, float | None]"
-    if fills is not None and klines_by_currency is not None:
-        buy_timestamps = [fill.timestamp for fill in fills if fill.side == "buy"]
-        chase_up_indices = calculate_chase_up_indices(
-            non_stablecoin_groups, buy_timestamps, klines_by_currency
-        )
-    else:
-        chase_up_indices = {currency: None for currency in non_stablecoin_groups}
-
-    by_currency: dict[str, CurrencyMetrics] = {
-        currency: _calculate_currency_metrics(
-            currency_records, chase_up_indices.get(currency)
-        )
-        for currency, currency_records in non_stablecoin_groups.items()
-    }
-
-    return MetricsResult(overall=overall, by_currency=by_currency)
+    closed: list[ClosedTrade] = []
+    for currency, group in by_currency.items():
+        sorted_group = sorted(group, key=lambda t: t.timestamp_ms)
+        open_lots: list[_OpenLot] = []
+        for t in sorted_group:
+            if t.action in _BUY_ACTIONS:
+                open_lots.append(_OpenLot(abs(t.change), t.price, t.timestamp_ms))
+            elif t.action in _SELL_ACTIONS:
+                sell_vol = abs(t.change)
+                while sell_vol > 1e-12 and open_lots:
+                    lot = open_lots[0]
+                    matched = min(lot.remaining, sell_vol)
+                    closed.append(ClosedTrade(
+                        currency=currency, buy_price=lot.price,
+                        sell_price=t.price, volume=matched,
+                        buy_time_ms=lot.timestamp_ms, sell_time_ms=t.timestamp_ms,
+                    ))
+                    lot.remaining -= matched
+                    sell_vol -= matched
+                    if lot.remaining < 1e-12:
+                        open_lots.pop(0)
+    return closed
 
 
-def _calculate_overall_metrics(records: list[TradeRecord]) -> OverallMetrics:
-    count = len(records)
+# ═══════════════════════════════════════════════════════════════════════════════
+# R — Risk (Defensive 0 vs. Aggressive 100)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    # --- trading_frequency_per_day ---
-    earliest_buy = min(record.buy_time for record in records)
-    latest_sell = max(record.sell_time for record in records)
-    days_span = (latest_sell - earliest_buy).total_seconds() / 86400
-    frequency_divisor = max(days_span, 1)
-    trading_frequency_per_day = count / frequency_divisor
-
-    # --- stablecoin_ratio_pct ---
-    total_amount = sum(record.amount for record in records)
-    if total_amount == 0:
-        stablecoin_ratio_pct = 0.0
-    else:
-        stablecoin_amount = sum(
-            record.amount for record in records if record.is_stablecoin
-        )
-        stablecoin_ratio_pct = stablecoin_amount / total_amount * 100
-
-    return OverallMetrics(
-        trading_frequency_per_day=round(trading_frequency_per_day, 2),
-        stablecoin_ratio_pct=round(stablecoin_ratio_pct, 2),
-    )
-
-
-def _calculate_currency_metrics(
-    records: "list[TradeRecord]", chase_up_index: "float | None"
-) -> CurrencyMetrics:
-    count = len(records)
-
-    # chase_up_index is now computed cross-cuttingly (needs account-wide
-    # fills + K-line candle data) by calculate_chase_up_indices and passed
-    # in by calculate_metrics -- this function no longer computes it
-    # itself, since a single currency's records alone are insufficient.
-
-    # --- avg_holding_days: mean across ALL records in the group ---
-    holding_days = [
-        (record.sell_time - record.buy_time).total_seconds() / 86400
-        for record in records
-    ]
-    avg_holding_days = sum(holding_days) / count
-
-    # --- return_pct derived metrics, excluding buy_price == 0 ---
-    return_pcts = [
-        (record.sell_price - record.buy_price) / record.buy_price * 100
-        for record in records
-        if record.buy_price != 0
-    ]
-
-    if return_pcts:
-        avg_return_pct = sum(return_pcts) / len(return_pcts)
-    else:
-        avg_return_pct = 0.0
-
-    negative_returns = [value for value in return_pcts if value < 0]
-    if negative_returns:
-        avg_stop_loss_pct = abs(sum(negative_returns) / len(negative_returns))
-    else:
-        avg_stop_loss_pct = 0.0
-
-    if len(return_pcts) < 2:
-        return_std_dev = 0.0
-    else:
-        return_std_dev = statistics.pstdev(return_pcts)
-
-    return CurrencyMetrics(
-        chase_up_index=chase_up_index,
-        avg_stop_loss_pct=round(avg_stop_loss_pct, 2),
-        avg_holding_days=round(avg_holding_days, 2),
-        avg_return_pct=round(avg_return_pct, 2),
-        return_std_dev=round(return_std_dev, 2),
-    )
-
-
-def serialize_metrics(result: "MetricsResult | TradeDataError") -> str:
-    """Converts a MetricsResult or a TradeDataError into a JSON string.
-
-    Produces {"overall": {...}, "by_currency": {"<CURRENCY>": {...}, ...}}
-    when given a MetricsResult, or a single-field {"error": "..."} JSON
-    object when given a TradeDataError. The output is UTF-8-safe (non-ASCII
-    characters are preserved rather than escaped).
-    """
-    if isinstance(result, TradeDataError):
-        payload = {"error": str(result)}
-    elif isinstance(result, MetricsResult):
-        payload = {
-            "overall": asdict(result.overall),
-            "by_currency": {
-                currency: asdict(currency_metrics)
-                for currency, currency_metrics in result.by_currency.items()
-            },
-        }
-    else:
-        raise TypeError(
-            "serialize_metrics expects a MetricsResult or TradeDataError, "
-            f"got {type(result).__name__}"
-        )
-
-    return json.dumps(payload, ensure_ascii=False)
-
-
-def compute_metrics_json(content: "str | bytes") -> str:
-    """Entry point. Orchestrates parse_trades_csv -> match_fifo_trades ->
-    calculate_metrics -> serialize_metrics.
-
-    Accepts raw trade fill CSV content as a str or bytes (bytes are
-    decoded as UTF-8) without requiring a file path. Never raises: any
-    TradeDataError raised along the pipeline is caught internally and
-    routed through serialize_metrics as an error result.
-    """
-    if isinstance(content, bytes):
-        try:
-            text = content.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            return serialize_metrics(
-                TradeDataError(f"Unable to decode content as UTF-8: {exc}")
+def calculate_risk_score(
+    trades: list[RawTrade],
+    volatility_by_currency: "dict[str, float] | None" = None,
+    closed_trades: "list[ClosedTrade] | None" = None,
+) -> dict[str, float]:
+    # R1: Portfolio Volatility (40%)
+    if volatility_by_currency:
+        last_balance: dict[str, tuple[float, float]] = {}
+        for t in trades:
+            last_balance[t.currency] = (t.balance, t.price)
+        total_value = sum(bal * price for bal, price in last_balance.values())
+        if total_value > 0:
+            weighted_vol = sum(
+                (bal * price / total_value) * volatility_by_currency.get(cur, 0.0)
+                for cur, (bal, price) in last_balance.items()
             )
+            s1 = _clamp(weighted_vol * 100.0)
+        else:
+            s1 = 0.0
     else:
-        text = content
+        s1 = 50.0
 
+    # R2: Position Concentration P90 (35%)
+    buys = _buy_only(trades)
+    if buys:
+        ratios: list[float] = []
+        for t in buys:
+            portfolio_approx = t.balance * t.price if t.balance > 0 else t.amount_twd
+            if portfolio_approx > 0:
+                ratios.append(min(t.amount_twd / portfolio_approx, 1.0))
+        if ratios:
+            ratios.sort()
+            p90 = _percentile(ratios, 90)
+            s2 = _clamp((p90 - 0.05) / (0.50 - 0.05) * 100.0)
+        else:
+            s2 = 0.0
+    else:
+        s2 = 0.0
+
+    # R3: Drawdown Tolerance (25%)
+    if closed_trades is None:
+        closed_trades = match_fifo_trades(trades)
+    losing = [ct.pnl_pct for ct in closed_trades if ct.pnl_pct < 0]
+    avg_loss = abs(statistics.mean(losing)) if losing else 0.0
+    lt = (avg_loss + avg_loss) / 2.0  # mirror realized as proxy for unrealized
+    s3 = _clamp((lt - 0.05) / (0.50 - 0.05) * 100.0)
+
+    r_score = (s1 * 0.40) + (s2 * 0.35) + (s3 * 0.25)
+    return {"r_score": round(r_score, 2), "s1_volatility": round(s1, 2),
+            "s2_concentration": round(s2, 2), "s3_drawdown": round(s3, 2)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# E — Emotion (Calm 0 vs. Emotional 100)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_VOLATILITY_EPSILON = 0.001
+_MTI_TIERS = ((2.0, 0.25), (24.0, 1.0), (168.0, 4.0), (float("inf"), 24.0))
+_DEFAULT_DELTA_T_HOURS = 1.0
+
+
+def _compute_mti_hours(timestamps_ms: list[int]) -> "float | None":
+    if len(timestamps_ms) < 2:
+        return None
+    sorted_ts = sorted(timestamps_ms)
+    gaps = []
+    for i in range(1, len(sorted_ts)):
+        diff_s = (sorted_ts[i] - sorted_ts[i - 1]) / 1000.0
+        if diff_s >= 10:
+            gaps.append(diff_s / 3600.0)
+    return statistics.median(gaps) if gaps else None
+
+
+def _determine_delta_t(mti: "float | None") -> float:
+    if mti is None:
+        return _DEFAULT_DELTA_T_HOURS
+    for upper, dt in _MTI_TIERS:
+        if mti < upper:
+            return dt
+    return _MTI_TIERS[-1][1]
+
+
+def _chase_up_score(buy_trades: list[RawTrade], klines: "dict[str, list[Candle]]", delta_t_h: float) -> float:
+    import bisect
+    weighted_sum = 0.0
+    total_weight = 0.0
+    for currency, candles in klines.items():
+        if not candles:
+            continue
+        candles_sorted = sorted(candles, key=lambda c: c.timestamp)
+        timestamps = [c.timestamp for c in candles_sorted]
+        returns = []
+        for j in range(1, len(candles_sorted)):
+            if candles_sorted[j - 1].close > 0:
+                returns.append((candles_sorted[j].close - candles_sorted[j - 1].close) / candles_sorted[j - 1].close)
+        sigma = max(statistics.stdev(returns) if len(returns) >= 2 else 0.0, _VOLATILITY_EPSILON)
+        delta_t = timedelta(hours=delta_t_h)
+        for t in buy_trades:
+            if t.currency != currency:
+                continue
+            buy_dt = t.timestamp_dt
+            idx = bisect.bisect_right(timestamps, buy_dt) - 1
+            if idx < 0:
+                continue
+            p_t = candles_sorted[idx].close
+            idx2 = bisect.bisect_right(timestamps, buy_dt - delta_t) - 1
+            if idx2 < 0:
+                continue
+            p_prev = candles_sorted[idx2].close
+            if p_prev <= 0:
+                continue
+            s_i = max(0.0, (p_t - p_prev) / p_prev) / sigma
+            weighted_sum += t.amount_twd * s_i
+            total_weight += t.amount_twd
+    return weighted_sum / total_weight if total_weight > 0 else 0.0
+
+
+def _revenge_factor(trades: list[RawTrade], closed: list[ClosedTrade]) -> tuple[float, bool]:
+    buy_sell = _buy_sell_only(trades)
+    if len(buy_sell) < 5:
+        return 1.0, False
+    major_losses = [ct for ct in closed if ct.pnl_pct <= -0.10]
+    if not major_losses:
+        return 1.0, False
+    sorted_ts = sorted(t.timestamp_ms for t in buy_sell)
+    span_days = max((sorted_ts[-1] - sorted_ts[0]) / 86_400_000.0, 1.0)
+    baseline_amount = sum(t.amount_twd for t in buy_sell) / span_days
+    baseline_count = len(buy_sell) / span_days
+    if baseline_amount == 0 or baseline_count == 0:
+        return 1.0, True
+    max_f = 1.0
+    for loss in major_losses:
+        w_start = loss.sell_time_ms
+        w_end = w_start + 86_400_000
+        wt = [t for t in buy_sell if w_start < t.timestamp_ms <= w_end]
+        if not wt:
+            continue
+        f = max(sum(t.amount_twd for t in wt) / baseline_amount, len(wt) / baseline_count)
+        max_f = max(max_f, f)
+    return max_f, True
+
+
+def _extreme_impulse_rate(trades: list[RawTrade], klines: "dict[str, list[Candle]]") -> float:
+    buy_sell = _buy_sell_only(trades)
+    if not buy_sell:
+        return 0.0
+    total_vol = 0.0
+    extreme_vol = 0.0
+    for t in buy_sell:
+        total_vol += t.amount_twd
+        candles = klines.get(t.currency)
+        if not candles:
+            continue
+        trade_dt = t.timestamp_dt
+        best: "Candle | None" = None
+        for c in candles:
+            if c.timestamp <= trade_dt <= c.timestamp + timedelta(hours=1):
+                best = c
+                break
+        if best is None or best.high <= best.low:
+            continue
+        r_i = _clamp((t.price - best.low) / (best.high - best.low), 0.0, 1.0)
+        if (t.action in _BUY_ACTIONS and r_i >= 0.85) or (t.action in _SELL_ACTIONS and r_i <= 0.15):
+            extreme_vol += t.amount_twd
+    return extreme_vol / total_vol if total_vol > 0 else 0.0
+
+
+def calculate_emotion_score(
+    trades: list[RawTrade],
+    klines_by_currency: "dict[str, list[Candle]] | None" = None,
+    closed_trades: "list[ClosedTrade] | None" = None,
+) -> dict[str, float]:
+    if klines_by_currency is None:
+        klines_by_currency = {}
+    if closed_trades is None:
+        closed_trades = match_fifo_trades(trades)
+
+    all_ts = [t.timestamp_ms for t in _buy_sell_only(trades)]
+    mti = _compute_mti_hours(all_ts)
+    delta_t = _determine_delta_t(mti)
+
+    buy_trades = _buy_only(trades)
+    cr = _chase_up_score(buy_trades, klines_by_currency, delta_t) if buy_trades and klines_by_currency else 0.0
+    s1 = _clamp((cr - 0.5) / (2.5 - 0.5) * 100.0)
+
+    rf, has_loss = _revenge_factor(trades, closed_trades)
+    s2 = _clamp((rf - 1.0) / (3.0 - 1.0) * 100.0) if has_loss else 0.0
+
+    epr = _extreme_impulse_rate(trades, klines_by_currency)
+    s3 = _clamp((epr - 0.10) / (0.60 - 0.10) * 100.0)
+
+    e_score = (s1 * 0.35) + (s2 * 0.40) + (s3 * 0.25)
+    return {"e_score": round(e_score, 2), "s1_fomo": round(s1, 2),
+            "s2_revenge": round(s2, 2), "s3_impulsive": round(s3, 2)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# F — Frequency (Long-term 0 vs. Short-term 100)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def calculate_frequency_score(trades: list[RawTrade]) -> dict[str, float]:
+    buy_sell = _buy_sell_only(trades)
+    timestamps = sorted(t.timestamp_ms for t in buy_sell)
+    if len(timestamps) < 2:
+        return {"f_score": 0.0, "mti_hours": 720.0}
+    gaps_hours = []
+    for i in range(1, len(timestamps)):
+        diff_s = (timestamps[i] - timestamps[i - 1]) / 1000.0
+        if diff_s >= 10:
+            gaps_hours.append(diff_s / 3600.0)
+    if not gaps_hours:
+        return {"f_score": 100.0, "mti_hours": 0.0}
+    mti = statistics.median(gaps_hours)
+    mti_min, mti_max = 5.0 / 60.0, 720.0
+    if mti <= mti_min:
+        f_score = 100.0
+    elif mti >= mti_max:
+        f_score = 0.0
+    else:
+        f_score = (math.log(mti_max) - math.log(mti)) / (math.log(mti_max) - math.log(mti_min)) * 100.0
+    return {"f_score": round(_clamp(f_score), 2), "mti_hours": round(mti, 2)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# S — Strategy (Intuitive 0 vs. Quantitative 100)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def calculate_strategy_score(
+    trades: list[RawTrade],
+    closed_trades: "list[ClosedTrade] | None" = None,
+) -> dict[str, float]:
+    buy_sell = _buy_sell_only(trades)
+    if len(buy_sell) < 3:
+        s1 = 50.0
+    else:
+        amounts = [t.amount_twd for t in buy_sell if t.amount_twd > 0]
+        sorted_ts = sorted(t.timestamp_ms for t in buy_sell)
+        intervals = [(sorted_ts[i] - sorted_ts[i-1]) / 3_600_000.0
+                     for i in range(1, len(sorted_ts)) if (sorted_ts[i] - sorted_ts[i-1]) >= 10_000]
+        cv_a = (statistics.stdev(amounts) / statistics.mean(amounts)) if len(amounts) >= 2 and statistics.mean(amounts) > 0 else 2.0
+        cv_i = (statistics.stdev(intervals) / statistics.mean(intervals)) if len(intervals) >= 2 and statistics.mean(intervals) > 0 else 2.0
+        cv_avg = (cv_a + cv_i) / 2.0
+        s1 = _clamp((2.0 - cv_avg) / (2.0 - 0.2) * 100.0)
+
+    if closed_trades is None:
+        closed_trades = match_fifo_trades(trades)
+    losing_pnls = [ct.pnl_pct for ct in closed_trades if ct.pnl_pct < 0]
+    sd_loss = statistics.stdev(losing_pnls) if len(losing_pnls) >= 2 else 0.03
+    s2 = _clamp((0.20 - sd_loss) / (0.20 - 0.03) * 100.0)
+
+    s_score = (s1 * 0.45) + (s2 * 0.55)
+    return {"s_score": round(s_score, 2), "s1_regularity": round(s1, 2), "s2_discipline": round(s2, 2)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Main entry point
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def calculate_personality(
+    trades: list[RawTrade],
+    klines_by_currency: "dict[str, list[Candle]] | None" = None,
+    volatility_by_currency: "dict[str, float] | None" = None,
+) -> PersonalityScores:
+    """Compute full 4-axis personality scores. Raises TradeDataError if empty."""
+    if not trades:
+        raise TradeDataError("No trade data found")
+    if klines_by_currency is None:
+        klines_by_currency = {}
+    closed = match_fifo_trades(trades)
+    r = calculate_risk_score(trades, volatility_by_currency, closed)
+    e = calculate_emotion_score(trades, klines_by_currency, closed)
+    f = calculate_frequency_score(trades)
+    s = calculate_strategy_score(trades, closed)
+    return PersonalityScores(
+        r_score=r["r_score"], e_score=e["e_score"],
+        f_score=f["f_score"], s_score=s["s_score"],
+        r_s1_volatility=r["s1_volatility"], r_s2_concentration=r["s2_concentration"],
+        r_s3_drawdown=r["s3_drawdown"], e_s1_fomo=e["s1_fomo"],
+        e_s2_revenge=e["s2_revenge"], e_s3_impulsive=e["s3_impulsive"],
+        f_mti_hours=f["mti_hours"], s_s1_regularity=s["s1_regularity"],
+        s_s2_discipline=s["s2_discipline"],
+    )
+
+
+def serialize_personality(result: "PersonalityScores | TradeDataError") -> str:
+    if isinstance(result, TradeDataError):
+        return json.dumps({"error": str(result)}, ensure_ascii=False)
+    if isinstance(result, PersonalityScores):
+        return json.dumps(asdict(result), ensure_ascii=False)
+    raise TypeError(f"Expected PersonalityScores or TradeDataError, got {type(result).__name__}")
+
+
+def compute_metrics_json(
+    content: "str | bytes",
+    klines_by_currency: "dict[str, list[Candle]] | None" = None,
+    volatility_by_currency: "dict[str, float] | None" = None,
+    **_kwargs,
+) -> str:
+    """Entry point: CSV -> personality JSON. Never raises."""
     try:
-        fills = parse_trades_csv(text)
-        records = match_fifo_trades(fills)
-        # CSV-only pipeline: no K-line data source is available here, so
-        # calculate_metrics is called with its fills/klines_by_currency
-        # defaults (None, None), meaning every currency's chase_up_index
-        # will be None in the output. This is expected/correct for this
-        # entry point, not a bug -- a future service layer that fetches
-        # K-line data can call calculate_metrics directly with fills=fills
-        # and klines_by_currency=... to get real chase_up_index values.
-        result = calculate_metrics(records)
+        trades = parse_trades_csv(content)
+        result = calculate_personality(trades, klines_by_currency, volatility_by_currency)
     except TradeDataError as exc:
-        return serialize_metrics(exc)
-
-    return serialize_metrics(result)
+        return serialize_personality(exc)
+    return serialize_personality(result)

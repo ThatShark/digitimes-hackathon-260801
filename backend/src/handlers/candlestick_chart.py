@@ -45,12 +45,11 @@ Error responses:
 import json
 import math
 import os
-from calendar import timegm
 from datetime import datetime, timezone
 
 from src.services.max_api import MaxApiClient, MaxApiError
 from src.services.s3_storage import S3StorageError, S3StorageService
-from src.utils.metrics import TradeDataError, parse_trades_csv
+from src.utils.metrics import TradeDataError, parse_trades_csv, RawTrade
 
 # ── Interval → MAX period (minutes) ──────────────────────────────────────────
 _INTERVAL_TO_PERIOD: dict[str, int] = {
@@ -178,20 +177,24 @@ def _load_trade_markers(
         if fill.currency.upper() != currency:
             continue
 
-        # Convert the naive CSV datetime to a UTC Unix timestamp.
-        # The CSV timestamps are stored as Taiwan local time (UTC+8), but
-        # parse_trades_csv returns them as naive datetimes. We treat them
-        # as UTC here for timestamp comparison — a known approximation
-        # (±8h) that is acceptable for chart overlay purposes.
-        ts = timegm(fill.timestamp.timetuple())
+        # Map action to buy/sell; skip deposit/withdraw
+        if fill.action == "買":
+            action = "buy"
+        elif fill.action == "賣":
+            action = "sell"
+        else:
+            continue
+
+        # Convert ms timestamp to seconds
+        ts = fill.timestamp_ms // 1000
         if not (start <= ts <= end):
             continue
 
         markers.append({
             "time":   ts,
-            "action": fill.side,          # "buy" or "sell"
+            "action": action,
             "price":  fill.price,
-            "amount": round(fill.price * fill.volume, 2),  # TWD value
+            "amount": round(fill.amount_twd, 2),
         })
 
     # Sort chronologically for frontend convenience.
