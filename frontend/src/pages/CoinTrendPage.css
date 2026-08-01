@@ -263,3 +263,17 @@
   padding: 0;
   background: transparent;
 }
+
+/* Chart tab wrapper: use visibility instead of display to keep animations alive */
+.chart-tab-wrapper.visible {
+  display: contents;
+}
+
+.chart-tab-wrapper.hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  height: 0;
+  overflow: hidden;
+  /* Keep in DOM but invisible — animations continue running */
+}
