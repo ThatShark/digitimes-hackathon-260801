@@ -109,18 +109,41 @@ def lambda_handler(event, context):
     personality_description = ""
     personality_analysis = ""
     try:
+        import time as _time
+
         r = parsed.get("r_score", 50)
         e = parsed.get("e_score", 50)
         f = parsed.get("f_score", 50)
         s = parsed.get("s_score", 50)
 
-        bedrock_client = BedrockChatClient(max_tokens=200, temperature=0.8)
+        # 找出離 50 最遠的兩個維度
+        axes_deviation = [
+            ("R", r, abs(r - 50), "風險偏好", "防守型" if r < 50 else "積極型"),
+            ("E", e, abs(e - 50), "情緒控制", "冷靜型" if e < 50 else "情緒型"),
+            ("F", f, abs(f - 50), "交易頻率", "長線型" if f < 50 else "短線型"),
+            ("S", s, abs(s - 50), "策略類型", "直覺型" if s < 50 else "量化型"),
+        ]
+        axes_deviation.sort(key=lambda x: x[2], reverse=True)
+        top2 = axes_deviation[:2]
 
-        # Short description (一句話，顯示在 UI)
-        personality_prompt = load_personality_prompt()
-        short_message = f"R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
+        # Short description — 根據最偏差的兩個維度生成 ~30 字描述
+        short_system = (
+            "你是投資人格分析師。根據用戶最突出的兩個投資特質，"
+            "用一句話（約30字）描述他的投資風格。"
+            "描述要具體有畫面感，使用繁體中文，只回覆描述文字本身。"
+        )
+        short_message = (
+            f"這位用戶最突出的兩個特質：\n"
+            f"1. {top2[0][3]}={top2[0][0]}{top2[0][1]:.0f}（{top2[0][4]}，偏離中值{top2[0][2]:.0f}分）\n"
+            f"2. {top2[1][3]}={top2[1][0]}{top2[1][1]:.0f}（{top2[1][4]}，偏離中值{top2[1][2]:.0f}分）\n"
+            f"完整分數：R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
+        )
+        bedrock_client = BedrockChatClient(max_tokens=100, temperature=0.8)
         messages = [{"role": "user", "content": [{"text": short_message}]}]
-        personality_description = bedrock_client.chat(messages, system_prompt=personality_prompt)
+        personality_description = bedrock_client.chat(messages, system_prompt=short_system)
+
+        # 間隔 1 秒再呼叫下一次
+        _time.sleep(1)
 
         # Long analysis (詳細分析，注入 AI 對話 system prompt)
         long_prompt = load_personality_long_prompt()
