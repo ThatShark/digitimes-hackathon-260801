@@ -133,6 +133,34 @@ Resources:
             Path: /ai_chat
             Method: POST
 
+  SavePersonalityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-save-personality"
+      Handler: src.handlers.save_personality.lambda_handler
+      CodeUri: .
+      Timeout: 60
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostPersonality:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /personality
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────
