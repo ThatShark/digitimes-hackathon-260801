@@ -132,8 +132,8 @@ export default function CoinTrendPage() {
       isMe,
     }
     setCommunityMessages((prev) => [...prev.slice(-80), msg])
-    // 只有彈幕就緒時才飄動，自己發的優先顯示
-    if (danmakuReadyRef.current) {
+    // 只有彈幕就緒 + 頁面可見時才飄動，自己發的優先顯示
+    if (danmakuReadyRef.current && document.visibilityState === 'visible') {
       danmakuRef.current?.addBullet(user.name, text, isMe)
     }
   }, [])
