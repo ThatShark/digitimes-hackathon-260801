@@ -38,7 +38,7 @@ const MARKET_DATA_TABS = [
   { key: 'events', label: '關鍵事件' },
 ]
 
-function MarketDataTabs({ symbol }) {
+function MarketDataTabs({ symbol, currency }) {
   const [activeTab, setActiveTab] = useState('depth')
   return (
     <div className="market-data-panel">
@@ -54,8 +54,8 @@ function MarketDataTabs({ symbol }) {
         ))}
       </div>
       <div className="market-data-content">
-        {activeTab === 'depth' && <DepthChart symbol={symbol} />}
-        {activeTab === 'trades' && <RecentTrades symbol={symbol} />}
+        {activeTab === 'depth' && <DepthChart symbol={symbol} currency={currency} />}
+        {activeTab === 'trades' && <RecentTrades symbol={symbol} currency={currency} />}
         {activeTab === 'events' && <KeyEvents symbol={symbol} />}
       </div>
     </div>
@@ -88,6 +88,7 @@ export default function CoinTrendPage() {
   const [interval, setInterval] = useState('1M')
   // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
+  const [currency, setCurrency] = useState('TWD') // 'TWD' | 'USD'
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
   const [danmakuSettings, setDanmakuSettings] = useState({
     speed: 'normal',
@@ -222,15 +223,20 @@ export default function CoinTrendPage() {
       {/* Header with tabs */}
       <div className="coin-page-header">
         <div className="coin-page-title-row">
-          <h1 className="coin-page-title">{symbol}/TWD</h1>
+          <h1 className="coin-page-title">{symbol}/{currency}</h1>
           {priceInfo.price === null || priceInfo.price === undefined ? (
             <span className="coin-page-price loading">載入中...</span>
           ) : (
             (() => {
+              const TWD_USD_RATE = 32.5
               const isUp = priceInfo.change >= 0
+              const displayPrice = currency === 'TWD'
+                ? priceInfo.price
+                : priceInfo.price / TWD_USD_RATE
+              const prefix = currency === 'TWD' ? 'NT$' : '$'
               return (
                 <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
-                  NT$ {priceInfo.price.toLocaleString()}
+                  {prefix} {displayPrice.toLocaleString(undefined, { maximumFractionDigits: currency === 'USD' ? 2 : 0 })}
                   <span className="coin-page-change">
                     {isUp ? '+' : ''}{priceInfo.change}%
                   </span>
@@ -238,6 +244,13 @@ export default function CoinTrendPage() {
               )
             })()
           )}
+          <button
+            className="currency-toggle"
+            onClick={() => setCurrency((c) => c === 'TWD' ? 'USD' : 'TWD')}
+            title="切換幣值單位"
+          >
+            {currency === 'TWD' ? '🇹🇼 TWD' : '🇺🇸 USD'}
+          </button>
           <div className="coin-page-actions">
             <BookmarkButton symbol={symbol} />
             <ShareButton symbol={symbol} />
@@ -311,11 +324,11 @@ export default function CoinTrendPage() {
               <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
             </div>
             <div className="trend-trade">
-              <TradePanel symbol={symbol} />
+              <TradePanel symbol={symbol} currency={currency} />
             </div>
           </div>
           <div className="trend-market-data">
-            <MarketDataTabs symbol={symbol} />
+            <MarketDataTabs symbol={symbol} currency={currency} />
           </div>
         </>
       )}

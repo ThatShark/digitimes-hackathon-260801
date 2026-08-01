@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { formatPrice, currencyLabel } from '../../utils/currency'
 import './DepthChart.css'
 
 const BASE_PRICES = {
@@ -24,7 +25,7 @@ function generateOrderBook(basePrice, levels = 20) {
   return { bids, asks }
 }
 
-export default function DepthChart({ symbol }) {
+export default function DepthChart({ symbol, currency = 'TWD' }) {
   const basePrice = BASE_PRICES[symbol] || 1000
   const [hoverInfo, setHoverInfo] = useState(null)
   const { bids, asks } = useMemo(() => generateOrderBook(basePrice), [basePrice])
@@ -85,7 +86,7 @@ export default function DepthChart({ symbol }) {
     <div className="depth-chart">
       <div className="depth-header">
         <span className="depth-title">深度圖</span>
-        <span className="depth-current-price">NT$ {basePrice.toLocaleString()}</span>
+        <span className="depth-current-price">{formatPrice(basePrice, currency)}</span>
       </div>
 
       {/* 圖表區域（含 Y 軸） */}
@@ -114,7 +115,7 @@ export default function DepthChart({ symbol }) {
           {hoverInfo && (
             <div className="depth-tooltip" style={{ left: Math.min(hoverInfo.x, 180), top: Math.max(hoverInfo.y - 40, 0) }}>
               <span className={`tooltip-side ${hoverInfo.side}`}>{hoverInfo.side === 'bid' ? '買盤' : '賣盤'}</span>
-              <span className="tooltip-price">NT$ {hoverInfo.price.toLocaleString()}</span>
+              <span className="tooltip-price">{formatPrice(hoverInfo.price, currency)}</span>
               <span className="tooltip-vol">累積量: {hoverInfo.cumulative.toFixed(4)}</span>
             </div>
           )}
@@ -123,9 +124,9 @@ export default function DepthChart({ symbol }) {
 
       {/* X 軸 */}
       <div className="depth-x-axis">
-        <span className="depth-x-label bid">{bids[bids.length - 1] && `NT$ ${bids[bids.length - 1].price.toLocaleString()}`}</span>
-        <span className="depth-x-label center">現價 (TWD)</span>
-        <span className="depth-x-label ask">{asks[asks.length - 1] && `NT$ ${asks[asks.length - 1].price.toLocaleString()}`}</span>
+        <span className="depth-x-label bid">{bids[bids.length - 1] && formatPrice(bids[bids.length - 1].price, currency)}</span>
+        <span className="depth-x-label center">現價 ({currencyLabel(currency)})</span>
+        <span className="depth-x-label ask">{asks[asks.length - 1] && formatPrice(asks[asks.length - 1].price, currency)}</span>
       </div>
 
       {/* Bid/Ask Ratio */}
@@ -145,11 +146,11 @@ export default function DepthChart({ symbol }) {
         <div className="order-book-side">
           <div className="ob-header bid">買單 (Bid)</div>
           <div className="ob-col-headers">
-            <span>價格 (TWD)</span><span>數量</span><span>累積</span>
+            <span>價格 ({currencyLabel(currency)})</span><span>數量</span><span>累積</span>
           </div>
           {bids.slice(0, 8).map((o, i) => (
             <div key={i} className="ob-row bid">
-              <span className="ob-price">{o.price.toLocaleString()}</span>
+              <span className="ob-price">{formatPrice(o.price, currency)}</span>
               <span className="ob-vol">{o.volume.toFixed(4)}</span>
               <span className="ob-cum">{o.cumulative.toFixed(4)}</span>
               <div className="ob-bar" style={{ width: `${(o.cumulative / maxCum) * 100}%` }} />
@@ -159,11 +160,11 @@ export default function DepthChart({ symbol }) {
         <div className="order-book-side">
           <div className="ob-header ask">賣單 (Ask)</div>
           <div className="ob-col-headers">
-            <span>價格 (TWD)</span><span>數量</span><span>累積</span>
+            <span>價格 ({currencyLabel(currency)})</span><span>數量</span><span>累積</span>
           </div>
           {asks.slice(0, 8).map((o, i) => (
             <div key={i} className="ob-row ask">
-              <span className="ob-price">{o.price.toLocaleString()}</span>
+              <span className="ob-price">{formatPrice(o.price, currency)}</span>
               <span className="ob-vol">{o.volume.toFixed(4)}</span>
               <span className="ob-cum">{o.cumulative.toFixed(4)}</span>
               <div className="ob-bar" style={{ width: `${(o.cumulative / maxCum) * 100}%` }} />
