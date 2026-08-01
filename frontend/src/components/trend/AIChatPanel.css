@@ -228,8 +228,56 @@
 }
 
 /* Community chat tab styles */
+.community-chat-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
 .community-chat {
   gap: 6px;
+}
+
+/* 跳到最新訊息按鈕（Discord 風格） */
+.jump-to-latest {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 4;
+  animation: jump-btn-in 0.18s ease;
+}
+
+.jump-to-latest:hover {
+  opacity: 0.9;
+}
+
+.jump-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
+@keyframes jump-btn-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .community-empty {

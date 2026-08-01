@@ -13,7 +13,7 @@ export default function Sidebar({ open, onToggle }) {
     <aside className={`sidebar ${open ? '' : 'collapsed'}`}>
       <div className="sidebar-top">
         <button className="sidebar-toggle" onClick={onToggle} title="展開/收合">
-          <span className="toggle-icon">{open ? '◀' : '▶'}</span>
+          <span className="toggle-icon">☰</span>
         </button>
         {open && <span className="sidebar-brand">L.I.V.E.</span>}
       </div>
