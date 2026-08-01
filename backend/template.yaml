@@ -32,6 +32,9 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: prod
+      BinaryMediaTypes:
+        - "text/csv"
+        - "multipart/form-data"
       Cors:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
@@ -118,7 +121,10 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
               Resource: "*"
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
       Events:
         PostAiChat:
           Type: Api

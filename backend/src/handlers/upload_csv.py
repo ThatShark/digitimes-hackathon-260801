@@ -10,7 +10,7 @@ import os
 import statistics
 import urllib.request
 
-from src.services.bedrock import BedrockChatClient, BedrockError, load_personality_prompt
+from src.services.bedrock import BedrockChatClient, BedrockError, load_personality_prompt, load_personality_long_prompt
 from src.services.s3_storage import S3StorageError, S3StorageService
 from src.utils.http import json_response
 from src.utils.metrics import (
@@ -47,7 +47,7 @@ def lambda_handler(event, context):
             content_type = v.lower()
             break
 
-    if body_content and ("text/csv" in content_type or "," in body_content[:200]):
+    if body_content and ("text/csv" in content_type or "csv" in content_type or "," in body_content[:200]):
         # CSV was sent directly in the request body (upload from browser)
         import base64
         if event.get("isBase64Encoded"):
@@ -64,7 +64,7 @@ def lambda_handler(event, context):
         try:
             trades_bytes = storage.get_trades_csv(user_id)
         except S3StorageError:
-            return json_response(502, {"status": "error", "message": "無法讀取交易紀錄，請稍後再試"})
+            return json_response(404, {"status": "need_csv", "message": "尚未上傳交易紀錄，請先上傳 CSV 檔案"})
 
     # Parse CSV to get currencies + time range for external API calls.
     try:
@@ -107,24 +107,45 @@ def lambda_handler(event, context):
 
     # ── Generate AI personality description via Bedrock ────────────────────────
     personality_description = ""
+    personality_analysis = ""
     try:
         r = parsed.get("r_score", 50)
         e = parsed.get("e_score", 50)
         f = parsed.get("f_score", 50)
         s = parsed.get("s_score", 50)
 
-        personality_prompt = load_personality_prompt()
-        user_message = f"R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
-
         bedrock_client = BedrockChatClient(max_tokens=200, temperature=0.8)
-        messages = [{"role": "user", "content": [{"text": user_message}]}]
-        personality_description = bedrock_client.chat(messages, system_prompt=personality_prompt)
-    except (BedrockError, Exception):
-        # AI 生成失敗不影響主流程，使用預設描述
-        personality_description = ""
 
-    # Attach AI description to metrics before saving
+        # Short description (一句話，顯示在 UI)
+        personality_prompt = load_personality_prompt()
+        short_message = f"R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
+        messages = [{"role": "user", "content": [{"text": short_message}]}]
+        personality_description = bedrock_client.chat(messages, system_prompt=personality_prompt)
+
+        # Long analysis (詳細分析，注入 AI 對話 system prompt)
+        long_prompt = load_personality_long_prompt()
+        if long_prompt:
+            long_message = (
+                f"R={r:.0f} (波動偏好={parsed.get('r_s1_volatility', 0):.0f}, "
+                f"集中度={parsed.get('r_s2_concentration', 0):.0f}, "
+                f"回撤容忍={parsed.get('r_s3_drawdown', 0):.0f})\n"
+                f"E={e:.0f} (追漲={parsed.get('e_s1_fomo', 0):.0f}, "
+                f"報復交易={parsed.get('e_s2_revenge', 0):.0f}, "
+                f"衝動={parsed.get('e_s3_impulsive', 0):.0f})\n"
+                f"F={f:.0f} (MTI={parsed.get('f_mti_hours', 0):.1f} 小時)\n"
+                f"S={s:.0f} (規律性={parsed.get('s_s1_regularity', 0):.0f}, "
+                f"紀律性={parsed.get('s_s2_discipline', 0):.0f})"
+            )
+            long_client = BedrockChatClient(max_tokens=500, temperature=0.7)
+            long_messages = [{"role": "user", "content": [{"text": long_message}]}]
+            personality_analysis = long_client.chat(long_messages, system_prompt=long_prompt)
+    except (BedrockError, Exception):
+        # AI 生成失敗不影響主流程
+        pass
+
+    # Attach AI descriptions to metrics before saving
     parsed["personality_description"] = personality_description
+    parsed["personality_analysis"] = personality_analysis
     metrics_json = json.dumps(parsed, ensure_ascii=False)
 
     try:
