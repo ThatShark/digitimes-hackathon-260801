@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Markdown from 'react-markdown'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import { sendAiChat } from '../../services/aiApi'
 import './AIChatPanel.css'
@@ -174,7 +175,11 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
         <div className="chat-messages" ref={aiScrollRef} onScroll={handleAiScroll}>
           {messages.map((msg, i) => (
             <div key={i} className={`chat-message ${msg.role}`}>
-              <div className="message-bubble">{msg.content}</div>
+              <div className="message-bubble">
+                {msg.role === 'ai'
+                  ? <Markdown className="ai-markdown">{msg.content}</Markdown>
+                  : msg.content}
+              </div>
             </div>
           ))}
 
