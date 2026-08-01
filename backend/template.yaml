@@ -319,6 +319,65 @@ Resources:
             Path: /allow_trade
             Method: POST
 
+  GetQuestionnaireFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-questionnaire"
+      Handler: src.handlers.get_questionnaire.lambda_handler
+      CodeUri: .
+      Events:
+        GetQuestionnaire:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /questionnaire
+            Method: GET
+
+  SubmitQuestionnaireFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-submit-questionnaire"
+      Handler: src.handlers.submit_questionnaire.lambda_handler
+      CodeUri: .
+      Timeout: 60
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostSubmitQuestionnaire:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /questionnaire/submit
+            Method: POST
+
+  SubmitQuizFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-submit-quiz"
+      Handler: src.handlers.submit_quiz.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostSubmitQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /quiz/submit
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────

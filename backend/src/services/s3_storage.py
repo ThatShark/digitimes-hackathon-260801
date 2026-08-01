@@ -48,6 +48,19 @@ class S3StorageService:
         key = f"users/{user_id}/trade_metrics.json"
         self._put_with_retry(key, metrics_json)
 
+    def put_questionnaire_response(self, user_id: str, questionnaire_id: str, response_json: str) -> None:
+        """Writes users/{userId}/questionnaire/{questionnaire_id}.json. Retries up to
+        RETRY_ATTEMPTS times with RETRY_DELAY_SECONDS between attempts."""
+        key = f"users/{user_id}/questionnaire/{questionnaire_id}.json"
+        self._put_with_retry(key, response_json)
+
+    def get_questionnaire_response(self, user_id: str, questionnaire_id: str) -> bytes:
+        """Reads users/{userId}/questionnaire/{questionnaire_id}.json. Retries up to
+        RETRY_ATTEMPTS times with RETRY_DELAY_SECONDS between attempts. Raises
+        S3StorageError on exhausted retries."""
+        key = f"users/{user_id}/questionnaire/{questionnaire_id}.json"
+        return self._get_with_retry(key)
+
     def put_trades_csv(self, user_id: str, csv_bytes: bytes) -> None:
         """Writes users/{userId}/trades.csv. Retries up to RETRY_ATTEMPTS times."""
         key = f"users/{user_id}/trades.csv"
