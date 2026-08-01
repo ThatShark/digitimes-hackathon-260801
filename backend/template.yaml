@@ -3,6 +3,16 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   智慧投資 L.I.V.E. Backend API — Lambda + API Gateway
 
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: "openai.gpt-oss-120b-1:0"
+    Description: Bedrock model ID for AI chat
+  BedrockRegion:
+    Type: String
+    Default: "us-west-2"
+    Description: AWS region for Bedrock Runtime
+
 Globals:
   Function:
     Runtime: python3.12
@@ -90,6 +100,31 @@ Resources:
           Properties:
             RestApiId: !Ref Api
             Path: /upload_csv
+            Method: POST
+
+  AiChatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ai-chat"
+      Handler: src.handlers.ai_chat.lambda_handler
+      CodeUri: .
+      Timeout: 60
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource: "*"
+      Events:
+        PostAiChat:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /ai_chat
             Method: POST
 
   # ─────────────────────────────────────────────

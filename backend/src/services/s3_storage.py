@@ -40,6 +40,27 @@ class S3StorageService:
         key = f"users/{user_id}/trade_metrics.json"
         self._put_with_retry(key, metrics_json)
 
+    def put_trades_csv(self, user_id: str, csv_bytes: bytes) -> None:
+        """Writes users/{userId}/trades.csv. Retries up to RETRY_ATTEMPTS times."""
+        key = f"users/{user_id}/trades.csv"
+        last_error: Optional[Exception] = None
+        for attempt in range(1, RETRY_ATTEMPTS + 1):
+            try:
+                self._client.put_object(
+                    Bucket=self._bucket,
+                    Key=key,
+                    Body=csv_bytes,
+                    ContentType="text/csv",
+                )
+                return
+            except ClientError as exc:
+                last_error = exc
+                if attempt < RETRY_ATTEMPTS:
+                    time.sleep(RETRY_DELAY_SECONDS)
+        raise S3StorageError(
+            f"Failed to write s3://{self._bucket}/{key} after {RETRY_ATTEMPTS} attempts"
+        ) from last_error
+
     def _get_with_retry(self, key: str) -> bytes:
         last_error: Optional[Exception] = None
         for attempt in range(1, RETRY_ATTEMPTS + 1):

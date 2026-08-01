@@ -1,8 +1,10 @@
+import { useState, useRef } from 'react'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
 import PortfolioOverview from '../components/profile/PortfolioOverview'
+import { analyzePersonality, uploadCsvFile } from '../services/personalityApi'
 import './ProfilePage.css'
 
-// Mock user data
+// Mock user data (personality will be updated after CSV analysis)
 const MOCK_USER = {
   displayName: '林睿瑜',
   bio: '目標在大學畢業前賺進人生第一桶金',
@@ -11,7 +13,7 @@ const MOCK_USER = {
     name: '弄潮兒',
     axes: { R: 68, E: 29, F: 82, S: 71 },
   },
-  personalityDescription: '你是高頻交易的逆勢短線玩家，享受市場波動的藝術，以輕鬆寫意的心態在短線熱點中衝浪。',
+  personalityDescription: '',
   csvUploadedAt: '2025/07/28 14:30',
   stats: {
     totalTrades: 342,
@@ -34,7 +36,74 @@ const MOCK_HISTORY = [
 ]
 
 export default function ProfilePage() {
-  const user = MOCK_USER
+  const [user, setUser] = useState(MOCK_USER)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState('')
+  const fileInputRef = useRef(null)
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+
+    setIsAnalyzing(true)
+    setAnalysisError('')
+    try {
+      const data = await uploadCsvFile(file, 'demo-user')
+      if (data.personality_description) {
+        setUser((prev) => ({
+          ...prev,
+          personalityDescription: data.personality_description,
+          csvUploadedAt: new Date().toLocaleString('zh-TW'),
+          personality: {
+            ...prev.personality,
+            axes: {
+              R: data.scores?.r_score ?? prev.personality.axes.R,
+              E: data.scores?.e_score ?? prev.personality.axes.E,
+              F: data.scores?.f_score ?? prev.personality.axes.F,
+              S: data.scores?.s_score ?? prev.personality.axes.S,
+            },
+          },
+        }))
+      }
+    } catch (err) {
+      setAnalysisError('上傳失敗，請確認檔案格式後再試')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleAnalyzePersonality = async () => {
+    setIsAnalyzing(true)
+    setAnalysisError('')
+    try {
+      const data = await analyzePersonality('demo-user')
+      if (data.personality_description) {
+        setUser((prev) => ({
+          ...prev,
+          personalityDescription: data.personality_description,
+          personality: {
+            ...prev.personality,
+            axes: {
+              R: data.scores?.r_score ?? prev.personality.axes.R,
+              E: data.scores?.e_score ?? prev.personality.axes.E,
+              F: data.scores?.f_score ?? prev.personality.axes.F,
+              S: data.scores?.s_score ?? prev.personality.axes.S,
+            },
+          },
+        }))
+      }
+    } catch (err) {
+      setAnalysisError('分析失敗，請稍後再試')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
 
   return (
     <div className="profile-page">
@@ -59,14 +128,39 @@ export default function ProfilePage() {
           <h2 className="card-title">投資人格 4 軸</h2>
           <p className="personality-summary">
             <span className="personality-tag">{user.personality.code} {user.personality.name}</span>
-            {' '}{user.personalityDescription}
+            {' '}{user.personalityDescription || '上傳 CSV 後，AI 將為你生成專屬投資人格描述。'}
           </p>
+          {isAnalyzing && (
+            <p className="personality-loading">AI 正在分析你的投資人格...</p>
+          )}
+          {analysisError && (
+            <p className="personality-error">{analysisError}</p>
+          )}
           <PersonalityBadge personality={user.personality} />
           <div className="csv-info">
             <span className="csv-label">CSV 上傳時間：{user.csvUploadedAt}</span>
             <div className="csv-actions">
-              <button className="csv-btn">重新上傳</button>
-              <button className="csv-btn primary">重新分析人格</button>
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+              <button
+                className="csv-btn"
+                onClick={handleUploadClick}
+                disabled={isAnalyzing}
+              >
+                重新上傳
+              </button>
+              <button
+                className="csv-btn primary"
+                onClick={handleAnalyzePersonality}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? '分析中...' : '重新分析人格'}
+              </button>
             </div>
           </div>
         </section>
