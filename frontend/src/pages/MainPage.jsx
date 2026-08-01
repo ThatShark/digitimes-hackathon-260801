@@ -4,7 +4,7 @@ import MarketOverview from '../components/main/MarketOverview'
 import Watchlist from '../components/main/Watchlist'
 import NotificationBanner from '../components/shared/NotificationBanner'
 import BookmarkButton from '../components/shared/BookmarkButton'
-import { getCoinPrice } from '../services/coinApi'
+import { fetchLivePriceInfo } from '../services/coinApi'
 import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
 
@@ -48,23 +48,11 @@ const COIN_NAMES = {
 }
 
 /**
- * 嘗試向後端取得即時價格；若後端未設定或請求失敗，
- * 回傳 null 讓呼叫端 fallback 回 mock 資料。
+ * 幣種卡片需要 name 欄位，補在共用的 fetchLivePriceInfo 結果上。
  */
 async function fetchLivePrice(symbol) {
-  if (!isBackendConfigured()) return null
-  try {
-    const data = await getCoinPrice(symbol)
-    const change = data.open ? ((data.last - data.open) / data.open) * 100 : 0
-    return {
-      symbol,
-      name: COIN_NAMES[symbol] || symbol,
-      price: data.last,
-      change: Math.round(change * 10) / 10,
-    }
-  } catch {
-    return null
-  }
+  const live = await fetchLivePriceInfo(symbol)
+  return live ? { ...live, name: COIN_NAMES[symbol] || symbol } : null
 }
 
 function CoinCard({ coin }) {
