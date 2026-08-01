@@ -27,6 +27,7 @@ _DEFAULT_REGION = "us-west-2"
 _PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 _SYSTEM_PROMPT_FILE = _PROMPT_DIR / "system_prompt.txt"
 _PERSONALITY_PROMPT_FILE = _PROMPT_DIR / "personality_prompt.txt"
+_PERSONALITY_LONG_PROMPT_FILE = _PROMPT_DIR / "personality_long_prompt.txt"
 
 
 class BedrockError(Exception):
@@ -45,6 +46,14 @@ def load_personality_prompt() -> str:
     """Read personality analysis prompt from file. Returns empty string if missing."""
     try:
         return _PERSONALITY_PROMPT_FILE.read_text(encoding="utf-8").strip()
+    except FileNotFoundError:
+        return ""
+
+
+def load_personality_long_prompt() -> str:
+    """Read detailed personality analysis prompt from file. Returns empty string if missing."""
+    try:
+        return _PERSONALITY_LONG_PROMPT_FILE.read_text(encoding="utf-8").strip()
     except FileNotFoundError:
         return ""
 

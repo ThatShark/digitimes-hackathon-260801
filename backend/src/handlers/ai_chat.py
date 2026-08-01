@@ -25,9 +25,11 @@ Error responses:
 """
 
 import json
+import os
 import re
 
 from src.services.bedrock import BedrockChatClient, BedrockError
+from src.services.s3_storage import S3StorageService
 from src.utils.http import json_response
 
 # Keywords to detect trade suggestions in AI response
@@ -36,6 +38,8 @@ _SELL_KEYWORDS = ["建議賣出", "建議賣", "建議出場", "suggest sell", "
 
 # Regex to extract amount (e.g. "5000", "NT$5,000", "5000 TWD")
 _AMOUNT_PATTERN = re.compile(r"(?:NT\$?\s?|TWD\s?)?(\d[\d,]*)")
+
+_BUCKET_NAME_ENV_VAR = "TRADES_BUCKET_NAME"
 
 
 def lambda_handler(event, context):
@@ -52,8 +56,11 @@ def lambda_handler(event, context):
 
     currency = (body.get("currency") or "").strip() or None
 
+    # ── Load user personality analysis for system prompt context ───────────────
+    user_id = _extract_user_id(event)
+    personality_context = _load_personality_analysis(user_id)
+
     # ── Build Bedrock messages ────────────────────────────────────────────────
-    # Single-turn for now; frontend can extend to multi-turn by sending history
     user_content = message
     if currency:
         user_content = f"[目前查看幣種: {currency}] {message}"
@@ -62,11 +69,27 @@ def lambda_handler(event, context):
         {"role": "user", "content": [{"text": user_content}]},
     ]
 
+    # ── Build enhanced system prompt with personality context ──────────────────
+    enhanced_system_prompt = None
+    if personality_context:
+        enhanced_system_prompt = (
+            f"## 這位用戶的投資人格分析\n"
+            f"{personality_context}\n\n"
+            f"請根據以上用戶特質，調整你的回覆風格和建議方向。"
+        )
+
     # ── Call Bedrock ──────────────────────────────────────────────────────────
     client = BedrockChatClient()
 
     try:
-        ai_reply = client.chat(messages)
+        # If we have personality context, prepend it to the default system prompt
+        if enhanced_system_prompt:
+            from src.services.bedrock import _load_system_prompt
+            base_prompt = _load_system_prompt()
+            full_prompt = f"{base_prompt}\n\n{enhanced_system_prompt}"
+            ai_reply = client.chat(messages, system_prompt=full_prompt)
+        else:
+            ai_reply = client.chat(messages)
     except BedrockError:
         return _error(503, "AI 服務暫時無法使用，請稍後再試")
 
@@ -83,6 +106,38 @@ def lambda_handler(event, context):
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _load_personality_analysis(user_id: "str | None") -> str:
+    """Load the user's long personality analysis from S3. Returns '' on failure."""
+    if not user_id:
+        return ""
+    bucket = os.environ.get(_BUCKET_NAME_ENV_VAR, "")
+    if not bucket:
+        return ""
+    try:
+        storage = S3StorageService(bucket_name=bucket)
+        metrics_bytes = storage._get_with_retry(f"users/{user_id}/trade_metrics.json")
+        metrics = json.loads(metrics_bytes.decode("utf-8"))
+        return metrics.get("personality_analysis", "")
+    except Exception:
+        return ""
+
+
+def _extract_user_id(event) -> "str | None":
+    """Extract user_id from query params, path params, or authorizer."""
+    query_params = event.get("queryStringParameters") or {}
+    user_id = query_params.get("user_id")
+    if user_id:
+        return user_id
+    path_params = event.get("pathParameters") or {}
+    user_id = path_params.get("user_id")
+    if user_id:
+        return user_id
+    try:
+        return event["requestContext"]["authorizer"]["claims"]["sub"]
+    except (KeyError, TypeError):
+        return None
+
 
 def _extract_suggestion(ai_text: str, currency: "str | None") -> "dict | None":
     """Attempt to extract a structured trade suggestion from AI text.
