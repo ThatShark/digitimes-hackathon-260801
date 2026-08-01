@@ -80,23 +80,38 @@ export default function CoinTrendPage() {
   const [activeTab, setActiveTab] = useState('chart')
   const [interval, setInterval] = useState('1M')
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
-  const [danmakuMessages, setDanmakuMessages] = useState([])
-  // 聊天室訊息（與彈幕共用同一份來源）
+  // 聊天室訊息
   const [communityMessages, setCommunityMessages] = useState([])
-  const [danmakuSettings, setDanmakuSettings] = useState({
-    speed: 'normal',
-    size: 'medium',
-    position: 'top20',
-  })
 
   const now = useRef(Math.floor(Date.now() / 1000)).current
   const dataTo = now
   const dataFrom = now - (INTERVAL_SECONDS[interval] || INTERVAL_SECONDS['1M'])
   const [visibleFrom, setVisibleFrom] = useState(0)
   const [visibleTo, setVisibleTo] = useState(1)
-  // Actual timestamps of the visible range (for indicator sync)
   const [visibleTimeRange, setVisibleTimeRange] = useState(null)
   const chartRef = useRef(null)
+  const danmakuRef = useRef(null)
+  // 彈幕是否就緒（切 tab 或開關彈幕後延遲 0.5s）
+  const danmakuReadyRef = useRef(true)
+
+  // 彈幕顯示條件：行情 tab + 彈幕開啟
+  const danmakuVisible = activeTab === 'chart' && danmakuEnabled
+
+  // 當彈幕從不可見變為可見時，設定 0.5s 靜默期
+  const prevVisibleRef = useRef(danmakuVisible)
+  useEffect(() => {
+    if (danmakuVisible && !prevVisibleRef.current) {
+      // 剛變為可見，啟動靜默期
+      danmakuReadyRef.current = false
+      const timer = setTimeout(() => { danmakuReadyRef.current = true }, 500)
+      prevVisibleRef.current = true
+      return () => clearTimeout(timer)
+    }
+    if (!danmakuVisible) {
+      prevVisibleRef.current = false
+      danmakuReadyRef.current = false
+    }
+  }, [danmakuVisible])
 
   const handleIntervalChange = useCallback((newInterval) => {
     setInterval(newInterval)
@@ -105,8 +120,7 @@ export default function CoinTrendPage() {
   }, [])
 
   /**
-   * 單一入口：新增一則社群訊息。
-   * 同時寫入聊天室清單與彈幕 overlay，確保兩邊內容一致。
+   * 單一入口：新增一則社群訊息到聊天室。
    */
   const addCommunityMessage = useCallback((user, text, isMe = false) => {
     const id = `${Date.now()}-${Math.random()}`
@@ -118,11 +132,14 @@ export default function CoinTrendPage() {
       isMe,
     }
     setCommunityMessages((prev) => [...prev.slice(-80), msg])
-    setDanmakuMessages((prev) => [...prev.slice(-40), { user: user.name, text, id }])
+    // 只有彈幕就緒時才飄動，自己發的優先顯示
+    if (danmakuReadyRef.current) {
+      danmakuRef.current?.addBullet(user.name, text, isMe)
+    }
   }, [])
 
-  // K 線圖控制列的「發送彈幕」也走同一個入口
-  const handleSendDanmaku = useCallback((text) => {
+  // K 線圖控制列的「發送」走同一個入口
+  const handleSendMessage = useCallback((text) => {
     addCommunityMessage(ME_USER, text, true)
   }, [addCommunityMessage])
 
@@ -216,13 +233,14 @@ export default function CoinTrendPage() {
                   interval={interval}
                   onTimeRangeChange={handleTimeRangeChange}
                 />
-                <DanmakuOverlay
-                  enabled={danmakuEnabled}
-                  messages={danmakuMessages}
-                  speed={danmakuSettings.speed}
-                  size={danmakuSettings.size}
-                  position={danmakuSettings.position}
-                />
+                {danmakuVisible && (
+                  <DanmakuOverlay
+                    ref={danmakuRef}
+                    speed="normal"
+                    size="medium"
+                    position="top20"
+                  />
+                )}
                 <button
                   className="chart-fullscreen-btn"
                   onClick={handleFullscreen}
@@ -234,11 +252,9 @@ export default function CoinTrendPage() {
               <ChartControls
                 interval={interval}
                 onIntervalChange={handleIntervalChange}
+                onSendMessage={handleSendMessage}
                 danmakuEnabled={danmakuEnabled}
-                onDanmakuToggle={() => setDanmakuEnabled(!danmakuEnabled)}
-                onSendDanmaku={handleSendDanmaku}
-                danmakuSettings={danmakuSettings}
-                onDanmakuSettingsChange={setDanmakuSettings}
+                onDanmakuToggle={() => setDanmakuEnabled((v) => !v)}
                 dataFrom={dataFrom}
                 dataTo={dataTo}
                 visibleFrom={visibleFrom}
