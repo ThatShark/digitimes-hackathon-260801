@@ -5,6 +5,7 @@ import QuestionnaireCard from '../components/community/QuestionnaireCard'
 import SentimentGauge from '../components/community/SentimentGauge'
 import BountyQuestion from '../components/community/BountyQuestion'
 import WhaleAlertCard from '../components/community/WhaleAlertCard'
+import StrategyCard from '../components/community/StrategyCard'
 import NotificationBanner from '../components/shared/NotificationBanner'
 import './CommunityPage.css'
 
@@ -120,6 +121,76 @@ const MOCK_BOUNTIES = [
   },
 ]
 
+// 模擬策略卡片
+const MOCK_STRATEGIES = [
+  {
+    id: 's1',
+    type: 'grid',
+    author: { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
+    coin: 'BTC',
+    params: { low: '2,700,000', high: '3,000,000', grids: 50, profit: 12.8 },
+    stats: { apy: 85.4, runDays: 12, trades: 342, followers: 48 },
+    risk: 'medium',
+    time: '1 小時前',
+    verified: true,
+  },
+  {
+    id: 's2',
+    type: 'dca',
+    author: { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
+    coin: 'BTC',
+    params: { frequency: '每日', totalReturn: 42 },
+    stats: { runDays: 180, followers: 126 },
+    risk: 'low',
+    time: '3 小時前',
+    verified: true,
+  },
+  {
+    id: 's3',
+    type: 'martingale',
+    author: { name: '陳Ｊ哥', personality: { code: 'AESI', name: '探險家', axes: { R: 82, E: 78, F: 85, S: 70 } } },
+    coin: 'ETH',
+    params: { dropPct: 2, multiplier: 1.5, maxLayers: 6, takeProfitPct: 1.5 },
+    stats: { apy: 62.3, runDays: 28, trades: 89, followers: 35 },
+    risk: 'high',
+    time: '5 小時前',
+    verified: true,
+  },
+  {
+    id: 's4',
+    type: 'arbitrage',
+    author: { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
+    coin: 'ETH',
+    params: { estApy: 18.5, fundingRate: 0.01 },
+    stats: { apy: 18.5, runDays: 60, followers: 92 },
+    risk: 'low',
+    time: '6 小時前',
+    verified: true,
+  },
+  {
+    id: 's5',
+    type: 'basket',
+    author: { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
+    coin: 'Multi',
+    params: { assets: ['SOL 40%', 'DOT 30%', 'ADA 30%'], rebalanceThreshold: 5, totalReturn: 28.5 },
+    stats: { runDays: 45, followers: 67 },
+    risk: 'medium',
+    time: '8 小時前',
+    verified: true,
+  },
+  {
+    id: 's6',
+    type: 'signal',
+    author: { name: '李小雨', personality: { code: 'DELI', name: '造夢者', axes: { R: 25, E: 65, F: 20, S: 72 } } },
+    coin: 'BTC',
+    params: { condition: '4H RSI < 30 抄底', winRate: 72 },
+    stats: { trades: 50, winRate: 72, followers: 41 },
+    risk: 'medium',
+    time: '9 小時前',
+    verified: true,
+  },
+]
+
 const TABS = [
   { key: 'recommended', label: '推薦' },
   { key: 'latest', label: '最新' },
@@ -220,13 +291,22 @@ export default function CommunityPage() {
   // 插入特殊卡片到 feed 中
   const feedItems = []
   sortedPosts.forEach((post, index) => {
+    if (index === 2) {
+      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[0].id}`} strategy={MOCK_STRATEGIES[0]} />)
+    }
     if (index === QUESTIONNAIRE_POSITION) {
       feedItems.push(<QuestionnaireCard key="questionnaire" />)
+    }
+    if (index === 4) {
+      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[1].id}`} strategy={MOCK_STRATEGIES[1]} />)
     }
     if (index === BOUNTY_POSITION) {
       feedItems.push(
         <BountyQuestion key={`bounty-${MOCK_BOUNTIES[0].id}`} bounty={MOCK_BOUNTIES[0]} />
       )
+    }
+    if (index === 6) {
+      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[2].id}`} strategy={MOCK_STRATEGIES[2]} />)
     }
     feedItems.push(<PostCard key={post.id} post={post} />)
   })

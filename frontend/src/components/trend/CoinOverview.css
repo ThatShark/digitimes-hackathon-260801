@@ -1,0 +1,76 @@
+.coin-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.overview-tag {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  padding: 12px 14px;
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.metric-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.metric-value.up { color: #10b981; }
+.metric-value.down { color: #ef4444; }
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+}
+
+.overview-about {
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
+.about-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 8px;
+}
+
+.about-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+}

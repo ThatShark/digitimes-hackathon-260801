@@ -206,3 +206,79 @@
 
 - 真實鏈上代幣打賞/轉帳（需錢包基建）
 - KOL 真實 API 綁定驗證（Demo 用 CSV 代替）
+
+
+---
+
+## 10. 幣種詳情六大分頁系統 (Coin Detail Tabs)
+
+CoinTrendPage 改為六大分頁架構，每個幣種頁面包含：
+
+### Tab 1: 行情 (Charts & Market) ✅ 已實作
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| K 線圖 + 時間週期切換 | ✅ 已有 | `KLineChart.jsx` |
+| 技術指標（VOL/MA/EMA/BOLL/SAR） | ✅ 已有 | `IndicatorPanel.jsx` |
+| 深度圖 (累積面積圖 + hover + ratio bar) | ✅ 已有 | `DepthChart.jsx` |
+| 最新成交明細 | ✅ 已有 | `RecentTrades.jsx` |
+| 關鍵事件（鏈上大額轉帳 log） | ✅ 已有 | `KeyEvents.jsx` |
+| 彈幕聊天 + AI 對話 | ✅ 已有 | `AIChatPanel.jsx` |
+| 交易面板（市價/限價/TP-SL） | ✅ 已有 | `TradePanel.jsx` |
+
+### Tab 2: 概況 (Overview) ✅ 已實作
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| 幣種基本數據（市值、流通量、排名等） | ✅ 已有 | `CoinOverview.jsx` |
+| ATH / ATL 歷史價格 | ✅ 已有 | `CoinOverview.jsx` |
+| 項目簡介 (About) | ✅ 已有 | `CoinOverview.jsx` |
+| 標籤系統（主流幣 / Layer 1 等） | ✅ 已有 | `CoinOverview.jsx` |
+| 交易規則（最小變動、精度、檔位表） | ❌ 未來 | — |
+| 指數樣本（多交易所加權） | ❌ 未來 | — |
+
+### Tab 3: 數據 (Data & Analytics) ✅ 已實作
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| 資金流向圓餅圖（特大/大/中/小單） | ✅ 已有 | `FundFlowChart.jsx` |
+| 淨資金流向柱狀圖（近 7 日） | ✅ 已有 | `FundFlowChart.jsx` |
+| 時間週期切換（5分/1H/4H/1日） | ✅ 已有 | `FundFlowChart.jsx` |
+| 槓桿多空比曲線 | ❌ 未來 | — |
+| 多空借幣量走勢 | ❌ 未來 | — |
+
+### Tab 4: 動態 (Social & Feed) ✅ 已實作（復用 AIChatPanel）
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| AI 對話（全寬模式） | ✅ 已有 | `AIChatPanel.jsx` |
+| 彈幕聊天室 | ✅ 已有 | `AIChatPanel.jsx` |
+| AI 情緒分析摘要 | ⚠️ 未來整合 | `SentimentGauge.jsx` |
+| KOL 社群貼文流 | ⚠️ 未來整合 | `PostCard.jsx` |
+
+### Tab 5: 交易 (Trading & Products) ✅ 已實作
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| 現貨交易（市價/限價/TP-SL） | ✅ 已有 | `TradePanel.jsx` |
+| 深度圖搭配下單 | ✅ 已有 | `DepthChart.jsx` |
+| 永續合約 | ❌ MAX 不支援 | — |
+| 期權 / 雙幣贏 | ❌ 超出 scope | — |
+| 跟單交易（帶單交易員列表） | ⚠️ 未來 | — |
+
+### Tab 6: 策略 (Trading Bots) ✅ 已實作
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| 策略建立入口（6 種類型卡片） | ✅ 已有 | `StrategyHub.jsx` |
+| AI 網格模板推薦（短/中/長期） | ✅ 已有 | `StrategyHub.jsx` |
+| 實盤賺取動態 | ✅ 已有 | `StrategyHub.jsx` |
+| 策略回測工具 | ❌ 未來 | — |
+
+### 全域功能
+
+| 功能 | 狀態 | 安置位置 |
+|------|------|----------|
+| 分享按鈕（複製連結 / 長圖 / 社交分享） | ✅ 已有 | `ShareButton.jsx` |
+| 自選收藏星星 | ⚠️ 已有 Watchlist | `Watchlist.jsx` |
+| 即時新聞跑馬燈 | ✅ 已有 | `NotificationBanner.jsx` |
