@@ -1,0 +1,25 @@
+.coin-social-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feed-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.feed-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
