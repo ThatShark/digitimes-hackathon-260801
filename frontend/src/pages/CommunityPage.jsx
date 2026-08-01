@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import PostCard from '../components/community/PostCard'
 import PostComposer from '../components/community/PostComposer'
 import QuestionnaireCard from '../components/community/QuestionnaireCard'
@@ -144,6 +145,19 @@ const BOUNTY_POSITION = 5
 export default function CommunityPage() {
   const [posts, setPosts] = useState(MOCK_POSTS)
   const [activeTab, setActiveTab] = useState('recommended')
+  const location = useLocation()
+
+  // 從搜尋結果跳轉過來時，滾動到指定貼文
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash)
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+        el.classList.add('highlight')
+        setTimeout(() => el.classList.remove('highlight'), 2000)
+      }
+    }
+  }, [location.hash])
 
   const handleNewPost = useCallback((newPost) => {
     const post = {
@@ -199,7 +213,11 @@ export default function CommunityPage() {
     if (index === 6) {
       feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[2].id}`} strategy={MOCK_STRATEGIES[2]} />)
     }
-    feedItems.push(<PostCard key={post.id} post={post} />)
+    feedItems.push(
+      <div key={post.id} id={`post-${post.id}`}>
+        <PostCard post={post} />
+      </div>
+    )
   })
   // 如果貼文數不足，附加在最後
   if (sortedPosts.length <= QUESTIONNAIRE_POSITION) {
