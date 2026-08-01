@@ -39,19 +39,20 @@ export async function apiFetch(path, options = {}) {
     )
   }
 
-  const { method = 'GET', body, headers = {}, timeoutMs = 10000 } = options
+  const { method = 'GET', body, headers = {}, timeoutMs = 10000, rawBody = false } = options
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
+    const defaultContentType = body && !rawBody ? { 'Content-Type': 'application/json' } : {}
     const res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: {
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...defaultContentType,
         ...headers,
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (rawBody ? body : JSON.stringify(body)) : undefined,
       signal: controller.signal,
     })
 

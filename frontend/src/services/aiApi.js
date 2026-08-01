@@ -11,9 +11,10 @@ import { apiFetch } from './api'
  * @returns {Promise<{status, message, investment_suggestion: {currency, action, amount} | null}>}
  */
 export function sendAiChat(message, currency) {
-  return apiFetch('/ai_chat', {
+  return apiFetch('/ai_chat?user_id=demo-user', {
     method: 'POST',
     body: { message, ...(currency ? { currency } : {}) },
+    timeoutMs: 30000,
   })
 }
 
