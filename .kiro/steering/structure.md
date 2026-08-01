@@ -34,15 +34,18 @@ digitimes-hackathon-260801/
 │       │   │   ├── RecentTrades.jsx     # Real-time trade stream (MAX API)
 │       │   │   └── AIChatPanel.jsx      # Dual-tab: AI 對話 + 彈幕聊天 (receives communityMessages/onSendCommunity as props from CoinTrendPage)
 │       │   ├── community/
-│       │   │   ├── PostCard.jsx         # Single post with personality prefix + verified badge
+│       │   │   ├── PostCard.jsx         # Single post with personality prefix + verified badge; clicking navigates to /community/post/:postId (action buttons stopPropagation)
 │       │   │   ├── PostComposer.jsx     # Create new post (supports $Ticker auto-detection)
+│       │   │   ├── CommentItem.jsx      # Single floor-numbered comment (flat, no nested replies); has its own like + TipButton
+│       │   │   ├── CommentComposer.jsx  # Reply input at bottom of post detail page — text + up to 4 images (mock via blob URL)
+│       │   │   ├── ShareButton.jsx      # Popover with the post's shareable URL (window.location.origin + /community/post/:id) + copy-to-clipboard
 │       │   │   ├── QuestionnaireCard.jsx # Questionnaire "ad card" in feed
 │       │   │   ├── VerifiedBadge.jsx    # 實盤驗證標籤 (Verified PnL indicator)
 │       │   │   ├── CopyTradeButton.jsx  # 「跟隨此策略」按鈕 + 金額設定 modal
 │       │   │   ├── TickerCard.jsx       # $BTC/$ETH 動態幣種互動卡片
 │       │   │   ├── WhaleAlertCard.jsx   # 巨鯨警報卡片 (mock data + 一鍵追買)
 │       │   │   ├── SentimentGauge.jsx   # 社群情緒儀表盤 (看多/看空比例)
-│       │   │   ├── TipButton.jsx        # 微額打賞按鈕 (虛擬積分)
+│       │   │   ├── TipButton.jsx        # 微額打賞按鈕 (虛擬積分) — used on both posts and comments independently
 │       │   │   └── BountyQuestion.jsx   # 付費懸賞提問卡片
 │       │   ├── profile/
 │       │   │   └── PortfolioOverview.jsx # 資產總覽 (holdings × price, P&L)
@@ -52,7 +55,13 @@ digitimes-hackathon-260801/
 │       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒)
 │       ├── utils/
 │       │   ├── indicators.js     # Technical indicator math: MA/EMA/MACD/BOLL/RSI/KDJ/STOCH/VOL/OBV/ATR (pure functions, candles in → {time,value}[] out)
-│       │   └── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
+│       │   ├── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
+│       │   └── mockCommunity.js  # Shared mock posts/comments/bounties — single source so CommunityPage (feed) and PostDetailPage (thread) never diverge
+│       ├── services/             # API client layer — see tech.md "Backend Connection"
+│       │   ├── api.js            # Base fetch wrapper (apiFetch/ApiError/isBackendConfigured), reads VITE_API_BASE_URL
+│       │   ├── coinApi.js        # /coin/price, /market/fear-greed, /candlestick_chart
+│       │   ├── aiApi.js          # /ai_chat, /allow_trade
+│       │   └── communityApi.js   # /community/feed, /community/post, likes, comments, /tipping
 │       └── __tests__/
 │           └── preservation.test.jsx
 │
@@ -119,6 +128,7 @@ digitimes-hackathon-260801/
 | MainPage | `/` | YouTube-style homepage with coin cards in sections (平時關注, 熱門, 潛力, 社群貼文) + Market Overview |
 | CoinTrendPage | `/coin/:symbol` | Live stream page — K-line chart + AI chat + danmaku + trade panel + depth/trades |
 | CommunityPage | `/community` | Threads-style social feed with personality-weighted algorithm |
+| PostDetailPage | `/community/post/:postId` | Single post + floor-numbered comment thread (no nested replies) |
 | ProfilePage | `/profile` | User profile — personality 4-axis, portfolio overview, trade history, watched coins |
 | QuestionnairePage | `/questionnaire` | Personality questionnaire (also appears as cards in community feed) |
 
@@ -184,6 +194,17 @@ Chat-like scrolling containers (AI chat, community chat) must **never** use `scr
 - If the user has scrolled up and a new message arrives, show a floating "跳到最新訊息" button (Discord-style) instead of forcing a scroll; clicking it does a smooth `scrollTo` and clears the flag.
 - Page-level containers that should never scroll (e.g. `CoinTrendPage`) should set `overflow: hidden` explicitly rather than relying on inner components to behave.
 
+## Community Comment Threads
+
+`PostDetailPage` (`/community/post/:postId`) shows the full post at the top and a flat, floor-numbered comment thread below it.
+
+- **Floors are flat, not nested** — every comment is a top-level reply to the post; there is no reply-to-comment UI. This matches `api.yaml`'s `CommentItem.floor` contract: 1F is the earliest comment, floors are assigned once at creation and never renumbered even if an earlier comment is deleted.
+- **Floor order = chronological order** — comments are appended to the end of the list (`floor: prev.length + 1`), so rendering the array in order is sufficient; no separate sort step needed.
+- Comments support their own **like** and **tip** (via `TipButton`), completely independent from the parent post's counts — liking a comment never changes the post's `like_count`.
+- Both posts and comments can carry up to 4 **images**. Images are mocked client-side via `URL.createObjectURL()` in `CommentComposer` (no real upload endpoint wired yet); `api.yaml` models them as plain `image` URL arrays on `PostItem`/`CommentItem`/`CreatePostRequest`/`addComment` request body, to be replaced by real uploaded URLs later.
+- `PostCard` is fully clickable to navigate to the detail page; every action button inside it (like, tip, copy-trade, share) calls `stopPropagation()` so clicking them doesn't also trigger navigation.
+- `frontend/src/utils/mockCommunity.js` is the single source of mock post/comment data — both `CommunityPage` (feed) and `PostDetailPage` (thread) import from it so a post's `comments` count in the feed always matches its actual `commentList.length` on the detail page.
+
 ## Indicator Panel Sync
 
 `IndicatorPanel` renders a second `lightweight-charts` instance for the selected technical indicator (MACD/RSI/MA/EMA/BOLL/KDJ/STOCH/VOL/OBV/ATR, computed in `utils/indicators.js` from the same candle data as the main chart).
@@ -206,7 +227,8 @@ Chat-like scrolling containers (AI chat, community chat) must **never** use `scr
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution
   - `GET/POST /personality`, `/personality/reanalyze` — 4-axis personality profile
-  - `GET/POST /community/feed`, `/community/post`, `/community/post/{id}/like`, `/community/post/{id}/comments`
+  - `GET/POST /community/feed`, `/community/post`, `/community/post/{id}/like`, `/community/post/{id}/comments`, `/community/post/{id}/comments/{commentId}/like`
+  - `POST /tipping` — virtual point tip on a post or comment
   - `GET/POST /chat/{symbol}/messages`, `/chat/{symbol}/send` — chat/danmaku
   - `GET/POST /questionnaire`, `/questionnaire/submit`
   - `GET /recommend/coins`, `/recommend/similar-users`
