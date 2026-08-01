@@ -86,7 +86,8 @@ digitimes-hackathon-260801/
 │   │   │   ├── coinmarketcap.py     # CoinMarketCap API client
 │   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
 │   │   └── utils/
-│   │       └── metrics.py           # CSV → FIFO trade matching → trading metrics (chase_up_index/avg_return_pct/etc), no I/O
+│   │       ├── metrics.py           # CSV → FIFO trade matching → trading metrics (chase_up_index/avg_return_pct/etc), no I/O
+│   │       └── http.py              # json_response()/cors_headers() — every handler must use this, see tech.md "CORS gotcha"
 │   └── tests/
 │       └── utils/
 │           ├── test_metrics_unit.py

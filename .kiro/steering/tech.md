@@ -109,6 +109,12 @@ Once Lambda + API Gateway are deployed, the frontend only needs **one URL**:
 3. Confirm the **stage name** included in the URL (e.g. `/prod`, `/dev`) matches what's deployed — mismatches produce silent 403/404s.
 4. If any endpoint requires auth (API key, Cognito, IAM), that needs to be communicated separately — none of the current `services/*.js` wrappers send auth headers yet.
 
+### CORS gotcha: every Lambda response needs its own CORS headers
+
+API Gateway's "Enable CORS" console action / OPTIONS mock integration only adds `Access-Control-Allow-*` headers to the **OPTIONS preflight** response. It does **not** add them to the actual GET/POST response coming back from the Lambda function — that response is passed straight through unmodified. A request can return `200 OK` with the correct JSON body and still get blocked by the browser as a CORS error, because the browser checks the headers on the *real* response, not just the preflight.
+
+**Every Lambda handler must add CORS headers to every response it returns — success and error alike.** Use `backend/src/utils/http.py`'s `json_response(status_code, body)` instead of hand-building `{"statusCode": ..., "headers": {...}, "body": ...}` dicts — it merges in `Access-Control-Allow-Origin: *` (overridable via the `ALLOWED_ORIGIN` env var) automatically. `coin_price.py`, `fear_greed.py`, and `upload_csv.py` already use it; any new handler should too.
+
 ## Data Models (S3 Storage)
 
 | Data | S3 Key Pattern | Format |

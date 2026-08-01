@@ -9,6 +9,9 @@ const BASE_PRICES = {
   ADA: 21.5,
 }
 
+// 遞增計數器，確保即使同一毫秒內產生多筆交易，id 依然唯一（避免 React key 重複警告）
+let tradeIdCounter = 0
+
 function generateTrade(symbol) {
   const basePrice = BASE_PRICES[symbol] || 1000
   const isBuy = Math.random() > 0.5
@@ -18,7 +21,7 @@ function generateTrade(symbol) {
   const now = new Date()
   const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   return {
-    id: Date.now() + Math.random(),
+    id: `trade-${Date.now()}-${++tradeIdCounter}`,
     side: isBuy ? 'buy' : 'sell',
     price: Math.round(price),
     volume,
