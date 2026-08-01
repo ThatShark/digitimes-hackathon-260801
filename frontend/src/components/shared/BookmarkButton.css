@@ -1,0 +1,36 @@
+.bookmark-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.bookmark-btn.md {
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.bookmark-btn.sm {
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.bookmark-btn:not(.active) {
+  color: var(--text-muted, #64748b);
+}
+
+.bookmark-btn:not(.active):hover {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.bookmark-btn.active {
+  color: #fbbf24;
+}
+
+.bookmark-btn.active:hover {
+  opacity: 0.7;
+}

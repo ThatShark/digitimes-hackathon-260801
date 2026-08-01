@@ -19,7 +19,7 @@
 .coin-page-title-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 10px;
 }
 
@@ -28,6 +28,29 @@
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
+}
+
+.coin-page-price {
+  font-size: 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.coin-page-price.up { color: var(--green, #34d399); }
+.coin-page-price.down { color: var(--red, #f87171); }
+
+.coin-page-change {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.coin-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }
 
 .coin-page-tabs {
@@ -127,9 +150,6 @@
 }
 
 .trend-market-data {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -192,4 +212,54 @@
 
 .trend-chart-area:fullscreen .chart-container {
   height: 100vh;
+}
+
+/* Market data sub-tab panel */
+.market-data-panel {
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border, #334155);
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.market-data-tab-bar {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, #334155);
+  background: var(--bg-tertiary, #0f172a);
+}
+
+.md-tab {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all 0.15s;
+}
+
+.md-tab:hover {
+  color: var(--text-secondary, #94a3b8);
+}
+
+.md-tab.active {
+  background: var(--accent-dim, rgba(59, 130, 246, 0.1));
+  color: var(--accent, #3b82f6);
+}
+
+.market-data-content {
+  padding: 12px;
+}
+
+.market-data-content .depth-chart,
+.market-data-content .recent-trades,
+.market-data-content .key-events {
+  border: none;
+  padding: 0;
+  background: transparent;
 }
