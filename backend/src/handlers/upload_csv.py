@@ -10,6 +10,7 @@ import os
 import statistics
 import urllib.request
 
+from src.services.bedrock import BedrockChatClient, BedrockError, load_personality_prompt
 from src.services.s3_storage import S3StorageError, S3StorageService
 from src.utils.http import json_response
 from src.utils.metrics import (
@@ -37,10 +38,33 @@ def lambda_handler(event, context):
 
     storage = S3StorageService(bucket_name=_bucket_name())
 
-    try:
-        trades_bytes = storage.get_trades_csv(user_id)
-    except S3StorageError:
-        return json_response(502, {"status": "error", "message": "無法讀取交易紀錄，請稍後再試"})
+    # ── Determine CSV source: request body or S3 ─────────────────────────────
+    body_content = event.get("body") or ""
+    content_type = ""
+    headers = event.get("headers") or {}
+    for k, v in headers.items():
+        if k.lower() == "content-type":
+            content_type = v.lower()
+            break
+
+    if body_content and ("text/csv" in content_type or "," in body_content[:200]):
+        # CSV was sent directly in the request body (upload from browser)
+        import base64
+        if event.get("isBase64Encoded"):
+            trades_bytes = base64.b64decode(body_content)
+        else:
+            trades_bytes = body_content.encode("utf-8") if isinstance(body_content, str) else body_content
+        # Save to S3 for future re-analysis
+        try:
+            storage.put_trades_csv(user_id, trades_bytes)
+        except Exception:
+            pass  # Non-critical: analysis can still proceed
+    else:
+        # No CSV in body — read from S3
+        try:
+            trades_bytes = storage.get_trades_csv(user_id)
+        except S3StorageError:
+            return json_response(502, {"status": "error", "message": "無法讀取交易紀錄，請稍後再試"})
 
     # Parse CSV to get currencies + time range for external API calls.
     try:
@@ -81,12 +105,44 @@ def lambda_handler(event, context):
     if "error" in parsed:
         return json_response(400, {"status": "error", "message": parsed["error"]})
 
+    # ── Generate AI personality description via Bedrock ────────────────────────
+    personality_description = ""
+    try:
+        r = parsed.get("r_score", 50)
+        e = parsed.get("e_score", 50)
+        f = parsed.get("f_score", 50)
+        s = parsed.get("s_score", 50)
+
+        personality_prompt = load_personality_prompt()
+        user_message = f"R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
+
+        bedrock_client = BedrockChatClient(max_tokens=200, temperature=0.8)
+        messages = [{"role": "user", "content": [{"text": user_message}]}]
+        personality_description = bedrock_client.chat(messages, system_prompt=personality_prompt)
+    except (BedrockError, Exception):
+        # AI 生成失敗不影響主流程，使用預設描述
+        personality_description = ""
+
+    # Attach AI description to metrics before saving
+    parsed["personality_description"] = personality_description
+    metrics_json = json.dumps(parsed, ensure_ascii=False)
+
     try:
         storage.put_trade_metrics(user_id, metrics_json)
     except S3StorageError:
         return json_response(502, {"status": "error", "message": "無法儲存分析結果，請稍後再試"})
 
-    return json_response(200, {"status": "ready", "currencies": currencies})
+    return json_response(200, {
+        "status": "ready",
+        "currencies": currencies,
+        "personality_description": personality_description,
+        "scores": {
+            "r_score": parsed.get("r_score", 0),
+            "e_score": parsed.get("e_score", 0),
+            "f_score": parsed.get("f_score", 0),
+            "s_score": parsed.get("s_score", 0),
+        },
+    })
 
 
 # ─────────────────────────────────────────────────────────────────────────────

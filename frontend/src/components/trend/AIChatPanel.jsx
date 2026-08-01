@@ -1,36 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
+import { sendAiChat } from '../../services/aiApi'
 import './AIChatPanel.css'
-
-// Keywords that trigger a mock trade suggestion
-const BUY_TRIGGERS = ['買', '進場', 'buy', '加倉', '抄底']
-const SELL_TRIGGERS = ['賣', '出場', 'sell', '獲利', '停損']
-
-function generateMockAIResponse(symbol, userMessage) {
-  const lowerMsg = userMessage.toLowerCase()
-  const isBuy = BUY_TRIGGERS.some((t) => lowerMsg.includes(t))
-  const isSell = SELL_TRIGGERS.some((t) => lowerMsg.includes(t))
-
-  if (isBuy) {
-    return {
-      content: `根據目前恐懼貪婪指數 35（偏恐慌）以及你過去在類似條件下的勝率 62%，我認為現在是不錯的買入時機。`,
-      suggestion: { action: 'buy', currency: symbol, amount: 5000, reason: '恐懼指數偏低 + 短期趨勢回升 + 歷史勝率 62%' },
-    }
-  }
-  if (isSell) {
-    return {
-      content: `目前 ${symbol} 已接近你的平均獲利出場點，恐懼貪婪指數 68（偏貪婪），建議考慮部分獲利了結。`,
-      suggestion: { action: 'sell', currency: symbol, amount: 3000, reason: '接近歷史高點 + 恐懼指數偏高 + 建議分批出場' },
-    }
-  }
-  const responses = [
-    `${symbol} 目前處於盤整區間，短期 7 日均線持平。建議觀望，等待明確方向再行動。`,
-    `根據你的投資人格（熱衷型），你通常在這種盤勢下容易追漲。建議耐心等待回調。`,
-    `目前恐懼貪婪指數 52（中性），${symbol} 成交量正常，沒有明顯的進出場訊號。`,
-    `分析你過去 30 天的操作，你對 ${symbol} 的勝率是 58%，平均持倉 3.2 天。目前沒有特別建議。`,
-  ]
-  return { content: responses[Math.floor(Math.random() * responses.length)], suggestion: null }
-}
 
 const INITIAL_MESSAGES = [
   { role: 'ai', content: '你好！我是你的 AI 投資助理。你可以問我任何關於投資的問題，或者跟我說「我想買」/「我想賣」來取得建議。' },
@@ -56,6 +27,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
   const [activeTab, setActiveTab] = useState('ai')
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
   const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const [pendingSuggestion, setPendingSuggestion] = useState(null)
   // 是否顯示「跳到最新訊息」按鈕
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
@@ -92,7 +64,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
     if (activeTab === 'ai' && container && aiAtBottomRef.current) {
       container.scrollTop = container.scrollHeight
     }
-  }, [messages, pendingSuggestion, activeTab])
+  }, [messages, pendingSuggestion, isLoading, activeTab])
 
   // Auto-scroll community chat（只捲動聊天容器本身）
   useEffect(() => {
@@ -123,18 +95,33 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
     }
   }, [activeTab])
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return
     const userMsg = input.trim()
     setInput('')
 
     if (activeTab === 'ai') {
       setMessages((prev) => [...prev, { role: 'user', content: userMsg }])
-      setTimeout(() => {
-        const response = generateMockAIResponse(symbol, userMsg)
-        setMessages((prev) => [...prev, { role: 'ai', content: response.content }])
-        if (response.suggestion) setPendingSuggestion(response.suggestion)
-      }, 600)
+      setIsLoading(true)
+      try {
+        const data = await sendAiChat(userMsg, symbol)
+        setMessages((prev) => [...prev, { role: 'ai', content: data.message }])
+        if (data.investment_suggestion) {
+          setPendingSuggestion({
+            action: data.investment_suggestion.action,
+            currency: data.investment_suggestion.currency,
+            amount: data.investment_suggestion.amount,
+            reason: data.message,
+          })
+        }
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'system', content: '⚠️ AI 服務暫時無法使用，請稍後再試' },
+        ])
+      } finally {
+        setIsLoading(false)
+      }
     } else {
       onSendCommunity?.(userMsg)
       // 自己發言時強制捲到底部
@@ -190,6 +177,12 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
               <div className="message-bubble">{msg.content}</div>
             </div>
           ))}
+
+          {isLoading && (
+            <div className="chat-message ai">
+              <div className="message-bubble loading">AI 思考中...</div>
+            </div>
+          )}
 
           {pendingSuggestion && (
             <div className="trade-suggestion-card">
@@ -260,7 +253,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <button className="chat-send-btn" onClick={handleSend}>➤</button>
+        <button className="chat-send-btn" onClick={handleSend} disabled={isLoading}>➤</button>
       </div>
     </div>
   )
