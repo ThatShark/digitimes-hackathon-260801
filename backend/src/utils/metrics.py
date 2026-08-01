@@ -31,10 +31,10 @@ class TradeDataError(Exception):
 
 _CSV_COLUMNS = ("timestamp", "currency", "price", "action", "change", "balance")
 
-_BUY_ACTIONS = {"買"}
-_SELL_ACTIONS = {"賣"}
-_DEPOSIT_ACTIONS = {"充值"}
-_WITHDRAW_ACTIONS = {"提領"}
+_BUY_ACTIONS = {"買", "buy", "purchase"}
+_SELL_ACTIONS = {"賣", "sell"}
+_DEPOSIT_ACTIONS = {"充值", "deposit"}
+_WITHDRAW_ACTIONS = {"提領", "withdraw", "withdrawal"}
 _ALL_ACTIONS = _BUY_ACTIONS | _SELL_ACTIONS | _DEPOSIT_ACTIONS | _WITHDRAW_ACTIONS
 
 
@@ -118,7 +118,7 @@ def parse_trades_csv(csv_content: "str | bytes") -> list[RawTrade]:
             timestamp_ms = int(row["timestamp"])
             currency = row["currency"].strip()
             price = float(row["price"])
-            action = row["action"].strip()
+            action = row["action"].strip().lower()
             change = float(row["change"])
             balance = float(row["balance"])
         except (TypeError, ValueError, KeyError) as exc:
