@@ -257,6 +257,25 @@ Resources:
             Path: /personality
             Method: POST
 
+  AllowTradeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-allow-trade"
+      Handler: src.handlers.allow_trade.lambda_handler
+      CodeUri: .
+      Timeout: 30
+      Environment:
+        Variables:
+          MAX_API_KEY: ""
+          MAX_API_SECRET: ""
+      Events:
+        PostAllowTrade:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /allow_trade
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────

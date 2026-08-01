@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import MarketOverview from '../components/main/MarketOverview'
 import NotificationBanner from '../components/shared/NotificationBanner'
 import BookmarkButton from '../components/shared/BookmarkButton'
+import { formatPrice } from '../utils/currency'
 import { fetchLivePriceInfo } from '../services/coinApi'
 import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
@@ -44,14 +45,24 @@ async function fetchLivePrice(symbol) {
   return live ? { ...live, name: COIN_NAMES[symbol] || symbol } : null
 }
 
-function CoinCard({ coin }) {
+function sortCoins(coins, sortBy) {
+  if (sortBy === 'default') return coins
+  return [...coins].sort((a, b) => {
+    if (sortBy === 'price') return (b.price || 0) - (a.price || 0)
+    if (sortBy === 'change') return (b.change || 0) - (a.change || 0)
+    if (sortBy === 'name') return a.name.localeCompare(b.name)
+    return 0
+  })
+}
+
+function CoinCard({ coin, currency }) {
   const isLoading = coin.price === null || coin.price === undefined
   const isUp = coin.change >= 0
 
   return (
     <Link to={`/coin/${coin.symbol}`} className="coin-card">
       <div className="coin-card-header">
-        <div className="coin-icon">{coin.symbol.charAt(0)}</div>
+        <span className="coin-card-name">{coin.name}</span>
         {!isLoading && (
           <span className={`coin-badge ${isUp ? 'up' : 'down'}`}>
             {isUp ? '▲' : '▼'}
@@ -59,13 +70,12 @@ function CoinCard({ coin }) {
         )}
       </div>
       <div className="coin-card-body">
-        <div className="coin-name">{coin.name}</div>
         <div className="coin-symbol">{coin.symbol}</div>
         {isLoading ? (
           <div className="coin-price loading">載入中...</div>
         ) : (
           <div className={`coin-price ${isUp ? 'up' : 'down'}`}>
-            NT$ {coin.price.toLocaleString()}
+            {formatPrice(coin.price, currency)}
           </div>
         )}
         <div className="coin-card-bottom-row">
@@ -84,10 +94,10 @@ function CoinCard({ coin }) {
 }
 
 export default function MainPage() {
-  // 先用 mock 資料渲染，成功連到後端後再逐筆替換成即時價格。
-  // 後端沒設定 (VITE_API_BASE_URL 未填) 或請求失敗時，畫面維持 mock 資料不受影響。
   const [focusCoins, setFocusCoins] = useState(MOCK_COINS)
   const [trendingCoins, setTrendingCoins] = useState(TRENDING)
+  const [currency, setCurrency] = useState('TWD')
+  const [sortBy, setSortBy] = useState('default') // 'default' | 'price' | 'change' | 'name'
 
   const refreshPrices = useCallback(async () => {
     const allSymbols = [...MOCK_COINS, ...TRENDING].map((c) => c.symbol)
@@ -123,22 +133,36 @@ export default function MainPage() {
       <NotificationBanner />
 
       {/* 行情看板 */}
-      <MarketOverview />
+      <MarketOverview currency={currency} coins={[...focusCoins, ...trendingCoins]} />
 
       <section className="coin-section">
-        <h2 className="section-title">平時關注</h2>
-        <div className="coin-grid">
-          {focusCoins.map((coin) => (
-            <CoinCard key={coin.symbol} coin={coin} />
-          ))}
+        <div className="coin-section-header">
+          <button
+            className="currency-toggle"
+            onClick={() => setCurrency((c) => c === 'TWD' ? 'USD' : 'TWD')}
+          >
+            {currency === 'TWD' ? '🇹🇼 TWD' : '🇺🇸 USD'}
+          </button>
+          <div className="sort-controls">
+            {[
+              { key: 'default', label: '預設' },
+              { key: 'price', label: '價格' },
+              { key: 'change', label: '漲幅' },
+              { key: 'name', label: '名稱' },
+            ].map((s) => (
+              <button
+                key={s.key}
+                className={`sort-btn ${sortBy === s.key ? 'active' : ''}`}
+                onClick={() => setSortBy(s.key)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
-
-      <section className="coin-section">
-        <h2 className="section-title">熱門</h2>
         <div className="coin-grid">
-          {trendingCoins.map((coin) => (
-            <CoinCard key={coin.symbol} coin={coin} />
+          {sortCoins([...focusCoins, ...trendingCoins], sortBy).map((coin) => (
+            <CoinCard key={coin.symbol} coin={coin} currency={currency} />
           ))}
         </div>
       </section>
