@@ -140,8 +140,9 @@ digitimes-hackathon-260801/
 
 ### Layout
 
-- **Sidebar**: Persistent side navigation (主頁, 社群, 問卷, 個人資料). Toggle button is a ☰ hamburger icon (not an arrow — avoid looking like a "back" button).
+- **Sidebar**: Persistent side navigation (主頁, 社群, 問卷). Toggle button is a ☰ hamburger icon (not an arrow — avoid looking like a "back" button).
 - **SearchBar**: Top search bar for coins and users
+- **Avatar button** (top-right, in `Layout.jsx` header): navigates to `/profile` on click. This is the only entry point to the profile page — it is intentionally not in the sidebar.
 
 ### CoinTrendPage Layout
 

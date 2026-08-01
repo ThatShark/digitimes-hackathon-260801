@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import SearchBar from './SearchBar'
 import './Layout.css'
@@ -7,6 +7,7 @@ import './Layout.css'
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isCoinRoute = location.pathname.startsWith('/coin/')
   const searchPlaceholder = isCoinRoute ? '搜尋其他幣種...' : '搜尋幣種...'
@@ -17,7 +18,11 @@ export default function Layout() {
       <div className="layout-main">
         <header className="layout-header">
           <SearchBar placeholder={searchPlaceholder} />
-          <button className="avatar-btn" title="設定 / 個人資料">
+          <button
+            className="avatar-btn"
+            title="個人資料"
+            onClick={() => navigate('/profile')}
+          >
             <div className="avatar-circle" />
           </button>
         </header>
