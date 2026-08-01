@@ -8,14 +8,17 @@
 - **Danmaku**: Custom CSS animation implementation (pure CSS `@keyframes`, no library dependency)
 - **UI Style**: Threads-style community feed, YouTube-style card grid, Bilibili-style danmaku
 - **Location**: `frontend/src/`
-- **Status**: Scaffolding stage
+- **Status**: MainPage, CoinTrendPage (K-line + danmaku + AI/community chat + real indicator calculations), ProfilePage, CommunityPage, QuestionnairePage all scaffolded with mock data; backend integration pending
 
 ## Backend (AWS Lambda)
 
 - **Runtime**: AWS Lambda + API Gateway
-- **Language**: Python (planned)
+- **Language**: Python
 - **Location**: `backend/src/`
-- **Status**: Scaffolding stage
+- **API spec**: `backend/api.yaml` (OpenAPI 3.0.3) — source of truth for the contract; check it before adding new handlers
+- **Testing**: pytest + hypothesis (property-based tests independently re-derive each metric formula)
+- **Implemented handlers**: `upload_csv.py` (CSV → metrics → S3), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical)
+- **In progress**: `candlestick_chart.py`, `ai_chat.py`, `allow_trade.py`, community/chat/questionnaire handlers
 - **Responsibilities**:
   - S3 read/write (CSV, personality data, community posts, danmaku messages)
   - MAX API proxy (K-line, real-time pricing, orders)
@@ -72,15 +75,15 @@
 | MAX Skill | Trade execution module | — |
 | CoinMarketCap | Fear & Greed Index | API Key |
 
-## Frontend Key Libraries (Planned)
+## Frontend Key Libraries
 
 | Library | Purpose |
 |---------|---------|
-| `react-router-dom` | Client-side routing (主頁/幣種趨勢/社群/問券) |
-| `lightweight-charts` | K-line / candlestick chart rendering (v5 API: `addSeries(CandlestickSeries, opts)`) |
-| `axios` or `fetch` | API communication |
+| `react-router-dom` | Client-side routing (主頁/幣種趨勢/社群/問券/個人資料) |
+| `lightweight-charts` | K-line chart AND the indicator panel's line/histogram chart (v5 API: `addSeries(CandlestickSeries\|LineSeries\|HistogramSeries, opts)`) |
+| `axios` or `fetch` | API communication (not yet wired — pages currently use mock data) |
 | Custom `DanmakuOverlay` | CSS-animation barrage overlay on K-line chart (no external library) |
-| `lodash/debounce` | Progress bar drag debounce |
+| `utils/indicators.js` | Hand-written technical indicator math (no TA library dependency) |
 
 ## Data Models (S3 Storage)
 

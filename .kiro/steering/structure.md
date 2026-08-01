@@ -12,29 +12,27 @@ digitimes-hackathon-260801/
 │       ├── main.jsx             # Entry point
 │       ├── pages/
 │       │   ├── MainPage.jsx         # YouTube-style homepage (平時關注/熱門/潛力/社群貼文)
-│       │   ├── CoinTrendPage.jsx    # Live stream page (K-line + AI chat + danmaku)
+│       │   ├── CoinTrendPage.jsx    # Live stream page (K-line + AI chat + danmaku) — owns chat/danmaku state
 │       │   ├── CommunityPage.jsx    # Threads-style social feed
 │       │   ├── ProfilePage.jsx      # User profile (personality, stats, history)
 │       │   └── QuestionnairePage.jsx # Personality questionnaire flow
 │       ├── components/
 │       │   ├── layout/
-│       │   │   ├── Sidebar.jsx          # Side navigation
+│       │   │   ├── Layout.jsx           # App shell — sidebar + header + outlet
+│       │   │   ├── Sidebar.jsx          # Side navigation (☰ toggle, collapsible)
 │       │   │   └── SearchBar.jsx        # Top search bar
 │       │   ├── main/
-│       │   │   ├── CoinCard.jsx         # Coin thumbnail card (used in 平時關注/熱門/潛力)
-│       │   │   ├── HotPostCard.jsx      # Community post preview card
 │       │   │   ├── MarketOverview.jsx   # 行情看板 (漲跌幅榜/成交量榜/恐懼貪婪指數)
 │       │   │   └── Watchlist.jsx        # 自選幣種清單 (add/remove coins)
 │       │   ├── trend/
-│       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts)
-│       │   │   ├── ProgressBar.jsx      # Draggable time progress bar
-│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
-│       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
-│       │   │   ├── TradePanel.jsx       # Order execution panel (市價/限價/止盈止損)
+│       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts v5 API), exposes ref: setVisibleRange/getDataRange/getData
+│       │   │   ├── ProgressBar.jsx      # Dual-handle draggable time range selector
+│       │   │   ├── ChartControls.jsx    # Interval buttons, danmaku toggle/settings/send, wraps ProgressBar
+│       │   │   ├── IndicatorPanel.jsx   # Technical indicators — real calculations, line chart, read-only (no scroll/zoom), synced to main chart's visible range
+│       │   │   ├── TradePanel.jsx       # Order execution panel (買/賣 + 金額 + 確認)
 │       │   │   ├── DepthChart.jsx       # Order book depth chart (MAX API)
 │       │   │   ├── RecentTrades.jsx     # Real-time trade stream (MAX API)
-│       │   │   ├── AIChatPanel.jsx      # AI conversation tab
-│       │   │   └── DanmakuPanel.jsx     # Barrage/chat room tab (Bilibili-style)
+│       │   │   └── AIChatPanel.jsx      # Dual-tab: AI 對話 + 彈幕聊天 (receives communityMessages/onSendCommunity as props from CoinTrendPage)
 │       │   ├── community/
 │       │   │   ├── PostCard.jsx         # Single post with personality prefix + verified badge
 │       │   │   ├── PostComposer.jsx     # Create new post (supports $Ticker auto-detection)
@@ -47,66 +45,37 @@ digitimes-hackathon-260801/
 │       │   │   ├── TipButton.jsx        # 微額打賞按鈕 (虛擬積分)
 │       │   │   └── BountyQuestion.jsx   # 付費懸賞提問卡片
 │       │   ├── profile/
-│       │   │   ├── PortfolioOverview.jsx # 資產總覽 (holdings × price, P&L, pie chart)
-│       │   │   ├── TradeHistory.jsx     # 交易歷史明細 (filterable table)
-│       │   │   └── PersonalityChart.jsx # 4-axis personality radar/bar chart
+│       │   │   └── PortfolioOverview.jsx # 資產總覽 (holdings × price, P&L)
 │       │   └── shared/
 │       │       ├── PersonalityBadge.jsx  # Personality type prefix/title display
-│       │       ├── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart
+│       │       ├── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart — pure rendering, no own mock data (fed via `messages` prop from CoinTrendPage)
 │       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒)
-│       ├── hooks/                # Custom React hooks
-│       │   ├── useKLineData.js
-│       │   ├── useDanmaku.js
-│       │   ├── useCommunityFeed.js
-│       │   ├── useWatchlist.js      # Watchlist CRUD operations
-│       │   ├── usePortfolio.js      # Portfolio value calculation
-│       │   ├── useMarketData.js     # Market overview data (gainers/losers/volume)
-│       │   ├── useTickerData.js     # $Ticker card real-time price data
-│       │   └── useSentiment.js      # Community sentiment polling
-│       ├── services/             # API call wrappers
-│       │   ├── api.js            # Base axios/fetch config
-│       │   ├── chartApi.js       # /candlestick_chart
-│       │   ├── aiApi.js          # /ai_chat
-│       │   ├── tradeApi.js       # /allow_trade (market/limit/TP-SL)
-│       │   ├── communityApi.js   # /community, /danmaku, /sentiment, /tipping, /bounty
-│       │   ├── questionnaireApi.js # /questionnaire
-│       │   ├── marketApi.js      # /market/overview, /market/depth, /market/trades
-│       │   ├── watchlistApi.js   # /watchlist (GET/POST)
-│       │   ├── portfolioApi.js   # /portfolio, /trade_history
-│       │   ├── copyTradeApi.js   # /copy_trade (POST)
-│       │   └── whaleAlertApi.js  # /whale_alerts (GET)
-│       └── styles/               # CSS / style files
+│       ├── utils/
+│       │   ├── indicators.js     # Technical indicator math: MA/EMA/MACD/BOLL/RSI/KDJ/STOCH/VOL/OBV/ATR (pure functions, candles in → {time,value}[] out)
+│       │   └── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
+│       └── __tests__/
+│           └── preservation.test.jsx
 │
 ├── backend/                     # AWS Lambda backend
-│   └── src/
-│       ├── handlers/
-│       │   ├── init.py              # GET /init
-│       │   ├── upload_csv.py        # POST /upload_csv
-│       │   ├── candlestick_chart.py # GET /candlestick_chart
-│       │   ├── ai_chat.py          # POST /ai_chat
-│       │   ├── allow_trade.py      # POST /allow_trade (market/limit/TP-SL)
-│       │   ├── community.py        # GET/POST /community
-│       │   ├── danmaku.py          # GET/POST /danmaku
-│       │   ├── questionnaire.py    # GET/POST /questionnaire
-│       │   ├── market.py           # GET /market/overview, /market/depth, /market/trades
-│       │   ├── watchlist.py        # GET/POST /watchlist
-│       │   ├── portfolio.py        # GET /portfolio
-│       │   ├── trade_history.py    # GET /trade_history
-│       │   ├── copy_trade.py       # POST /copy_trade (跟單執行)
-│       │   ├── sentiment.py        # GET /sentiment/:symbol (社群情緒分析)
-│       │   ├── whale_alert.py      # GET /whale_alerts (巨鯨警報 mock)
-│       │   ├── tipping.py          # POST /tipping (虛擬積分打賞)
-│       │   └── bounty.py           # GET/POST /bounty (懸賞提問)
-│       ├── services/
-│       │   ├── max_api.py           # MAX Exchange API client (K-line, depth, trades, orders)
-│       │   ├── coinmarketcap.py     # CoinMarketCap API client (Fear&Greed, dominance)
-│       │   ├── s3_storage.py        # S3 read/write utilities
-│       │   ├── personality.py       # Personality calculation logic + verified PnL
-│       │   ├── recommendation.py    # Feed recommendation algorithm
-│       │   ├── sentiment.py         # AI sentiment analysis (NLP on community posts)
-│       │   └── points.py            # Virtual points system (tips + bounty accounting)
+│   ├── api.yaml                 # OpenAPI 3.0.3 spec — source of truth for all endpoints
+│   ├── pytest.ini
+│   ├── requirements.txt / requirements-dev.txt
+│   ├── src/
+│   │   ├── handlers/
+│   │   │   ├── upload_csv.py        # POST /upload_csv — S3 read CSV → compute_metrics_json → S3 write → response
+│   │   │   ├── coin_price.py        # GET /coin/price — MAX ticker lookup for one currency
+│   │   │   ├── fear_greed.py        # GET /market/fear-greed — CoinMarketCap latest/historical index
+│   │   │   └── candlestick_chart.py # GET /candlestick_chart (in progress)
+│   │   ├── services/
+│   │   │   ├── max_api.py           # MAX Exchange API client
+│   │   │   ├── coinmarketcap.py     # CoinMarketCap API client
+│   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
+│   │   └── utils/
+│   │       └── metrics.py           # CSV → FIFO trade matching → trading metrics (chase_up_index/avg_return_pct/etc), no I/O
+│   └── tests/
 │       └── utils/
-│           └── metrics.py           # CSV indicator computation
+│           ├── test_metrics_unit.py
+│           └── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
 │
 ├── CustomerSupport/             # AgentCore AI agent project
 │   ├── AGENTS.md                # AI assistant context for AgentCore schema
@@ -155,14 +124,14 @@ digitimes-hackathon-260801/
 
 ### Layout
 
-- **Sidebar**: Persistent side navigation (主頁, 社群, 設定, etc.)
+- **Sidebar**: Persistent side navigation (主頁, 社群, 問卷, 個人資料). Toggle button is a ☰ hamburger icon (not an arrow — avoid looking like a "back" button).
 - **SearchBar**: Top search bar for coins and users
 
 ### CoinTrendPage Layout
 
 ```
 ┌──────────────────────────────┬────────────────────┐
-│                              │ [AI對話] [彈幕留言]  │
+│                              │ [AI對話] [彈幕聊天]  │
 │   K-Line Chart               │   Chat Panel       │
 │   + Danmaku Overlay          │   (tab switch)     │
 │   + Progress Bar             │                    │
@@ -172,9 +141,14 @@ digitimes-hackathon-260801/
 │  (collapsible tabs)          │ (市價/限價/止盈止損) │
 ├──────────────────────────────┤                    │
 │   Indicator Panel            │                    │
-│   (default: off)             │                    │
+│   (real line-chart values)   │                    │
 └──────────────────────────────┴────────────────────┘
 ```
+
+`CoinTrendPage` owns all shared state and is the single source of truth for:
+- Progress bar visible range (fractions + actual timestamps) — pushed down to both `KLineChart` and `IndicatorPanel` so both charts show the exact same time window
+- Community chat + danmaku messages — a single `addCommunityMessage()` call writes to both `communityMessages` (rendered by `AIChatPanel`) and `danmakuMessages` (rendered by `DanmakuOverlay`), so the two views never diverge
+- Danmaku settings (speed/size/position) and enabled state
 
 ## Danmaku (Barrage) System
 
@@ -182,24 +156,39 @@ Implementation: **Pure CSS animation** (方案 A)
 
 - `DanmakuOverlay` component is positioned `absolute` over the K-line chart container
 - Each bullet is a `<span>` with `@keyframes danmaku-scroll` (right → left)
-- 6 tracks to avoid overlap; bullets get assigned to the least recently used track
+- 6 tracks to avoid overlap; bullets are assigned to a clear track (with clearance-time estimation) or dropped/force-assigned depending on whether the message is a mock or user message
 - Animation duration scales with text length (longer = slightly slower)
 - Bullets are removed from DOM via `onAnimationEnd` callback
 - Toggle on/off via `danmakuEnabled` state in CoinTrendPage
-- User can send danmaku from the chart controls bar (✉ button → inline input)
-- Mock simulator sends random messages every 2-4 seconds for demo purposes
+- User can send danmaku from the chart controls bar (✉ button → inline input) — routes through `CoinTrendPage.addCommunityMessage`
+- **No internal mock generator** — `DanmakuOverlay` is purely a renderer driven by the `messages` prop. All message generation (including the periodic mock simulator) lives in `CoinTrendPage` / `utils/mockChat.js`, so the chat panel and danmaku overlay always show identical content.
 - `pointer-events: none` on the overlay so the chart remains interactive beneath
-- Configurable settings via popover: speed (慢/中/快), size (小/中/大), position (上方/全部/下方)
-- Default position is `top` (upper 30% of chart) to avoid blocking the candlestick data
+- Configurable settings via popover: speed (慢/中/快), size (小/中/大), position (上20% / 上40% / 全部)
+- Default position is `top20` (upper 20% of chart) to avoid blocking the candlestick data
 
 ### Key Files
 
 | File | Role |
 |------|------|
-| `components/shared/DanmakuOverlay.jsx` | Overlay container + bullet rendering + mock simulator |
+| `components/shared/DanmakuOverlay.jsx` | Overlay container + bullet rendering only (no mock data of its own) |
 | `components/shared/DanmakuOverlay.css` | `@keyframes danmaku-scroll`, positioning, text-shadow |
-| `components/trend/ChartControls.jsx` | Toggle button + send input inline |
-| `pages/CoinTrendPage.jsx` | State management, wires overlay + controls together |
+| `components/trend/ChartControls.jsx` | Toggle button, settings popover, send input inline |
+| `utils/mockChat.js` | Shared mock user/message pool used by the periodic simulator |
+| `pages/CoinTrendPage.jsx` | Single source of truth: generates mock messages, feeds both chat panel and danmaku overlay |
+
+## Auto-Scroll Convention (Chat Panels)
+
+Chat-like scrolling containers (AI chat, community chat) must **never** use `scrollIntoView()` — it scrolls all scrollable ancestors, including the page itself, causing the whole page to jump. Instead:
+- Track "is user at bottom" via an `onScroll` handler on the container, stored in a ref *before* new content is appended (checking after appending gives a false negative once content overflows).
+- On new message: if the ref says "was at bottom", set `container.scrollTop = container.scrollHeight` (scopes the scroll to that container only).
+- If the user has scrolled up and a new message arrives, show a floating "跳到最新訊息" button (Discord-style) instead of forcing a scroll; clicking it does a smooth `scrollTo` and clears the flag.
+- Page-level containers that should never scroll (e.g. `CoinTrendPage`) should set `overflow: hidden` explicitly rather than relying on inner components to behave.
+
+## Indicator Panel Sync
+
+`IndicatorPanel` renders a second `lightweight-charts` instance for the selected technical indicator (MACD/RSI/MA/EMA/BOLL/KDJ/STOCH/VOL/OBV/ATR, computed in `utils/indicators.js` from the same candle data as the main chart).
+- It receives the main chart's actual visible time range (`{ from, to }` timestamps, not fractions) via a `visibleTimeRange` prop from `CoinTrendPage` and calls `setVisibleRange` to match exactly.
+- `handleScroll: false` and `handleScale: false` are set on the indicator chart — it is strictly read-only and cannot be dragged/zoomed independently of the main chart.
 
 ## Key Conventions
 
@@ -207,26 +196,21 @@ Implementation: **Pure CSS animation** (方案 A)
 - **Flat resource model**: All AgentCore resources are independent top-level arrays. No nesting.
 - **Naming = Identity**: Resource `name` fields map to CloudFormation Logical IDs. Renaming destroys + recreates.
 - **Secrets**: API keys go in `agentcore/.env.local` (gitignored). Never commit secrets.
+- **api.yaml is the single source of truth for the API contract.** Before adding a new endpoint, grep `backend/api.yaml` first — duplicate/conflicting path or schema definitions have happened before (e.g. `/coin/price` was defined twice with different response shapes) when steering docs and actual handler code drifted apart. When a handler already exists in `backend/src/handlers/`, the spec must match that implementation, not a hypothetical one.
 - **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
   - `GET /init` — check CSV status
   - `POST /upload_csv` — upload + trigger analysis
+  - `GET /coin/price` — real-time single-currency ticker (MAX API)
+  - `GET /market/fear-greed` — Fear & Greed Index, latest or historical (CoinMarketCap)
   - `GET /candlestick_chart` — K-line + trade markers
   - `POST /ai_chat` — AI conversation
-  - `POST /allow_trade` — confirm trade execution (market/limit/TP-SL)
-  - `GET /market/overview` — gainers, losers, volume ranking, Fear & Greed
-  - `GET /market/depth` — order book depth for a coin
-  - `GET /market/trades` — recent trades for a coin
-  - `GET/POST /watchlist` — user's watchlist CRUD
-  - `GET /portfolio` — holdings, P&L, allocation
-  - `GET /trade_history` — filtered trade history
-  - `GET/POST /community` — social feed
-  - `GET/POST /danmaku` — barrage messages
-  - `GET/POST /questionnaire` — personality questionnaire
-  - `POST /copy_trade` — execute copy trade (follow strategy)
-  - `GET /sentiment/:symbol` — community sentiment gauge
-  - `GET /whale_alerts` — whale alert events (mock)
-  - `POST /tipping` — virtual tip (積分打賞)
-  - `GET/POST /bounty` — bounty Q&A (懸賞提問)
+  - `POST /allow_trade` — confirm trade execution
+  - `GET/POST /personality`, `/personality/reanalyze` — 4-axis personality profile
+  - `GET/POST /community/feed`, `/community/post`, `/community/post/{id}/like`, `/community/post/{id}/comments`
+  - `GET/POST /chat/{symbol}/messages`, `/chat/{symbol}/send` — chat/danmaku
+  - `GET/POST /questionnaire`, `/questionnaire/submit`
+  - `GET /recommend/coins`, `/recommend/similar-users`
+  - `GET /user/profile`, `PUT /user/settings`
 
 ## Languages by Directory
 

@@ -229,59 +229,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /coin/price:
-    get:
-      tags: [Core]
-      summary: Get real-time coin prices
-      description: |
-        Returns current prices and 24h change for one or more coins.
-        Backend calls MAX Exchange API to fetch real-time ticker data.
-        Used by the main page coin cards and anywhere that needs live prices.
-      operationId: getCoinPrice
-      parameters:
-        - name: symbols
-          in: query
-          required: true
-          schema:
-            type: string
-            example: BTC,ETH,SOL,DOGE
-          description: Comma-separated list of currency symbols
-      responses:
-        "200":
-          description: Price data for requested coins
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoinPriceResponse"
-        "502":
-          description: MAX API unavailable after retries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /market/fear-greed:
-    get:
-      tags: [Core]
-      summary: Get Fear & Greed Index
-      description: |
-        Returns the current crypto Fear & Greed Index from CoinMarketCap.
-        Used by the AI for trade timing analysis.
-      operationId: getFearGreedIndex
-      responses:
-        "200":
-          description: Current Fear & Greed Index
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FearGreedResponse"
-        "502":
-          description: CoinMarketCap API unavailable after retries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /ai_chat:
     post:
       tags: [Core]
@@ -993,59 +940,6 @@ components:
             $ref: "#/components/schemas/TradeMarker"
           description: User's historical buy/sell points overlaid on chart
 
-    CoinPriceResponse:
-      type: object
-      required: [prices]
-      properties:
-        prices:
-          type: array
-          items:
-            $ref: "#/components/schemas/CoinPriceItem"
-
-    CoinPriceItem:
-      type: object
-      required: [symbol, price_twd, change_24h]
-      properties:
-        symbol:
-          type: string
-          example: BTC
-        price_twd:
-          type: number
-          description: Current price in TWD
-          example: 2850000
-        change_24h:
-          type: number
-          description: 24h price change percentage
-          example: 2.3
-        volume_24h:
-          type: number
-          description: 24h trading volume in TWD
-        high_24h:
-          type: number
-          description: 24h high price in TWD
-        low_24h:
-          type: number
-          description: 24h low price in TWD
-
-    FearGreedResponse:
-      type: object
-      required: [value, label]
-      properties:
-        value:
-          type: integer
-          minimum: 0
-          maximum: 100
-          description: "Fear & Greed Index (0=Extreme Fear, 100=Extreme Greed)"
-          example: 35
-        label:
-          type: string
-          description: "Human-readable label (e.g. 極度恐慌, 恐慌, 中性, 貪婪, 極度貪婪)"
-          example: "恐慌"
-        updated_at:
-          type: string
-          format: date-time
-          description: When the index was last updated
-
     Candle:
       type: object
       required: [time, open, high, low, close, volume]
@@ -1529,7 +1423,7 @@ components:
           enum: [small, medium, large]
         default_interval:
           type: string
-          enum: [1h, 1d, 1w]
+          enum: [1d, 1M, 1Y]
         indicators_enabled:
           type: array
           items:
