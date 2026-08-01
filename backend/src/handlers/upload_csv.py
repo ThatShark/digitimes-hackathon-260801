@@ -47,7 +47,7 @@ def lambda_handler(event, context):
             content_type = v.lower()
             break
 
-    if body_content and ("text/csv" in content_type or "," in body_content[:200]):
+    if body_content and ("text/csv" in content_type or "csv" in content_type or "," in body_content[:200]):
         # CSV was sent directly in the request body (upload from browser)
         import base64
         if event.get("isBase64Encoded"):
@@ -64,7 +64,7 @@ def lambda_handler(event, context):
         try:
             trades_bytes = storage.get_trades_csv(user_id)
         except S3StorageError:
-            return json_response(502, {"status": "error", "message": "無法讀取交易紀錄，請稍後再試"})
+            return json_response(404, {"status": "need_csv", "message": "尚未上傳交易紀錄，請先上傳 CSV 檔案"})
 
     # Parse CSV to get currencies + time range for external API calls.
     try:

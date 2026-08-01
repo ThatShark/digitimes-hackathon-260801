@@ -49,7 +49,7 @@ from datetime import datetime, timezone
 
 from src.services.max_api import MaxApiClient, MaxApiError
 from src.services.s3_storage import S3StorageError, S3StorageService
-from src.utils.metrics import TradeDataError, parse_trades_csv, RawTrade
+from src.utils.metrics import TradeDataError, parse_trades_csv, RawTrade, _BUY_ACTIONS, _SELL_ACTIONS
 
 # ── Interval → MAX period (minutes) ──────────────────────────────────────────
 _INTERVAL_TO_PERIOD: dict[str, int] = {
@@ -178,9 +178,9 @@ def _load_trade_markers(
             continue
 
         # Map action to buy/sell; skip deposit/withdraw
-        if fill.action == "買":
+        if fill.action in _BUY_ACTIONS:
             action = "buy"
-        elif fill.action == "賣":
+        elif fill.action in _SELL_ACTIONS:
             action = "sell"
         else:
             continue

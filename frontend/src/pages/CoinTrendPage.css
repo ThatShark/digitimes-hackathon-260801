@@ -41,6 +41,11 @@
 .coin-page-price.up { color: var(--green, #34d399); }
 .coin-page-price.down { color: var(--red, #f87171); }
 
+.coin-page-price.loading {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
 .coin-page-change {
   font-size: 13px;
   font-weight: 600;

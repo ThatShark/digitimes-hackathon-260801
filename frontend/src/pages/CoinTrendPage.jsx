@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { pickRandomMockMessage, ME_USER } from '../utils/mockChat'
+import { fetchLivePriceInfo } from '../services/coinApi'
 import KLineChart from '../components/trend/KLineChart'
 import ChartControls from '../components/trend/ChartControls'
 import DanmakuOverlay from '../components/shared/DanmakuOverlay'
@@ -18,7 +19,8 @@ import CoinSocialFeed from '../components/trend/CoinSocialFeed'
 import BookmarkButton from '../components/shared/BookmarkButton'
 import './CoinTrendPage.css'
 
-const COIN_PRICES = {
+// 後端請求失敗時的 fallback 假資料（與 MainPage 的 FALLBACK_PRICES 對齊）
+const FALLBACK_PRICES = {
   BTC: { price: 2850000, change: 2.3 },
   ETH: { price: 98500, change: -1.2 },
   SOL: { price: 5420, change: 5.7 },
@@ -84,7 +86,9 @@ const TABS = [
 export default function CoinTrendPage() {
   const { symbol } = useParams()
   const [activeTab, setActiveTab] = useState('chart')
-  const [interval, setInterval] = useState('1D')
+  const [interval, setInterval] = useState('1M')
+  // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
+  const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
   // 聊天室訊息
   const [communityMessages, setCommunityMessages] = useState([])
@@ -124,6 +128,25 @@ export default function CoinTrendPage() {
     setVisibleFrom(0)
     setVisibleTo(1)
   }, [])
+
+  // 進入頁面 / 切換幣種時，向後端要求該幣種的即時價格。
+  // 拿到之前顯示「載入中」；最終失敗才 fallback 回假資料，避免卡住。
+  useEffect(() => {
+    let cancelled = false
+    setPriceInfo({ price: null, change: null }) // 切換幣種時先回到載入中狀態
+
+    fetchLivePriceInfo(symbol).then((live) => {
+      if (cancelled) return
+      if (live) {
+        setPriceInfo(live)
+      } else {
+        const fallback = FALLBACK_PRICES[symbol]
+        setPriceInfo(fallback || { price: null, change: null })
+      }
+    })
+
+    return () => { cancelled = true }
+  }, [symbol])
 
   /**
    * 單一入口：新增一則社群訊息到聊天室。
@@ -196,19 +219,21 @@ export default function CoinTrendPage() {
       <div className="coin-page-header">
         <div className="coin-page-title-row">
           <h1 className="coin-page-title">{symbol}/TWD</h1>
-          {(() => {
-            const info = COIN_PRICES[symbol]
-            if (!info) return null
-            const isUp = info.change >= 0
-            return (
-              <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
-                NT$ {info.price.toLocaleString()}
-                <span className="coin-page-change">
-                  {isUp ? '+' : ''}{info.change}%
+          {priceInfo.price === null || priceInfo.price === undefined ? (
+            <span className="coin-page-price loading">載入中...</span>
+          ) : (
+            (() => {
+              const isUp = priceInfo.change >= 0
+              return (
+                <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
+                  NT$ {priceInfo.price.toLocaleString()}
+                  <span className="coin-page-change">
+                    {isUp ? '+' : ''}{priceInfo.change}%
+                  </span>
                 </span>
-              </span>
-            )
-          })()}
+              )
+            })()
+          )}
           <div className="coin-page-actions">
             <BookmarkButton symbol={symbol} />
             <ShareButton symbol={symbol} />
