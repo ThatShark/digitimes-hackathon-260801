@@ -25,14 +25,20 @@ digitimes-hackathon-260801/
 │       │   │   ├── MarketOverview.jsx   # 行情看板 (漲跌幅榜/成交量榜/恐懼貪婪指數)
 │       │   │   └── Watchlist.jsx        # 自選幣種清單 (add/remove coins)
 │       │   ├── trend/
-│       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts v5 API), exposes ref: setVisibleRange/getDataRange/getData
-│       │   │   ├── ProgressBar.jsx      # Dual-handle draggable time range selector
-│       │   │   ├── ChartControls.jsx    # Interval buttons, danmaku toggle/settings/send, wraps ProgressBar
-│       │   │   ├── IndicatorPanel.jsx   # Technical indicators — real calculations, line chart, read-only (no scroll/zoom), synced to main chart's visible range
-│       │   │   ├── TradePanel.jsx       # Order execution panel (買/賣 + 金額 + 確認)
-│       │   │   ├── DepthChart.jsx       # Order book depth chart (MAX API)
+│       │   │   ├── KLineChart.jsx       # K-line chart (lightweight-charts)
+│       │   │   ├── ProgressBar.jsx      # Draggable time progress bar
+│       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
+│       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
+│       │   │   ├── TradePanel.jsx       # Order execution panel (市價/限價/止盈止損)
+│       │   │   ├── DepthChart.jsx       # Order book depth (SVG cumulative area chart)
 │       │   │   ├── RecentTrades.jsx     # Real-time trade stream (MAX API)
-│       │   │   └── AIChatPanel.jsx      # Dual-tab: AI 對話 + 彈幕聊天 (receives communityMessages/onSendCommunity as props from CoinTrendPage)
+│       │   │   ├── AIChatPanel.jsx      # AI conversation + 彈幕聊天 (dual tab)
+│       │   │   ├── DanmakuPanel.jsx     # Barrage/chat room tab (Bilibili-style)
+│       │   │   ├── CoinOverview.jsx     # 概況 tab (市值/流通量/ATH/ATL/簡介)
+│       │   │   ├── FundFlowChart.jsx    # 數據 tab (資金流向圓餅圖 + 淨流向柱狀圖)
+│       │   │   ├── StrategyHub.jsx      # 策略 tab (建立入口 + AI模板 + 實盤動態)
+│       │   │   ├── KeyEvents.jsx        # 關鍵事件面板 (鏈上大額轉帳 log)
+│       │   │   └── ShareButton.jsx      # 分享按鈕 (複製連結/長圖/社交分享)
 │       │   ├── community/
 │       │   │   ├── PostCard.jsx         # Single post with personality prefix + verified badge; clicking navigates to /community/post/:postId (action buttons stopPropagation)
 │       │   │   ├── PostComposer.jsx     # Create new post (supports $Ticker auto-detection)
@@ -126,7 +132,7 @@ digitimes-hackathon-260801/
 | Page | Route | Description |
 |------|-------|-------------|
 | MainPage | `/` | YouTube-style homepage with coin cards in sections (平時關注, 熱門, 潛力, 社群貼文) + Market Overview |
-| CoinTrendPage | `/coin/:symbol` | Live stream page — K-line chart + AI chat + danmaku + trade panel + depth/trades |
+| CoinTrendPage | `/coin/:symbol` | 6 分頁制：行情(K線+彈幕+交易) / 概況(基本面) / 數據(資金流向) / 動態(AI+社群) / 交易(下單+深度) / 策略(機器人) |
 | CommunityPage | `/community` | Threads-style social feed with personality-weighted algorithm |
 | PostDetailPage | `/community/post/:postId` | Single post + floor-numbered comment thread (no nested replies) |
 | ProfilePage | `/profile` | User profile — personality 4-axis, portfolio overview, trade history, watched coins |

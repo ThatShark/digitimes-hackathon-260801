@@ -1,0 +1,132 @@
+.strategy-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hub-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 12px;
+}
+
+/* Strategy type grid */
+.strategy-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.strategy-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px;
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.strategy-type-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+.stc-icon { font-size: 24px; }
+.stc-label { font-size: 13px; font-weight: 600; color: var(--text-primary, #f1f5f9); }
+.stc-desc { font-size: 11px; color: var(--text-secondary, #94a3b8); }
+
+/* AI templates */
+.ai-templates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.ai-template-card {
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.template-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.template-duration {
+  font-size: 11px;
+  color: var(--text-secondary, #94a3b8);
+  background: var(--bg-tertiary, #0f172a);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.template-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.ts-label { color: var(--text-secondary, #94a3b8); }
+.ts-value { color: var(--text-primary, #f1f5f9); font-weight: 500; }
+.ts-value.up { color: #10b981; }
+
+.template-use-btn {
+  padding: 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.template-use-btn:hover { background: #2563eb; }
+
+/* Live profits */
+.live-profits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 0.8fr;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.profit-user { color: var(--text-primary, #f1f5f9); font-weight: 500; }
+.profit-strategy { color: var(--text-secondary, #94a3b8); }
+.profit-amount { color: #10b981; font-weight: 600; }
+.profit-time { color: var(--text-muted, #64748b); text-align: right; }

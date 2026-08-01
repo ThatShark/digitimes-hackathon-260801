@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import DepthChart from '../trend/DepthChart'
 import './TickerCard.css'
 
 // Mock 幣種即時數據
@@ -17,10 +18,11 @@ const TICKER_DATA = {
 
 /**
  * $Ticker 動態互動卡片
- * 懸浮顯示幣種即時數據（價格、漲跌幅、24H 高低）
+ * 點擊展開：即時數據 + 深度圖分頁
  */
 export default function TickerCard({ symbol }) {
   const [expanded, setExpanded] = useState(false)
+  const [activeTab, setActiveTab] = useState('price')
   const data = TICKER_DATA[symbol.toUpperCase()]
 
   if (!data) {
@@ -32,8 +34,7 @@ export default function TickerCard({ symbol }) {
   return (
     <span
       className="ticker-card-wrapper"
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
+      onClick={() => setExpanded(!expanded)}
     >
       <span className={`ticker-tag ${isUp ? 'up' : 'down'}`}>
         ${symbol.toUpperCase()}
@@ -43,30 +44,62 @@ export default function TickerCard({ symbol }) {
       </span>
 
       {expanded && (
-        <div className="ticker-popup">
-          <div className="ticker-popup-header">
-            <span className="ticker-popup-name">{data.name}</span>
-            <span className="ticker-popup-symbol">{symbol.toUpperCase()}</span>
+        <div className="ticker-popup" onClick={(e) => e.stopPropagation()}>
+          {/* Tab 切換 */}
+          <div className="ticker-popup-tabs">
+            <button
+              className={`ticker-tab ${activeTab === 'price' ? 'active' : ''}`}
+              onClick={() => setActiveTab('price')}
+            >
+              行情
+            </button>
+            <button
+              className={`ticker-tab ${activeTab === 'depth' ? 'active' : ''}`}
+              onClick={() => setActiveTab('depth')}
+            >
+              深度
+            </button>
           </div>
-          <div className="ticker-popup-price">
-            <span className="ticker-popup-current">
-              NT$ {data.price.toLocaleString()}
-            </span>
-            <span className={`ticker-popup-change ${isUp ? 'up' : 'down'}`}>
-              {isUp ? '+' : ''}{data.change}%
-            </span>
-          </div>
-          <div className="ticker-popup-range">
-            <div className="ticker-range-item">
-              <span className="range-label">24H 高</span>
-              <span className="range-value">NT$ {data.high.toLocaleString()}</span>
+
+          {/* 行情 tab */}
+          {activeTab === 'price' && (
+            <>
+              <div className="ticker-popup-header">
+                <span className="ticker-popup-name">{data.name}</span>
+                <span className="ticker-popup-symbol">{symbol.toUpperCase()}</span>
+              </div>
+              <div className="ticker-popup-price">
+                <span className="ticker-popup-current">
+                  NT$ {data.price.toLocaleString()}
+                </span>
+                <span className={`ticker-popup-change ${isUp ? 'up' : 'down'}`}>
+                  {isUp ? '+' : ''}{data.change}%
+                </span>
+              </div>
+              <div className="ticker-popup-range">
+                <div className="ticker-range-item">
+                  <span className="range-label">24H 高</span>
+                  <span className="range-value">NT$ {data.high.toLocaleString()}</span>
+                </div>
+                <div className="ticker-range-item">
+                  <span className="range-label">24H 低</span>
+                  <span className="range-value">NT$ {data.low.toLocaleString()}</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* 深度圖 tab */}
+          {activeTab === 'depth' && (
+            <div className="ticker-depth-container">
+              <DepthChart symbol={symbol.toUpperCase()} />
             </div>
-            <div className="ticker-range-item">
-              <span className="range-label">24H 低</span>
-              <span className="range-value">NT$ {data.low.toLocaleString()}</span>
-            </div>
-          </div>
-          <Link to={`/coin/${symbol.toUpperCase()}`} className="ticker-popup-link">
+          )}
+
+          <Link
+            to={`/coin/${symbol.toUpperCase()}`}
+            className="ticker-popup-link"
+          >
             查看直播 →
           </Link>
         </div>
@@ -77,8 +110,6 @@ export default function TickerCard({ symbol }) {
 
 /**
  * 解析文字中的 $TICKER 標記，轉為 TickerCard 元件
- * @param {string} text - 原始文字
- * @returns {Array} - React 元素陣列
  */
 export function parseTickerTags(text) {
   const parts = text.split(/(\$[A-Za-z]{2,10})/g)
