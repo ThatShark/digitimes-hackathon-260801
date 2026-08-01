@@ -97,11 +97,14 @@ digitimes-hackathon-260801/
 │   │   │   ├── market_trades.py      # GET /market/trades — thin proxy over MAX recent fills (raw list, no aggregation), powers RecentTrades.jsx
 │   │   │   └── market_fund_flow.py   # GET /market/fund_flow — 資金流向分析: real MAX trades paged backward over the requested period, classified into 特大單/大單/中單/小單 by TWD value + buy/sell direction (see utils/fund_flow.py + utils/constants.py for threshold rationale); daily_net_flow is an approximation from daily K-line candles, not per-trade aggregation. Powers FundFlowChart.jsx
 │   │   ├── services/
-│   │   │   ├── max_api.py           # MAX Exchange API client (ticker, tickers, klines, markets, trades, depth)
+│   │   │   ├── max_api.py           # MAX Exchange public API client (ticker, tickers, klines, markets, trades, depth) — no auth
+│   │   │   ├── max_trading.py       # MAX Exchange PRIVATE API client (HMAC-SHA256 signed) — create_order/get_accounts/get_order, used by allow_trade.py
 │   │   │   ├── coinmarketcap.py     # CoinMarketCap keyless public API client (fear&greed, global-metrics, listings) — no API key needed unless CMC_API_KEY env var is set
+│   │   │   ├── bedrock.py           # AWS Bedrock Converse API wrapper — chat() for plain text, converse_raw() for Tool Use (returns full response incl. stopReason/toolUse blocks)
+│   │   │   ├── ai_tools.py          # Tool specs + dispatcher for ai_chat.py's Bedrock Tool Use: get_current_price/get_fear_greed_index/get_fund_flow_analysis/propose_trade — see tech.md "AI Chat Tool Use"
 │   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
 │   │   └── utils/
-│   │       ├── metrics.py           # CSV → FIFO trade matching → personality scores (r/e/f/s) AND portfolio helpers (compute_open_positions/compute_trade_summary/build_trade_history), no I/O
+│   │       ├── metrics.py           # CSV → FIFO trade matching → personality scores (r/e/f/s) AND portfolio helpers (compute_open_positions/compute_trade_summary/build_trade_history/compute_avg_trade_amount), no I/O
 │   │       ├── fund_flow.py         # classify_trades() buckets real MAX trades by TWD value (特大單/大單/中單/小單); compute_daily_net_flow() derives approximate 7-day net flow from K-line candles, no I/O
 │   │       ├── constants.py         # SUPPORTED_CURRENCIES/RANKABLE_CURRENCIES (the 6 coins this product supports, minus stablecoins for ranking) + FUND_FLOW_*_THRESHOLD_TWD — single source of truth shared across handlers
 │   │       └── http.py              # json_response()/cors_headers() — every handler must use this, see tech.md "CORS gotcha"
@@ -116,34 +119,15 @@ digitimes-hackathon-260801/
 │       │   ├── test_trade_history.py      # Mocked S3; summary + history shape, limit validation, 404 need_csv
 │       │   ├── test_market_depth.py       # Mocked MAX API; string-to-float coercion, malformed level skipping, limit validation
 │       │   ├── test_market_trades.py      # Mocked MAX API; bid/ask -> buy/sell mapping, malformed entry skipping
-│       │   └── test_market_fund_flow.py   # Mocked MAX API; window filtering (time.time()-relative timestamps, not hardcoded epoch), pagination early-stop, best-effort daily_net_flow on K-line failure
+│       │   ├── test_market_fund_flow.py   # Mocked MAX API; window filtering (time.time()-relative timestamps, not hardcoded epoch), pagination early-stop, best-effort daily_net_flow on K-line failure
+│       │   └── test_ai_chat.py            # Mocked Bedrock + S3; no-tool-use direct answer, single/multi-round tool use, propose_trade -> investment_suggestion mapping, round-cap fallback, Bedrock failure -> 503, conversation history handling
+│       ├── services/
+│       │   ├── test_bedrock.py            # Mocked boto3 bedrock-runtime; chat() text extraction, converse_raw() toolConfig pass-through, retry/exhaustion behavior
+│       │   └── test_ai_tools.py           # Mocked MAX/CMC/fund_flow calls; tool config gating by currency, propose_trade schema uses amount_twd not amount, each tool's success+failure path, never-raises guarantee
 │       └── utils/
-│           ├── test_metrics_unit.py       # Includes compute_open_positions/compute_trade_summary/build_trade_history unit tests
+│           ├── test_metrics_unit.py       # Includes compute_open_positions/compute_trade_summary/build_trade_history/compute_avg_trade_amount unit tests
 │           ├── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
 │           └── test_fund_flow.py          # Bucket threshold boundaries (inclusive), buy/sell aggregation, malformed-entry skipping, daily_net_flow direction logic
-│
-├── CustomerSupport/             # AgentCore AI agent project
-│   ├── AGENTS.md                # AI assistant context for AgentCore schema
-│   ├── README.md                # AgentCore project docs + CLI commands
-│   │
-│   ├── agentcore/               # Declarative config (source of truth)
-│   │   ├── agentcore.json       # Project config — agents, resources, gateways
-│   │   ├── aws-targets.json     # Deployment targets (account + region)
-│   │   ├── .env.local           # Secrets (gitignored)
-│   │   ├── .llm-context/        # TypeScript type defs for schema validation
-│   │   └── cdk/                 # CDK infrastructure (TypeScript)
-│   │       ├── lib/cdk-stack.ts
-│   │       ├── package.json
-│   │       └── tsconfig.json
-│   │
-│   └── app/                     # Agent application code
-│       └── CustomerSupport/     # Python agent (Strands SDK)
-│           ├── main.py          # Entrypoint — agent factory, invoke handler
-│           ├── pyproject.toml   # Python deps (hatchling build)
-│           ├── uv.lock          # Lockfile
-│           ├── model/           # Model loading & Bedrock compatibility
-│           ├── mcp_client/      # MCP client config (Streamable HTTP)
-│           └── skills/          # Skill fetcher (S3/git download + cache)
 │
 └── .kiro/                       # Kiro IDE configuration
     └── steering/                # Steering rules
@@ -268,6 +252,8 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
 - **New Lambda handlers must be registered in `backend/template.yaml`** (SAM function + API Gateway route) in addition to matching `api.yaml` — the spec alone does not deploy anything.
 - **Only 6 currencies are supported end-to-end: BTC/ETH/SOL/DOGE/USDT/USDC** (`backend/src/utils/constants.py`'s `SUPPORTED_CURRENCIES`, mirrored by `frontend/src/pages/MainPage.jsx`'s fixed coin card list). Any handler that ranks/surfaces coins by market data (gainers/losers, price-mover notifications) must filter to this set — CMC's full universe or MAX's full market list will otherwise leak in coins the product doesn't actually support (this happened before with PEPE/ADA/WIF showing up in `market_overview.py`/`notifications.py`). `RANKABLE_CURRENCIES` (supported minus `STABLECOIN_CURRENCIES`) is the further-narrowed set for anything ranking by 24h % change, since USDT/USDC's change is always ~0% and carries no signal.
 - **Mock data with no real data source must be visibly labeled, not silently presented as real.** `notifications.py`'s `whale_alert`/`social_buzz` types and `frontend/src/components/community/WhaleAlertCard.jsx` both append "（展示用）" to their text — this is a deliberate, planned-but-not-implemented feature (Whale Alert's official API has no free tier; a multi-chain address-attribution DB is out of scope for this hackathon), not something to hide from judges. When adding new mock-backed UI, follow the same "（展示用）" convention rather than presenting placeholder numbers as if they were live data.
+- **`ai_chat.py`'s trade suggestions come from Bedrock Tool Use (`propose_trade`), not text parsing.** Don't add regex/keyword matching against the AI's free-form reply to detect a trade suggestion — that was the previous design and it could only ever produce a hardcoded default amount. See tech.md's "AI Chat Tool Use" section for the current design (`ai_tools.py` + `ai_chat.py`'s `_run_tool_use_loop()`).
+- **`allow_trade.py` does not write the executed trade back to S3** after a successful MAX order — Portfolio/trade history won't reflect an AI-executed or manually-confirmed trade until the user re-uploads/re-syncs their CSV. This is a known, not-yet-closed gap in the "closed loop" (chat → suggest → confirm → execute) — flag it if asked whether the demo flow is fully closed end-to-end.
 - **CSV upload / re-check flow (no login, single fixed `user_id`)**: `frontend/src/utils/currentUser.js`'s `CURRENT_USER_ID` (`'demo-user'`) is sent as the `user_id` query param on every one of these calls — there's no auth, so this is what ties all S3 reads/writes to "the" user in this MVP. `ProfilePage.jsx` calls `GET /init` on mount to check whether `users/{userId}/trades.csv` already exists; if so it skips straight to fetching personality/portfolio/trade_history instead of asking the user to upload again. Only shows the upload CTA when `/init` returns `need_csv` (or the backend isn't configured).
 - **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
   - `GET /init` — lightweight check: has this user already uploaded a CSV? (`need_csv` | `ready`+currencies). Does NOT trigger analysis.
@@ -297,9 +283,7 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
 | Directory | Language | Package Manager |
 |-----------|----------|-----------------|
 | `frontend/` | JavaScript (React + Vite) | npm |
-| `backend/` | Python (Lambda) | pip / uv |
-| `CustomerSupport/app/` | Python 3.14 | uv |
-| `CustomerSupport/agentcore/cdk/` | TypeScript | npm |
+| `backend/` | Python (Lambda) | pip |
 
 ## Team Roles (for context)
 

@@ -87,7 +87,10 @@ class BedrockChatClient:
     # ─────────────────────────────────────────────────────────────────────────
 
     def chat(self, messages: list[dict], system_prompt: "str | None" = None) -> str:
-        """Send a conversation to Bedrock and return the assistant's reply.
+        """Send a conversation to Bedrock and return the assistant's reply
+        as plain text. No tool use — for callers that just want a text
+        response (e.g. save_personality.py / upload_csv.py's personality
+        description generation).
 
         Args:
             messages: List of message dicts in Bedrock Converse format, e.g.
@@ -101,7 +104,32 @@ class BedrockChatClient:
         Raises:
             BedrockError on failure after retries.
         """
-        # Build request kwargs
+        response = self.converse_raw(messages, system_prompt=system_prompt)
+        return self._extract_text(response)
+
+    def converse_raw(
+        self,
+        messages: list[dict],
+        system_prompt: "str | None" = None,
+        tool_config: "dict | None" = None,
+    ) -> dict:
+        """Send a conversation to Bedrock and return the full raw Converse
+        API response (not just extracted text) — needed by callers that
+        use Tool Use and must inspect `stopReason` / `toolUse` content
+        blocks (see ai_tools.py / ai_chat.py's multi-round tool loop).
+
+        Args:
+            messages: List of message dicts in Bedrock Converse format.
+            system_prompt: Optional override for system prompt.
+            tool_config: Optional Bedrock `toolConfig` dict, e.g.
+                {"tools": [{"toolSpec": {...}}, ...]}. Omit to disable tool use.
+
+        Returns:
+            The raw Converse API response dict (`output`, `stopReason`, etc).
+
+        Raises:
+            BedrockError on failure after retries.
+        """
         kwargs: dict = {
             "modelId": self._model_id,
             "messages": messages,
@@ -113,16 +141,17 @@ class BedrockChatClient:
             "performanceConfig": {"latency": "standard"},
         }
 
-        # Attach system prompt (custom override or default)
         effective_prompt = system_prompt if system_prompt is not None else self._system_prompt
         if effective_prompt:
             kwargs["system"] = [{"text": effective_prompt}]
 
+        if tool_config:
+            kwargs["toolConfig"] = tool_config
+
         last_error: Optional[Exception] = None
         for attempt in range(1, RETRY_ATTEMPTS + 1):
             try:
-                response = self._client.converse(**kwargs)
-                return self._extract_text(response)
+                return self._client.converse(**kwargs)
             except (ClientError, Exception) as exc:
                 last_error = exc
                 print(f"[BEDROCK] Attempt {attempt}/{RETRY_ATTEMPTS} failed: {exc}")

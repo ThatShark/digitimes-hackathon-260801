@@ -389,9 +389,19 @@ paths:
       tags: [Core]
       summary: Send message to AI assistant
       description: |
-        User sends a message to the AI. The AI responds with market analysis
-        and optionally an investment suggestion. If a suggestion is returned,
-        the frontend must display a confirm button before executing.
+        User sends a message to the AI. The AI decides for itself (via
+        Bedrock Converse **Tool Use**, see
+        backend/src/services/ai_tools.py) whether it needs live data
+        before answering — it can call get_fear_greed_index,
+        get_current_price, and/or get_fund_flow_analysis, in any order,
+        across up to 5 rounds
+        (backend/src/handlers/ai_chat.py's `_MAX_TOOL_ROUNDS`) — before
+        producing its final text response. Separately, if its analysis
+        supports a trade suggestion, it calls `propose_trade` with a
+        structured action/amount_twd/reason; this is what becomes
+        `investment_suggestion` in the response. If a suggestion is
+        returned, the frontend must display a confirm button before
+        executing (via POST /allow_trade) — the AI never auto-executes.
       operationId: aiChat
       requestBody:
         required: true
@@ -1893,7 +1903,21 @@ components:
           maxLength: 2000
         currency:
           type: string
-          description: Current coin context (if on a specific coin's page)
+          description: |
+            Current coin context (if on a specific coin's page). This
+            gates which Bedrock tools are offered to the model — without
+            it, only get_fear_greed_index is available; with it,
+            get_current_price / get_fund_flow_analysis / propose_trade
+            are also offered, all scoped to this currency (the model
+            cannot query or suggest a different currency than this one).
+        before_messages:
+          type: array
+          items:
+            type: object
+            properties:
+              user: { type: string }
+              ai: { type: string }
+          description: Prior conversation turns (last 20 used), for multi-turn context.
 
     AiChatResponse:
       type: object
@@ -1904,10 +1928,22 @@ components:
           enum: [ready]
         message:
           type: string
-          description: AI's response text
+          description: |
+            AI's final text response, after any tool-use rounds have
+            completed (see operation description). Always includes the
+            model's own explanation, even when investment_suggestion is
+            also present — the frontend should show `message`, not just
+            the suggestion card.
         investment_suggestion:
           nullable: true
           $ref: "#/components/schemas/InvestmentSuggestion"
+          description: |
+            Present only if the model called the `propose_trade` tool
+            during this request — a genuine model decision backed by
+            whichever data it chose to look up (Fear&Greed / price /
+            fund-flow / the user's own trade history), not a
+            keyword-matched guess. null if the model didn't propose a
+            trade this turn.
 
     InvestmentSuggestion:
       type: object
@@ -1915,13 +1951,22 @@ components:
       properties:
         currency:
           type: string
-          description: e.g. BTC, ETH
+          description: |
+            Always equal to the request's `currency` — the model cannot
+            propose a trade for a different currency than the one the
+            user is currently viewing.
         action:
           type: string
           enum: [buy, sell]
         amount:
           type: number
-          description: Suggested amount in TWD
+          description: |
+            Suggested amount in TWD, decided by the model itself (via the
+            propose_trade tool's amount_twd field) — informed by the
+            user's own historical average trade amount when available
+            (see backend/src/utils/metrics.py's compute_avg_trade_amount),
+            falling back to a conservative NT$1,000–5,000 range for users
+            with no trade history. This is no longer a hardcoded constant.
 
     AllowTradeRequest:
       type: object

@@ -17,8 +17,8 @@
 - **Location**: `backend/src/`
 - **API spec**: `backend/api.yaml` (OpenAPI 3.0.3) — source of truth for the contract; check it before adding new handlers
 - **Testing**: pytest + hypothesis (property-based tests independently re-derive each metric formula)
-- **Implemented handlers**: `upload_csv.py` (raw CSV body → metrics → S3; empty body re-analyzes existing S3 CSV), `init.py` (lightweight CSV-exists check, no analysis), `get_personality.py` (read-only S3 lookup of previously-computed scores), `save_personality.py` (save questionnaire-derived scores), `portfolio.py` (S3 CSV → FIFO open positions → live MAX price → holdings/P&L), `trade_history.py` (S3 CSV → trade summary + per-transaction history), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical), `market_overview.py` (行情看板: Fear&Greed + dominance + market cap/volume + gainers/losers), `candlestick_chart.py` (MAX K-line + S3 CSV buy/sell markers merged), `notifications.py` (dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data, whale_alert + social_buzz mock-generated — always 200, never fails the banner), `market_depth.py` (thin proxy over MAX order book, powers DepthChart.jsx), `market_trades.py` (thin proxy over MAX recent fills, powers RecentTrades.jsx), `market_fund_flow.py` (資金流向分析: real MAX trades classified into 特大單/大單/中單/小單 by TWD value + buy/sell direction, plus an approximate 7-day net flow derived from daily K-line candles — powers FundFlowChart.jsx)
-- **In progress**: `ai_chat.py`, `allow_trade.py`, community/chat/questionnaire handlers
+- **Implemented handlers**: `upload_csv.py` (raw CSV body → metrics → S3; empty body re-analyzes existing S3 CSV), `init.py` (lightweight CSV-exists check, no analysis), `get_personality.py` (read-only S3 lookup of previously-computed scores), `save_personality.py` (save questionnaire-derived scores), `portfolio.py` (S3 CSV → FIFO open positions → live MAX price → holdings/P&L), `trade_history.py` (S3 CSV → trade summary + per-transaction history), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical), `market_overview.py` (行情看板: Fear&Greed + dominance + market cap/volume + gainers/losers), `candlestick_chart.py` (MAX K-line + S3 CSV buy/sell markers merged), `notifications.py` (dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data, whale_alert + social_buzz mock-generated — always 200, never fails the banner), `market_depth.py` (thin proxy over MAX order book, powers DepthChart.jsx), `market_trades.py` (thin proxy over MAX recent fills, powers RecentTrades.jsx), `market_fund_flow.py` (資金流向分析: real MAX trades classified into 特大單/大單/中單/小單 by TWD value + buy/sell direction, plus an approximate 7-day net flow derived from daily K-line candles — powers FundFlowChart.jsx), `ai_chat.py` (POST /ai_chat — Bedrock Converse **Tool Use**: the model itself decides whether to call get_fear_greed_index/get_current_price/get_fund_flow_analysis before answering, and separately whether to call propose_trade for a structured trade suggestion — see "AI Chat Tool Use" section below), `allow_trade.py` (POST /allow_trade — real MAX private API order placement via `max_trading.py`'s HMAC-signed client; does NOT yet write the executed trade back to S3, so Portfolio/trade history won't reflect an AI-executed trade until the user re-uploads/re-syncs their CSV — known gap)
+- **In progress**: community/chat/questionnaire handlers (`/community/*`, `/tipping`, `/chat/*`, `/questionnaire*` are fully specified in `api.yaml` but have no handler files or `template.yaml` entries yet — pure frontend mock currently)
 - **Responsibilities**:
   - S3 read/write (CSV, personality data, community posts, danmaku messages)
   - MAX API proxy (K-line, real-time pricing, orders)
@@ -28,32 +28,68 @@
   - Questionnaire serving & response processing
   - Recommendation algorithm (personalized feed ordering)
 
-## AI Agent (AgentCore)
+## AI Agent — status: NOT implemented (plain Bedrock Converse instead)
 
-- **Framework**: AWS Bedrock AgentCore + Strands Agents SDK
-- **Language**: Python 3.14 (CodeZip build)
-- **Location**: `CustomerSupport/app/CustomerSupport/`
-- **Package manager**: uv (uses `pyproject.toml` + `uv.lock`)
-- **Key dependencies**:
-  - `strands-agents >= 1.15.0`
-  - `bedrock-agentcore >= 1.9.1`
-  - `mcp >= 1.19.0`
-  - `aws-opentelemetry-distro`
-  - `botocore[crt] >= 1.35.0`
-- **MCP Client**: Streamable HTTP (currently connected to Exa AI for web search)
-- **AI Behavior**:
-  - Passive by default — responds only when user initiates consultation
-  - Provides personalized advice based on personality profile + trading history
-  - Fallback: references crowd behavior / same-personality-type users when data insufficient
-  - Personality analysis: MBTI-style 4-dimension system from CSV metrics + questionnaire signals
+⚠️ Earlier drafts of this document described a `CustomerSupport/` directory
+containing an AWS Bedrock AgentCore + Strands Agents SDK agent (with MAX MCP
+Server / MAX Skill integration per the original proposal's three-layer
+architecture: AI → MCP Server → Skill → REST API). **That directory does
+not exist in this repository** — there is no AgentCore config, no Strands
+agent, no MCP client, no CDK stack for it anywhere on disk. The actual
+implementation is simpler: `backend/src/handlers/ai_chat.py` calls AWS
+Bedrock directly via `boto3`'s Converse API (`backend/src/services/bedrock.py`),
+and `allow_trade.py` calls MAX's private REST API directly via HMAC-signed
+requests (`backend/src/services/max_trading.py`) — no MCP/Skill layer in
+between. If MAX MCP Server / MAX Skill integration is required for scoring
+purposes, it has not been built and would be new work, not a gap-fill.
 
-## CDK Infrastructure
+### AI Chat Tool Use (`ai_chat.py` + `ai_tools.py`)
 
-- **Location**: `CustomerSupport/agentcore/cdk/`
-- **Language**: TypeScript
-- **CDK version**: 2.1126.0
-- **Key constructs**: `@aws/agentcore-cdk`
-- **Package manager**: npm
+`POST /ai_chat` uses Bedrock Converse **Tool Use** — the model decides for
+itself, per message, whether it needs live data before answering:
+
+- `get_fear_greed_index` — always offered (no currency needed)
+- `get_current_price` / `get_fund_flow_analysis` / `propose_trade` — only
+  offered when the request includes a `currency` (see
+  `ai_tools.py`'s `build_tool_config()`)
+
+The handler runs a bounded loop (`ai_chat.py`'s `_MAX_TOOL_ROUNDS = 5`):
+call Bedrock → if `stopReason == "tool_use"`, execute the requested tool(s)
+via `ai_tools.py`'s `execute_tool()` and feed results back → repeat, up to
+the round cap, then fall back to a "couldn't complete" message if the
+model never produces a final text answer. If the model calls
+`propose_trade`, that structured `{action, amount_twd, reason}` becomes
+the response's `investment_suggestion` — this is a genuine model decision
+informed by whichever tools it chose to call, not a regex/keyword match
+against free text (the previous design, which could only ever produce a
+hardcoded default amount since the system prompt told the model not to
+mention amounts at all).
+
+`amount_twd` (not `amount`) is deliberately spelled out in the
+`propose_trade` tool schema with a verbose description — a live smoke
+test against `openai.gpt-oss-120b-1:0` showed the model will confuse "an
+amount" with "a coin quantity" (e.g. returning `0.0192` instead of a TWD
+figure) if the field name/description is ambiguous.
+
+The suggested amount is scaled to the user's own trading habits: 
+`ai_chat.py`'s `_load_avg_trade_amount()` reads the user's S3 CSV and calls
+`metrics.py`'s `compute_avg_trade_amount()`, passed into the system prompt
+as a reference point. Falls back to a conservative NT$1,000–5,000 range
+for users with no trade history (see `system_prompt.txt`).
+
+**Model choice**: `openai.gpt-oss-120b-1:0` (the existing default) was
+verified via a live Converse API smoke test to correctly support
+`toolConfig` — it appropriately skips tool calls for pure knowledge
+questions, calls the right tool(s) for data-dependent questions, and
+correctly chains multiple tool calls across rounds before producing a
+final answer. No model change was needed.
+
+## CDK Infrastructure — not present in this repo
+
+Earlier drafts of this document referenced a `CustomerSupport/agentcore/cdk/`
+TypeScript CDK stack. It does not exist on disk (see "AI Agent" section
+above) — the only infrastructure-as-code in this repo is `backend/template.yaml`
+(AWS SAM), which is what actually deploys the Lambda functions + API Gateway.
 
 ## Cloud Services (AWS)
 
@@ -68,12 +104,13 @@
 
 ## External APIs
 
-| API | Purpose | Auth |
-|-----|---------|------|
-| MAX Exchange API (v3) | Real-time pricing, K-line, depth, orders | API Key (Private API for Lv2) |
-| MAX MCP Server | MCP-compatible MAX integration | — |
-| MAX Skill | Trade execution module | — |
-| CoinMarketCap | Fear & Greed Index | API Key |
+| API | Purpose | Auth | Status |
+|-----|---------|------|--------|
+| MAX Exchange API (v3), public endpoints | Real-time pricing, K-line, depth, trades | None | ✅ Implemented (`max_api.py`) |
+| MAX Exchange API (v3), private endpoints | Order placement (`allow_trade.py`) | HMAC-signed (`MAX_API_KEY`/`MAX_API_SECRET`) | ✅ Implemented (`max_trading.py`), ⚠️ `template.yaml`'s `AllowTradeFunction` currently deploys with both env vars blank — needs real credentials wired in (e.g. via SAM `Parameters` + `--parameter-overrides`) before this actually works end-to-end |
+| MAX MCP Server | MCP-compatible MAX integration | — | ❌ Not implemented — see "AI Agent" section above |
+| MAX Skill | Trade execution module | — | ❌ Not implemented — `allow_trade.py` calls the private REST API directly instead |
+| CoinMarketCap | Fear & Greed Index, global metrics, listings | API key optional (keyless mode default) | ✅ Implemented (`coinmarketcap.py`) |
 
 ## Frontend Key Libraries
 
@@ -149,35 +186,14 @@ Adding a handler file under `backend/src/handlers/` is not enough to deploy it �
 
 ## Common Commands
 
-### AgentCore Agent (Python)
+### Backend (SAM)
 
 ```bash
-# Run agent locally with hot-reload
-agentcore dev
-
-# Deploy to AWS
-agentcore deploy
-
-# Validate configuration
-agentcore validate
-
-# Invoke agent (local or deployed)
-agentcore invoke
-
-# View logs / traces
-agentcore logs
-agentcore traces list
-```
-
-### CDK Infrastructure
-
-```bash
-cd CustomerSupport/agentcore/cdk
-npm install
-npm run build          # TypeScript compile
-npm test               # Jest tests
-npx cdk synth          # Synthesize CloudFormation
-npx cdk deploy         # Deploy stack
+cd backend
+sam build
+sam deploy              # subsequent deploys; samconfig.toml has stack config
+sam deploy --guided     # first deploy, or to change stack parameters
+python -m pytest tests/ -q
 ```
 
 ### Frontend
@@ -189,20 +205,11 @@ npm run dev            # Vite dev server
 npm run build          # Production build
 ```
 
-### Python Agent Dependencies
-
-```bash
-cd CustomerSupport/app/CustomerSupport
-uv sync                # Install dependencies from uv.lock
-uv add <package>       # Add new dependency
-```
-
 ## Key Reference Docs
 
 - MAX API: https://max-api.maicoin.com/doc/v3.html
-- MAX MCP Server: https://github.com/bistin/max-mcp-server
-- MAX Skill: https://github.com/bistin/max-api-skill
+- MAX MCP Server (not integrated, see "AI Agent" section): https://github.com/bistin/max-mcp-server
+- MAX Skill (not integrated, see "AI Agent" section): https://github.com/bistin/max-api-skill
 - CoinMarketCap API: https://pro.coinmarketcap.com/api/documentation/
-- AgentCore CLI: https://github.com/aws/agentcore-cli
-- AgentCore CDK: https://github.com/aws/agentcore-l3-cdk-constructs
+- Bedrock Converse API Tool Use: https://docs.aws.amazon.com/bedrock/latest/userguide/tool-use.html
 - lightweight-charts: https://tradingview.github.io/lightweight-charts/

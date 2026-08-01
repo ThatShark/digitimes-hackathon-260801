@@ -79,28 +79,47 @@ def lambda_handler(event, context):
         return _error(400, "period 必須為 5m / 1h / 4h / 1d")
 
     quote = params.get("quote", "TWD").strip().upper()
+
+    try:
+        data = get_fund_flow_data(currency, quote, period)
+    except MaxApiError:
+        return _error(502, "無法取得成交紀錄，請稍後再試")
+
+    return json_response(200, {"status": "ready", **data})
+
+
+def get_fund_flow_data(currency: str, quote: str = "TWD", period: str = _DEFAULT_PERIOD) -> dict:
+    """Reusable core of GET /market/fund_flow, without the HTTP/Lambda
+    plumbing — used directly by ai_tools.py's `get_fund_flow_analysis` tool
+    so the AI chat assistant can pull the exact same fund-flow data the
+    FundFlowChart.jsx widget shows, without going through API Gateway.
+
+    Args:
+        currency: coin symbol, e.g. "BTC" (already validated/uppercased by caller)
+        quote:    quote currency, default "TWD"
+        period:   "5m" | "1h" | "4h" | "1d" (already validated by caller)
+
+    Returns a dict with keys: period, buckets, net_inflow, trade_count,
+    daily_net_flow (same shape as the API response, minus `status`).
+
+    Raises MaxApiError if the first page of trades fails to fetch (see
+    _fetch_trades_within_window()'s docstring).
+    """
     market = f"{currency}{quote}".lower()
     window_seconds = _PERIOD_TO_SECONDS[period]
 
     client = MaxApiClient()
-
-    try:
-        trades = _fetch_trades_within_window(client, market, window_seconds)
-    except MaxApiError:
-        return _error(502, "無法取得成交紀錄，請稍後再試")
-
+    trades = _fetch_trades_within_window(client, market, window_seconds)
     result = classify_trades(trades)
-
     daily_net_flow = _fetch_daily_net_flow(client, market)
 
-    return json_response(200, {
-        "status": "ready",
+    return {
         "period": period,
         "buckets": result.buckets,
         "net_inflow": result.net_inflow,
         "trade_count": result.trade_count,
         "daily_net_flow": daily_net_flow,
-    })
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

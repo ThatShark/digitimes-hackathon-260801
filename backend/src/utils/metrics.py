@@ -306,6 +306,19 @@ def compute_open_positions(trades: list[RawTrade]) -> dict[str, dict]:
     return positions
 
 
+def compute_avg_trade_amount(trades: list[RawTrade]) -> float:
+    """Average TWD value per buy/sell transaction (deposit/withdrawal
+    excluded) — used to give the AI chat assistant a sense of "how much
+    does this user typically trade per order" so its trade-size
+    suggestions (in ai_tools.py's propose_trade) are scaled to the user's
+    own history rather than an arbitrary constant. Returns 0.0 if there
+    are no buy/sell transactions (e.g. new user with no CSV activity)."""
+    buy_sell = _buy_sell_only(trades)
+    if not buy_sell:
+        return 0.0
+    return round(statistics.mean(t.amount_twd for t in buy_sell), 2)
+
+
 def compute_trade_summary(
     trades: list[RawTrade],
     closed_trades: "list[ClosedTrade] | None" = None,

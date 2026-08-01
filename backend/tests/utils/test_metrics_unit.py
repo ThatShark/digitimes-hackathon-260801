@@ -14,6 +14,7 @@ from src.utils.metrics import (
     calculate_personality,
     calculate_risk_score,
     calculate_strategy_score,
+    compute_avg_trade_amount,
     compute_metrics_json,
     match_fifo_trades,
     parse_klines_json,
@@ -306,3 +307,32 @@ def test_trade_history_ignores_deposit_withdrawal():
     rows = build_trade_history(trades)
     assert len(rows) == 1
     assert rows[0]["currency"] == "BTC"
+
+
+# ── compute_avg_trade_amount ──────────────────────────────────────────────────
+# Used by ai_chat.py to give propose_trade's suggested amount a sense of
+# "how much does this user typically trade per order".
+
+def test_avg_trade_amount_basic():
+    trades = [
+        RawTrade(1700000000000, "BTC", 2000000, "買", 0.01, 0.01),   # 20,000 TWD
+        RawTrade(1700100000000, "BTC", 2200000, "賣", -0.01, 0.0),   # 22,000 TWD
+    ]
+    assert compute_avg_trade_amount(trades) == pytest.approx(21000.0)
+
+
+def test_avg_trade_amount_excludes_deposit_withdrawal():
+    trades = [
+        RawTrade(1700000000000, "twd", 1.0, "充值", 100000, 100000),  # excluded
+        RawTrade(1700100000000, "BTC", 2000000, "買", 0.01, 0.01),    # 20,000 TWD
+    ]
+    assert compute_avg_trade_amount(trades) == pytest.approx(20000.0)
+
+
+def test_avg_trade_amount_empty_returns_zero():
+    assert compute_avg_trade_amount([]) == 0.0
+
+
+def test_avg_trade_amount_only_deposits_returns_zero():
+    trades = [RawTrade(1700000000000, "twd", 1.0, "充值", 100000, 100000)]
+    assert compute_avg_trade_amount(trades) == 0.0
