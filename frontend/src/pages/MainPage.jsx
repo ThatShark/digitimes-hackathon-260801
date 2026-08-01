@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import MarketOverview from '../components/main/MarketOverview'
-import Watchlist from '../components/main/Watchlist'
 import NotificationBanner from '../components/shared/NotificationBanner'
 import BookmarkButton from '../components/shared/BookmarkButton'
 import { getCoinPrice } from '../services/coinApi'
@@ -147,9 +146,6 @@ export default function MainPage() {
 
       {/* 行情看板 */}
       <MarketOverview />
-
-      {/* 自選清單 */}
-      <Watchlist />
 
       <section className="coin-section">
         <h2 className="section-title">平時關注</h2>
