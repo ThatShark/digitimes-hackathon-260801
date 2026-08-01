@@ -231,11 +231,15 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* 情緒儀表盤 + 巨鯨警報 */}
-      <div className="community-widgets">
-        <SentimentGauge posts={posts} />
-        <WhaleAlertCard />
+      {/* 情緒儀表盤（按幣種分類） */}
+      <div className="sentiment-multi">
+        {['BTC', 'ETH', 'SOL', 'DOGE'].map((coin) => (
+          <SentimentGauge key={coin} posts={posts} coin={coin} />
+        ))}
       </div>
+
+      {/* 巨鯨警報 */}
+      <WhaleAlertCard />
 
       <PostComposer onPost={handleNewPost} currentUser={CURRENT_USER} />
 
