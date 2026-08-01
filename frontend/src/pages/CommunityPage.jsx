@@ -7,6 +7,7 @@ import SentimentGauge from '../components/community/SentimentGauge'
 import BountyQuestion from '../components/community/BountyQuestion'
 import WhaleAlertCard from '../components/community/WhaleAlertCard'
 import StrategyCard from '../components/community/StrategyCard'
+import WellnessCard from '../components/community/WellnessCard'
 import NotificationBanner from '../components/shared/NotificationBanner'
 import { MOCK_POSTS, MOCK_BOUNTIES, CURRENT_USER } from '../utils/mockCommunity'
 import './CommunityPage.css'
@@ -212,6 +213,7 @@ export default function CommunityPage() {
     }
     if (index === 6) {
       feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[2].id}`} strategy={MOCK_STRATEGIES[2]} />)
+      feedItems.push(<WellnessCard key="wellness" />)
     }
     feedItems.push(
       <div key={post.id} id={`post-${post.id}`}>

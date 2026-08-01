@@ -1,0 +1,71 @@
+.wellness-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 10px;
+}
+
+.wellness-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.wellness-icon {
+  font-size: 18px;
+}
+
+.wellness-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.wellness-message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 12px;
+}
+
+.wellness-hotlines {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hotline-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.hotline-chip:hover {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.hotline-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.hotline-number {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.hotline-note {
+  font-size: 10px;
+  color: var(--text-secondary, #94a3b8);
+}
