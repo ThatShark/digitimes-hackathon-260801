@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import PersonalityBadge from '../shared/PersonalityBadge'
-import { sendAiChat, saveChatHistory } from '../../services/aiApi'
+import { sendAiChat, saveChatHistory, allowTrade } from '../../services/aiApi'
+import { isBackendConfigured } from '../../services/api'
 import './AIChatPanel.css'
 
 const INITIAL_MESSAGES = [
@@ -131,14 +132,44 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
     }
   }
 
-  const handleConfirmTrade = () => {
-    if (!pendingSuggestion) return
+  const [isTrading, setIsTrading] = useState(false)
+
+  const handleConfirmTrade = async () => {
+    if (!pendingSuggestion || isTrading) return
     const { action, currency, amount } = pendingSuggestion
-    setMessages((prev) => [
-      ...prev,
-      { role: 'system', content: `✅ 已成功${action === 'buy' ? '買入' : '賣出'} NT$${amount.toLocaleString()} 的 ${currency}` },
-    ])
-    setPendingSuggestion(null)
+    setIsTrading(true)
+
+    try {
+      if (!isBackendConfigured()) {
+        // 後端未配置時模擬成功（Demo 用）
+        setMessages((prev) => [
+          ...prev,
+          { role: 'system', content: `✅ [Demo] 已模擬${action === 'buy' ? '買入' : '賣出'} NT$${amount.toLocaleString()} 的 ${currency}` },
+        ])
+      } else {
+        const result = await allowTrade(currency, action, amount)
+        if (result.status === 'success') {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'system', content: `✅ ${result.message}（訂單 #${result.trade_id}）` },
+          ])
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'system', content: `⚠️ 交易失敗：${result.message}` },
+          ])
+        }
+      }
+    } catch (err) {
+      const errMsg = err?.message || '交易請求失敗，請稍後再試'
+      setMessages((prev) => [
+        ...prev,
+        { role: 'system', content: `⚠️ ${errMsg}` },
+      ])
+    } finally {
+      setPendingSuggestion(null)
+      setIsTrading(false)
+    }
   }
 
   const handleRejectTrade = () => {
@@ -212,8 +243,10 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
                 </div>
               </div>
               <div className="suggestion-actions">
-                <button className="suggestion-btn confirm" onClick={handleConfirmTrade}>✓ 確認執行</button>
-                <button className="suggestion-btn reject" onClick={handleRejectTrade}>✕ 取消</button>
+                <button className="suggestion-btn confirm" onClick={handleConfirmTrade} disabled={isTrading}>
+                  {isTrading ? '⏳ 下單中...' : '✓ 確認執行'}
+                </button>
+                <button className="suggestion-btn reject" onClick={handleRejectTrade} disabled={isTrading}>✕ 取消</button>
               </div>
             </div>
           )}
