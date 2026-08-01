@@ -71,7 +71,7 @@ const INTERVAL_SECONDS = {
   '4h': 14400,
   '1D': 86400,
   '1W': 604800,
-  '1M': 2592000,
+  '1M': 86400,    // 月視圖使用日K（每根 = 1 天）
 }
 
 const TABS = [
@@ -139,17 +139,22 @@ export default function CoinTrendPage() {
     let cancelled = false
     setPriceInfo({ price: null, change: null }) // 切換幣種時先回到載入中狀態
 
-    fetchLivePriceInfo(symbol).then((live) => {
-      if (cancelled) return
-      if (live) {
-        setPriceInfo(live)
-      } else {
-        const fallback = FALLBACK_PRICES[symbol]
-        setPriceInfo(fallback || { price: null, change: null })
-      }
-    })
+    const fetchPrice = () => {
+      fetchLivePriceInfo(symbol).then((live) => {
+        if (cancelled) return
+        if (live) {
+          setPriceInfo(live)
+        } else {
+          const fallback = FALLBACK_PRICES[symbol]
+          setPriceInfo(fallback || { price: null, change: null })
+        }
+      })
+    }
 
-    return () => { cancelled = true }
+    fetchPrice()
+    const timer = window.setInterval(fetchPrice, 2000)
+
+    return () => { cancelled = true; clearInterval(timer) }
   }, [symbol])
 
   /**

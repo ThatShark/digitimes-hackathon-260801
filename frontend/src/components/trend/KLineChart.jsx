@@ -1,6 +1,6 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from 'react'
 import { createChart, CandlestickSeries } from 'lightweight-charts'
-import { getCandlestickChart } from '../../services/coinApi'
+import { getCandlestickChart, getCoinPrice } from '../../services/coinApi'
 import { isBackendConfigured } from '../../services/api'
 
 // 幣種上市日期（Unix timestamp 秒）
@@ -26,7 +26,7 @@ const INTERVAL_SECONDS = {
   '4h': 14400,
   '1D': 86400,
   '1W': 604800,
-  '1M': 2592000,   // 30 天
+  '1M': 86400,    // 月視圖使用日K（每根 = 1 天）
 }
 
 // 基準價格
@@ -179,15 +179,28 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, onTimeRang
     seriesRef.current = series
 
     // 載入資料
+    let usingRealData = false
     const loadData = async () => {
       let chartData = null
       if (isBackendConfigured()) {
         try {
           const now = Math.floor(Date.now() / 1000)
-          const launch = COIN_LAUNCH_DATES[symbol] || now - 365 * 86400
-          const res = await getCandlestickChart(symbol, launch, now, interval)
-          if (res?.candlestick_chart && Array.isArray(res.candlestick_chart)) {
-            chartData = res.candlestick_chart
+          // Calculate a sensible lookback window based on interval
+          // to avoid requesting too many candles
+          const INTERVAL_LOOKBACK = {
+            '15m': 3 * 86400,       // 3 days of 15m candles
+            '1h': 14 * 86400,       // 14 days of hourly candles
+            '4h': 30 * 86400,       // 30 days of 4h candles
+            '1D': 365 * 86400,      // 1 year of daily candles
+            '1W': 2 * 365 * 86400,  // 2 years of weekly candles
+            '1M': 30 * 86400,       // 30 days of daily candles
+          }
+          const lookback = INTERVAL_LOOKBACK[interval] || 30 * 86400
+          const start = now - lookback
+          const res = await getCandlestickChart(symbol, start, now, interval)
+          if (res?.candles && Array.isArray(res.candles) && res.candles.length > 0) {
+            chartData = res.candles
+            usingRealData = true
           }
         } catch { /* fallback */ }
       }
@@ -199,18 +212,54 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, onTimeRang
     }
     loadData()
 
-    // 即時更新（每 2 秒）
-    tickTimerRef.current = window.setInterval(() => {
+    // 即時更新（每 2 秒）— 使用真實價格或模擬 tick
+    tickTimerRef.current = window.setInterval(async () => {
       if (!dataRef.current || dataRef.current.length === 0) return
       const last = dataRef.current[dataRef.current.length - 1]
-      const tick = generateRealtimeTick(last, seconds)
-      const candle = { time: tick.time, open: tick.open, high: tick.high, low: tick.low, close: tick.close }
-      if (tick.isNew) {
-        dataRef.current.push(candle)
+
+      if (usingRealData && isBackendConfigured()) {
+        // Fetch real latest price and update the current candle
+        try {
+          const priceRes = await getCoinPrice(symbol)
+          if (priceRes?.last != null) {
+            const now = Math.floor(Date.now() / 1000)
+            const price = priceRes.last
+            // Check if we need a new candle or update the existing one
+            if (now - last.time >= seconds) {
+              // New candle period started
+              const newCandle = {
+                time: last.time + seconds,
+                open: price,
+                high: price,
+                low: price,
+                close: price,
+              }
+              dataRef.current.push(newCandle)
+              series.update(newCandle)
+            } else {
+              // Update current candle with latest price
+              const updated = {
+                ...last,
+                high: Math.max(last.high, price),
+                low: Math.min(last.low, price),
+                close: price,
+              }
+              dataRef.current[dataRef.current.length - 1] = updated
+              series.update(updated)
+            }
+          }
+        } catch { /* ignore fetch errors for real-time updates */ }
       } else {
-        dataRef.current[dataRef.current.length - 1] = candle
+        // Mock tick for demo mode
+        const tick = generateRealtimeTick(last, seconds)
+        const candle = { time: tick.time, open: tick.open, high: tick.high, low: tick.low, close: tick.close }
+        if (tick.isNew) {
+          dataRef.current.push(candle)
+        } else {
+          dataRef.current[dataRef.current.length - 1] = candle
+        }
+        series.update(candle)
       }
-      series.update(candle)
     }, 2000)
 
     // 監聽可視範圍
