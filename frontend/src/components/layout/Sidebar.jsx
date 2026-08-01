@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useBookmarks } from '../../hooks/useBookmarks'
 import './Sidebar.css'
 
 const NAV_ITEMS = [
@@ -8,6 +9,8 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ open, onToggle }) {
+  const { bookmarks } = useBookmarks()
+
   return (
     <aside className={`sidebar ${open ? '' : 'collapsed'}`}>
       <div className="sidebar-top">
@@ -32,6 +35,29 @@ export default function Sidebar({ open, onToggle }) {
           </NavLink>
         ))}
       </nav>
+
+      {/* 重點關注列表 */}
+      {bookmarks.length > 0 && (
+        <div className="sidebar-bookmarks">
+          {open && <span className="sidebar-section-title">★ 重點關注</span>}
+          {!open && <span className="sidebar-section-icon" title="重點關注">★</span>}
+          <div className="bookmark-list">
+            {bookmarks.map((symbol) => (
+              <NavLink
+                key={symbol}
+                to={`/coin/${symbol}`}
+                className={({ isActive }) =>
+                  `bookmark-item ${isActive ? 'active' : ''}`
+                }
+                title={symbol}
+              >
+                <span className="bookmark-coin-icon">{symbol.charAt(0)}</span>
+                {open && <span className="bookmark-coin-label">{symbol}</span>}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
