@@ -361,6 +361,23 @@ Resources:
             Path: /questionnaire/submit
             Method: POST
 
+  SubmitQuizFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-submit-quiz"
+      Handler: src.handlers.submit_quiz.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostSubmitQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /quiz/submit
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
-import { getQuestionnaire, submitQuestionnaire } from '../services/questionnaireApi'
+import { getQuestionnaire, submitQuestionnaire, submitQuiz } from '../services/questionnaireApi'
 import { setUserPersonality } from '../utils/userPersonality'
 import './QuestionnairePage.css'
 
 // 問卷列表。「投資人格基礎測驗」的題目改由後端 GET /questionnaire 隨機抽樣提供
-// （EFS 32 題題庫，每次抽 20 題），不再寫死在前端；其餘兩份問卷維持原本的
-// 純前端假資料（尚未串接後端評分）。
+// （EFS 32 題題庫，每次抽 20 題），不再寫死在前端。「風險承受度評估」「市場情緒
+// 敏感度」題目數少且固定，維持寫在前端，但送出作答時會呼叫 POST /quiz/submit
+// 讓後端計分、存檔，回傳真實的結果標籤與說明（見 submitQuiz）。
 const QUESTIONNAIRES = [
   {
     id: 'personality-basic',
@@ -179,8 +180,24 @@ export default function QuestionnairePage() {
       return
     }
 
-    setResult({ code: 'DONE', name: '已完成', axes: {} })
-    setCompletedIds((prev) => [...prev, activeQuiz.id])
+    setIsSubmitting(true)
+    setSubmitError('')
+    try {
+      const payload = {
+        quiz_id: activeQuiz.id,
+        answers: Object.entries(answers).map(([question_id, option_id]) => ({
+          question_id: Number(question_id),
+          option_id,
+        })),
+      }
+      const data = await submitQuiz(payload)
+      setResult({ score: data.score, label: data.label, message: data.message })
+      setCompletedIds((prev) => [...prev, activeQuiz.id])
+    } catch (err) {
+      setSubmitError(err.message || '提交失敗，請稍後再試')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handlePrev = () => {
@@ -233,18 +250,25 @@ export default function QuestionnairePage() {
     )
   }
 
-  // --- Generic completion view ---
+  // --- Generic completion view (risk-tolerance / market-sentiment) ---
   if (result) {
     return (
       <div className="questionnaire-page">
         <div className="result-card">
           <div className="result-header">
             <span className="result-emoji">✅</span>
-            <h2 className="result-title">問卷已完成</h2>
+            <h2 className="result-title">{result.label}</h2>
           </div>
-          <p className="result-description">
-            感謝你的回答！AI 會根據此問卷結果調整對你的分析和建議。
-          </p>
+          <p className="result-description">{result.message}</p>
+          <div className="result-axes">
+            <div className="result-axis">
+              <span className="axis-label">分數</span>
+              <div className="axis-bar">
+                <div className="axis-fill" style={{ width: `${result.score}%` }} />
+              </div>
+              <span className="axis-value">{result.score}</span>
+            </div>
+          </div>
           <div className="result-actions">
             <button className="result-btn" onClick={handleBackToList}>
               回到問卷列表

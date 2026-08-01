@@ -26,3 +26,18 @@ export function submitQuestionnaire(payload, userId = 'demo-user') {
     timeoutMs: 60000,
   })
 }
+
+/**
+ * 送出「風險承受度評估」或「市場情緒敏感度」的作答（單一維度計分，不涉及
+ * R/E/F/S 人格），後端算分並存檔，回傳簡短的結果標籤與說明文字。
+ * @param {{quiz_id: string, answers: Array<{question_id: number, option_id: string}>}} payload
+ * @param {string} [userId]
+ * @returns {Promise<{status, score: number, label: string, message: string}>}
+ */
+export function submitQuiz(payload, userId = 'demo-user') {
+  return apiFetch(`/quiz/submit?user_id=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    body: payload,
+    timeoutMs: 20000,
+  })
+}
