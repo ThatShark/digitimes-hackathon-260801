@@ -38,6 +38,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 }
 
 .chat-message {
@@ -58,6 +59,8 @@
   border-radius: 12px;
   font-size: 13px;
   line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .chat-message.ai .message-bubble {
@@ -92,6 +95,7 @@
   border-radius: 12px;
   overflow: hidden;
   animation: suggestion-slide-in 0.3s ease;
+  flex-shrink: 0;
 }
 
 @keyframes suggestion-slide-in {
