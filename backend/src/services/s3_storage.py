@@ -33,6 +33,14 @@ class S3StorageService:
         key = f"users/{user_id}/trades.csv"
         return self._get_with_retry(key)
 
+    def get_trade_metrics(self, user_id: str) -> bytes:
+        """Reads users/{userId}/trade_metrics.json — the personality scores +
+        AI description previously computed by upload_csv.py / save_personality.py.
+        Raises S3StorageError if it doesn't exist yet (e.g. CSV uploaded but
+        analysis hasn't been run/saved)."""
+        key = f"users/{user_id}/trade_metrics.json"
+        return self._get_with_retry(key)
+
     def put_trade_metrics(self, user_id: str, metrics_json: str) -> None:
         """Writes users/{userId}/trade_metrics.json. Retries up to RETRY_ATTEMPTS
         times with RETRY_DELAY_SECONDS between attempts (Req 6.5). Raises

@@ -118,9 +118,20 @@ paths:
       tags: [Core]
       summary: Check user initialization status
       description: |
-        Called when user enters the app. Returns whether CSV has been uploaded
-        and personality analysis completed, along with the list of traded currencies.
+        Called when user enters the app. Returns whether a CSV is already
+        stored in S3 for this user (`users/{userId}/trades.csv`) — so the
+        frontend does not need to prompt for re-upload on every visit — and
+        the list of currencies found in it. This is a lightweight existence
+        check only; it does not re-run the personality analysis pipeline
+        (that happens via `POST /upload_csv`).
       operationId: getInit
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
       responses:
         "200":
           description: User status
@@ -142,27 +153,47 @@ paths:
   /upload_csv:
     post:
       tags: [Core]
-      summary: Upload CSV trade records
+      summary: Upload CSV trade records, or re-run analysis on the stored one
       description: |
-        Upload the user's CSV trade history. Triggers personality analysis
-        pipeline (Python metrics → Bedrock interpretation). Returns the list
-        of currencies found in the CSV.
+        Two modes, both handled by this one endpoint:
+
+        - **Upload**: send the raw CSV as the request body (`Content-Type:
+          text/csv`). It's saved to `users/{userId}/trades.csv` in S3, then
+          the personality analysis pipeline runs (Python metrics → Bedrock
+          interpretation) and the result is saved to
+          `users/{userId}/trade_metrics.json`.
+        - **Re-analyze**: send no body (empty POST). The handler reads the
+          previously-uploaded CSV back from S3 and re-runs the same
+          pipeline — useful for refreshing the AI description without
+          asking the user to upload again. Returns 404 `need_csv` if no
+          CSV has ever been uploaded for this user.
+
+        Note: the request body is the raw CSV text, not a
+        `multipart/form-data` file upload — the frontend reads the File
+        object as text and sends it directly (see
+        `frontend/src/services/personalityApi.js`'s `uploadCsvFile()`).
       operationId: uploadCsv
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
       requestBody:
-        required: true
+        required: false
         content:
-          multipart/form-data:
+          text/csv:
             schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: CSV file with trade records
+              type: string
+              description: |
+                Raw CSV content with columns: timestamp (ms), currency,
+                price (TWD), action (buy/sell/deposit/withdrawal), change,
+                balance. Omit the body entirely to re-analyze the CSV
+                already stored in S3 instead of uploading a new one.
       responses:
         "200":
-          description: Upload successful, analysis complete
+          description: Upload/analysis successful
           content:
             application/json:
               schema:
@@ -176,6 +207,15 @@ paths:
               example:
                 status: error
                 message: "CSV 格式不正確，請確認欄位是否完整"
+        "404":
+          description: No body sent and no previously-uploaded CSV found for this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: need_csv
+                message: "尚未上傳交易紀錄，請先上傳 CSV 檔案"
 
   /candlestick_chart:
     get:
@@ -230,6 +270,119 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /portfolio:
+    get:
+      tags: [Core]
+      summary: Get user's portfolio (holdings, value, P&L)
+      description: |
+        Reads the user's CSV from S3, FIFO-reduces buy/deposit lots by
+        sell/withdrawal volume to get current open positions per currency,
+        then looks up each held currency's live price via the MAX public
+        API to compute value and unrealized P&L.
+
+        Each holding's price lookup is best-effort: if the MAX API fails
+        for one currency, that holding is simply omitted (not the whole
+        request) so a partial portfolio is still returned.
+      operationId: getPortfolio
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
+        - name: quote
+          in: query
+          required: false
+          schema:
+            type: string
+            default: TWD
+          description: Quote currency for price lookups
+      responses:
+        "200":
+          description: Portfolio snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioResponse"
+              example:
+                status: ready
+                total_value: 181640.0
+                total_pnl_pct: 4.69
+                holdings:
+                  - currency: BTC
+                    quantity: 0.015
+                    avg_cost: 2800000.0
+                    current_price: 2850000.0
+                    value: 42750.0
+                    pnl_pct: 1.79
+                    allocation_pct: 23.5
+        "400":
+          description: Missing user_id or invalid CSV
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No CSV uploaded yet for this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: need_csv
+                message: "尚未上傳交易紀錄，請先上傳 CSV 檔案"
+
+  /trade_history:
+    get:
+      tags: [Core]
+      summary: Get user's trade summary + per-transaction history
+      description: |
+        Reads the user's CSV from S3 and returns aggregate stats (total
+        trade count, win rate from FIFO-closed round-trips, average
+        holding period, most-traded coins) plus a per-transaction list
+        (newest first), with each sell row's realized P&L computed from
+        its FIFO-matched cost basis.
+      operationId: getTradeHistory
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+          description: Max number of rows in `history`
+      responses:
+        "200":
+          description: Trade summary + history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeHistoryResponse"
+        "400":
+          description: Missing user_id, invalid limit, or invalid CSV
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: No CSV uploaded yet for this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                status: need_csv
+                message: "尚未上傳交易紀錄，請先上傳 CSV 檔案"
 
   /ai_chat:
     post:
@@ -325,9 +478,20 @@ paths:
       tags: [Personality]
       summary: Get user personality profile
       description: |
-        Returns the user's 4-axis MBTI-style personality result,
-        including the 4-letter title code and natural language description.
+        Read-only lookup of the user's previously-computed 4-axis
+        personality scores + AI-generated description, stored at
+        `users/{userId}/trade_metrics.json`. This does NOT trigger a new
+        analysis (no Bedrock call) — it just reads back whatever
+        `POST /upload_csv` or `POST /personality` last saved. Use
+        `POST /upload_csv` with no body to refresh the analysis instead.
       operationId: getPersonality
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
       responses:
         "200":
           description: Personality profile
@@ -336,29 +500,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/PersonalityResponse"
         "404":
-          description: No personality data (CSV not yet uploaded)
+          description: No personality data yet (CSV not uploaded / not analyzed)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-
-  /personality/reanalyze:
+              example:
+                status: need_csv
+                message: "尚未完成人格分析，請先上傳 CSV 檔案"
     post:
       tags: [Personality]
-      summary: Trigger personality re-analysis
+      summary: Save questionnaire-derived personality scores
       description: |
-        Re-runs the personality analysis pipeline using the existing CSV.
-        Useful after questionnaire completion or when user wants a refresh.
-      operationId: reanalyzePersonality
+        Saves 4-axis personality scores derived from the questionnaire
+        (rather than CSV analysis) to the same
+        `users/{userId}/trade_metrics.json` location, generating an AI
+        description via Bedrock in the process. Used by QuestionnairePage.
+      operationId: savePersonality
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "MVP has no login — frontend supplies a fixed/local user id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [personality]
+              properties:
+                personality:
+                  type: object
+                  required: [code, name, axes]
+                  properties:
+                    code:
+                      type: string
+                      example: "ACSQ"
+                    name:
+                      type: string
+                      example: "狙擊手"
+                    axes:
+                      type: object
+                      properties:
+                        R: { type: number, minimum: 0, maximum: 100 }
+                        E: { type: number, minimum: 0, maximum: 100 }
+                        F: { type: number, minimum: 0, maximum: 100 }
+                        S: { type: number, minimum: 0, maximum: 100 }
       responses:
         "200":
-          description: Re-analysis complete
+          description: Saved
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PersonalityResponse"
-        "404":
-          description: No CSV found to analyze
+        "400":
+          description: Missing personality data
           content:
             application/json:
               schema:
@@ -1223,7 +1422,7 @@ components:
 
     UploadCsvResponse:
       type: object
-      required: [status, currencies]
+      required: [status, currencies, scores]
       properties:
         status:
           type: string
@@ -1232,6 +1431,14 @@ components:
           type: array
           items:
             type: string
+        personality_description:
+          type: string
+          description: Short AI-generated description (~30 Chinese characters)
+        personality_analysis:
+          type: string
+          description: Longer AI-generated analysis, empty string if Bedrock call failed
+        scores:
+          $ref: "#/components/schemas/PersonalityScores"
 
     CandlestickChartResponse:
       type: object
@@ -1284,6 +1491,105 @@ components:
         amount:
           type: number
           description: Trade amount in TWD
+
+    PortfolioResponse:
+      type: object
+      required: [status, total_value, total_pnl_pct, holdings]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        total_value:
+          type: number
+          description: Sum of all holdings' current value (only currencies with a successful price lookup)
+        total_pnl_pct:
+          type: number
+          description: Weighted unrealized P&L across all holdings, based on FIFO average cost
+        holdings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioHolding"
+
+    PortfolioHolding:
+      type: object
+      required: [currency, quantity, avg_cost, current_price, value, pnl_pct, allocation_pct]
+      properties:
+        currency:
+          type: string
+          example: BTC
+        quantity:
+          type: number
+          description: Current open position size (FIFO-reduced buy/deposit minus sell/withdrawal)
+        avg_cost:
+          type: number
+          description: Weighted average cost of the remaining open lots
+        current_price:
+          type: number
+          description: Live price from MAX API
+        value:
+          type: number
+          description: "quantity × current_price"
+        pnl_pct:
+          type: number
+          description: "(current_price − avg_cost) / avg_cost × 100"
+        allocation_pct:
+          type: number
+          description: This holding's share of total_value
+
+    TradeHistoryResponse:
+      type: object
+      required: [status, summary, history]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        summary:
+          $ref: "#/components/schemas/TradeSummary"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/TradeHistoryItem"
+          description: Per-transaction rows, newest first
+
+    TradeSummary:
+      type: object
+      required: [total_trades, win_rate, avg_hold_days, top_coins]
+      properties:
+        total_trades:
+          type: integer
+          description: Count of buy+sell transactions (deposit/withdrawal excluded)
+        win_rate:
+          type: number
+          description: "% of FIFO-closed round-trips with positive P&L"
+        avg_hold_days:
+          type: number
+          description: Average holding period across FIFO-closed round-trips, in days
+        top_coins:
+          type: array
+          items:
+            type: string
+          description: Most-traded currencies by transaction count, descending
+
+    TradeHistoryItem:
+      type: object
+      required: [timestamp_ms, action, currency, amount_twd, price, pnl_pct]
+      properties:
+        timestamp_ms:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum: [buy, sell]
+        currency:
+          type: string
+        amount_twd:
+          type: number
+        price:
+          type: number
+        pnl_pct:
+          type: number
+          nullable: true
+          description: Realized P&L % from FIFO-matched cost basis; null for buy rows
 
     AiChatRequest:
       type: object
@@ -1352,52 +1658,51 @@ components:
           description: Transaction ID from MAX
 
     # ─── Personality ───
+    # NOTE: this reflects what upload_csv.py / save_personality.py / get_personality.py
+    # actually implement — 4 numeric 0-100 scores (R=Risk, E=Emotion, F=Frequency,
+    # S=Strategy), not the title_code/pole-based shape from the original product
+    # design doc. The frontend derives the 4-letter code + Chinese pole labels
+    # from these scores itself (see ProfilePage.jsx's `_buildPersonalityFromScores`).
     PersonalityResponse:
       type: object
-      required: [title_code, axes, description]
+      required: [status, scores]
       properties:
-        title_code:
+        status:
           type: string
-          description: "4-letter personality title (e.g. 熱冒計逆)"
-          example: "熱冒計逆"
-        axes:
-          type: object
-          required: [frequency, risk, strategy, sentiment]
-          properties:
-            frequency:
-              $ref: "#/components/schemas/PersonalityAxis"
-            risk:
-              $ref: "#/components/schemas/PersonalityAxis"
-            strategy:
-              $ref: "#/components/schemas/PersonalityAxis"
-            sentiment:
-              $ref: "#/components/schemas/PersonalityAxis"
-        description:
+          enum: [ready]
+        personality_description:
           type: string
-          description: Natural language description of investment style (Chinese)
-        per_coin_notes:
-          type: array
-          items:
-            type: object
-            properties:
-              currency:
-                type: string
-              note:
-                type: string
-          description: Per-coin personality variations
+          description: Short AI-generated description (~30 Chinese characters)
+        personality_analysis:
+          type: string
+          description: Longer AI-generated analysis, empty string if Bedrock call failed
+        scores:
+          $ref: "#/components/schemas/PersonalityScores"
 
-    PersonalityAxis:
+    PersonalityScores:
       type: object
-      required: [pole, score]
+      required: [r_score, e_score, f_score, s_score]
       properties:
-        pole:
-          type: string
-          description: "Which pole the user falls on (e.g. 熱衷 or 安逸)"
-        score:
+        r_score:
           type: number
           minimum: 0
           maximum: 100
-          description: "0-100 scale indicating how strongly they lean toward pole A"
+          description: "Risk axis: Defensive (0) vs. Aggressive (100)"
+        e_score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: "Emotion axis: Calm (0) vs. Emotional (100)"
+        f_score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: "Frequency axis: Long-term (0) vs. Short-term (100)"
+        s_score:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: "Strategy axis: Intuitive (0) vs. Quantitative (100)"
 
     # ─── Community ───
     CommunityFeedResponse:

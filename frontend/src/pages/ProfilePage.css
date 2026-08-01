@@ -74,6 +74,27 @@
   margin: 0 0 12px 0;
 }
 
+.profile-status-loading {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+}
+
+.csv-upload-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.csv-upload-cta-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
 .personality-tag {
   display: inline-block;
   padding: 2px 8px;
@@ -247,6 +268,18 @@
   color: var(--text-primary);
 }
 
+.stat-value.loading {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.coin-tag.loading {
+  background: transparent;
+  color: var(--text-muted);
+  padding-left: 0;
+}
+
 .stat-label {
   font-size: 11px;
   color: var(--text-muted);
@@ -310,6 +343,16 @@
   font-size: 13px;
   color: var(--text-primary);
   font-weight: 500;
+}
+
+.watched-item {
+  text-decoration: none;
+}
+
+.watched-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 /* Trade history */
@@ -377,4 +420,10 @@
 .pnl-negative {
   color: var(--red);
   font-weight: 500;
+}
+
+.history-loading-cell {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
 }

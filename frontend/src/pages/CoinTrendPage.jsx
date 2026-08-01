@@ -85,7 +85,7 @@ const TABS = [
 export default function CoinTrendPage() {
   const { symbol } = useParams()
   const [activeTab, setActiveTab] = useState('chart')
-  const [interval, setInterval] = useState('1M')
+  const [interval, setInterval] = useState('15m')
   // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
   const [currency, setCurrency] = useState('TWD') // 'TWD' | 'USD'

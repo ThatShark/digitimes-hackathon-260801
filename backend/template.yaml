@@ -116,6 +116,74 @@ Resources:
             Path: /candlestick_chart
             Method: GET
 
+  InitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-init"
+      Handler: src.handlers.init.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetInit:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /init
+            Method: GET
+
+  PortfolioFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-portfolio"
+      Handler: src.handlers.portfolio.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetPortfolio:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /portfolio
+            Method: GET
+
+  TradeHistoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-trade-history"
+      Handler: src.handlers.trade_history.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetTradeHistory:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /trade_history
+            Method: GET
+
+  GetPersonalityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-personality"
+      Handler: src.handlers.get_personality.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetPersonality:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /personality
+            Method: GET
+
   UploadCsvFunction:
     Type: AWS::Serverless::Function
     Properties:

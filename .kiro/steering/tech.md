@@ -17,7 +17,7 @@
 - **Location**: `backend/src/`
 - **API spec**: `backend/api.yaml` (OpenAPI 3.0.3) — source of truth for the contract; check it before adding new handlers
 - **Testing**: pytest + hypothesis (property-based tests independently re-derive each metric formula)
-- **Implemented handlers**: `upload_csv.py` (CSV → metrics → S3), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical), `market_overview.py` (行情看板: Fear&Greed + dominance + market cap/volume + gainers/losers), `candlestick_chart.py` (MAX K-line + S3 CSV buy/sell markers merged), `notifications.py` (dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data, whale_alert + social_buzz mock-generated — always 200, never fails the banner)
+- **Implemented handlers**: `upload_csv.py` (raw CSV body → metrics → S3; empty body re-analyzes existing S3 CSV), `init.py` (lightweight CSV-exists check, no analysis), `get_personality.py` (read-only S3 lookup of previously-computed scores), `save_personality.py` (save questionnaire-derived scores), `portfolio.py` (S3 CSV → FIFO open positions → live MAX price → holdings/P&L), `trade_history.py` (S3 CSV → trade summary + per-transaction history), `coin_price.py` (MAX ticker), `fear_greed.py` (CoinMarketCap latest/historical), `market_overview.py` (行情看板: Fear&Greed + dominance + market cap/volume + gainers/losers), `candlestick_chart.py` (MAX K-line + S3 CSV buy/sell markers merged), `notifications.py` (dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data, whale_alert + social_buzz mock-generated — always 200, never fails the banner)
 - **In progress**: `ai_chat.py`, `allow_trade.py`, community/chat/questionnaire handlers
 - **Responsibilities**:
   - S3 read/write (CSV, personality data, community posts, danmaku messages)
@@ -113,7 +113,7 @@ Once Lambda + API Gateway are deployed, the frontend only needs **one URL**:
 
 API Gateway's "Enable CORS" console action / OPTIONS mock integration only adds `Access-Control-Allow-*` headers to the **OPTIONS preflight** response. It does **not** add them to the actual GET/POST response coming back from the Lambda function — that response is passed straight through unmodified. A request can return `200 OK` with the correct JSON body and still get blocked by the browser as a CORS error, because the browser checks the headers on the *real* response, not just the preflight.
 
-**Every Lambda handler must add CORS headers to every response it returns — success and error alike.** Use `backend/src/utils/http.py`'s `json_response(status_code, body)` instead of hand-building `{"statusCode": ..., "headers": {...}, "body": ...}` dicts — it merges in `Access-Control-Allow-Origin: *` (overridable via the `ALLOWED_ORIGIN` env var) automatically. All current handlers (`coin_price.py`, `fear_greed.py`, `upload_csv.py`, `market_overview.py`, `candlestick_chart.py`, `notifications.py`) already use it; any new handler should too.
+**Every Lambda handler must add CORS headers to every response it returns — success and error alike.** Use `backend/src/utils/http.py`'s `json_response(status_code, body)` instead of hand-building `{"statusCode": ..., "headers": {...}, "body": ...}` dicts — it merges in `Access-Control-Allow-Origin: *` (overridable via the `ALLOWED_ORIGIN` env var) automatically. All current handlers (`coin_price.py`, `fear_greed.py`, `upload_csv.py`, `market_overview.py`, `candlestick_chart.py`, `notifications.py`, `init.py`, `get_personality.py`, `save_personality.py`, `portfolio.py`, `trade_history.py`) already use it; any new handler should too.
 
 ### CoinMarketCap keyless endpoint quirk: `quote` is a list, not a dict
 
@@ -128,7 +128,7 @@ Adding a handler file under `backend/src/handlers/` is not enough to deploy it �
 | Data | S3 Key Pattern | Format |
 |------|---------------|--------|
 | User CSV | `users/{userId}/trades.csv` | CSV |
-| Personality Profile | `users/{userId}/personality.json` | JSON |
+| Personality Profile (scores + AI description) | `users/{userId}/trade_metrics.json` | JSON — written by `upload_csv.py`/`save_personality.py`, read by `get_personality.py` via `s3_storage.py`'s `get_trade_metrics()` |
 | Community Posts | `community/posts/{postId}.json` | JSON |
 | Danmaku Messages | `danmaku/{symbol}/{timestamp}.json` | JSON |
 | Questionnaire Responses | `users/{userId}/questionnaire/{id}.json` | JSON |
