@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPrice, currencyLabel } from '../../utils/currency'
 import './RecentTrades.css'
 
 const BASE_PRICES = {
@@ -37,7 +38,7 @@ function generateInitialTrades(symbol, count = 12) {
  * 最新成交明細
  * 即時模擬成交流水（每 2 秒新增一筆）
  */
-export default function RecentTrades({ symbol }) {
+export default function RecentTrades({ symbol, currency = 'TWD' }) {
   const [trades, setTrades] = useState(() => generateInitialTrades(symbol))
 
   useEffect(() => {
@@ -54,11 +55,11 @@ export default function RecentTrades({ symbol }) {
     <div className="recent-trades">
       <div className="trades-header">
         <span className="trades-title">最新成交</span>
-        <span className="trades-symbol">{symbol}/TWD</span>
+        <span className="trades-symbol">{symbol}/{currencyLabel(currency)}</span>
       </div>
 
       <div className="trades-table-header">
-        <span>價格 (TWD)</span>
+        <span>價格 ({currencyLabel(currency)})</span>
         <span>數量</span>
         <span>時間</span>
       </div>
@@ -67,7 +68,7 @@ export default function RecentTrades({ symbol }) {
         {trades.map((trade) => (
           <div key={trade.id} className={`trade-row ${trade.side}`}>
             <span className="trade-price">
-              NT$ {trade.price.toLocaleString()}
+              {formatPrice(trade.price, currency)}
             </span>
             <span className="trade-volume">{trade.volume.toFixed(4)}</span>
             <span className="trade-time">{trade.time}</span>

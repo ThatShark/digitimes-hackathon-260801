@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { currencyLabel } from '../../utils/currency'
 import './TradePanel.css'
 
 const ORDER_TYPES = [
@@ -7,7 +8,7 @@ const ORDER_TYPES = [
   { key: 'tpsl', label: '止盈止損' },
 ]
 
-export default function TradePanel({ symbol }) {
+export default function TradePanel({ symbol, currency = 'TWD' }) {
   const [action, setAction] = useState('buy')
   const [orderType, setOrderType] = useState('market')
   const [amount, setAmount] = useState('')
@@ -61,7 +62,7 @@ export default function TradePanel({ symbol }) {
         {/* 限價輸入 */}
         {orderType === 'limit' && (
           <div className="trade-input-group">
-            <label className="trade-label">限價 (TWD)</label>
+            <label className="trade-label">限價 ({currencyLabel(currency)})</label>
             <input
               type="number"
               className="trade-input"
@@ -76,7 +77,7 @@ export default function TradePanel({ symbol }) {
         {orderType === 'tpsl' && (
           <>
             <div className="trade-input-group">
-              <label className="trade-label">止盈價格 (TWD)</label>
+              <label className="trade-label">止盈價格 ({currencyLabel(currency)})</label>
               <input
                 type="number"
                 className="trade-input tpsl-input tp"
@@ -86,7 +87,7 @@ export default function TradePanel({ symbol }) {
               />
             </div>
             <div className="trade-input-group">
-              <label className="trade-label">止損價格 (TWD)</label>
+              <label className="trade-label">止損價格 ({currencyLabel(currency)})</label>
               <input
                 type="number"
                 className="trade-input tpsl-input sl"
@@ -100,7 +101,7 @@ export default function TradePanel({ symbol }) {
 
         {/* 金額 */}
         <div className="trade-input-group">
-          <label className="trade-label">金額 (TWD)</label>
+          <label className="trade-label">金額 ({currencyLabel(currency)})</label>
           <input
             type="number"
             className="trade-input"
