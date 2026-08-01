@@ -62,14 +62,33 @@ def lambda_handler(event, context):
     user_id = _extract_user_id(event)
     personality_context = _load_personality_analysis(user_id)
 
-    # ── Build Bedrock messages ────────────────────────────────────────────────
+    # ── Build Bedrock messages (with conversation history) ───────────────────
+    before_messages = body.get("before_messages") or []
+
+    # Limit history to last 20 turns to avoid exceeding token limits
+    before_messages = before_messages[-20:]
+
+    messages = []
+    # Convert history entries into Bedrock Converse multi-turn format
+    # Each turn must have both user and ai to maintain strict alternation
+    for turn in before_messages:
+        if isinstance(turn, dict):
+            user_text = (turn.get("user") or "").strip()
+            ai_text = (turn.get("ai") or "").strip()
+            # Only include complete turns (both user and assistant present)
+            if user_text and ai_text:
+                messages.append({"role": "user", "content": [{"text": user_text}]})
+                messages.append({"role": "assistant", "content": [{"text": ai_text}]})
+
+    # Append current user message
     user_content = message
     if currency:
         user_content = f"[目前查看幣種: {currency}] {message}"
 
-    messages = [
-        {"role": "user", "content": [{"text": user_content}]},
-    ]
+    messages.append({"role": "user", "content": [{"text": user_content}]})
+
+    print(f"[AI_CHAT] Conversation has {len(before_messages)} history turns, "
+          f"built {len(messages)} messages for Bedrock")
 
     # ── Build enhanced system prompt with personality context ──────────────────
     enhanced_system_prompt = None
