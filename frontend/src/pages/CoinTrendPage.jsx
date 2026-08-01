@@ -170,12 +170,16 @@ export default function CoinTrendPage() {
               />
             </div>
             <div className="trend-chat-area">
-              <AIChatPanel symbol={symbol} onDanmaku={handleCommunityDanmaku} />
+              <AIChatPanel
+                symbol={symbol}
+                communityMessages={communityMessages}
+                onSendCommunity={(text) => addCommunityMessage(ME_USER, text, true)}
+              />
             </div>
           </div>
           <div className="trend-bottom">
             <div className="trend-indicators">
-              <IndicatorPanel symbol={symbol} />
+              <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
             </div>
             <div className="trend-trade">
               <TradePanel symbol={symbol} />
@@ -198,7 +202,11 @@ export default function CoinTrendPage() {
       {/* 動態 tab */}
       {activeTab === 'social' && (
         <div className="trend-chat-area full-width">
-          <AIChatPanel symbol={symbol} onDanmaku={handleCommunityDanmaku} />
+          <AIChatPanel
+            symbol={symbol}
+            communityMessages={communityMessages}
+            onSendCommunity={(text) => addCommunityMessage(ME_USER, text, true)}
+          />
         </div>
       )}
 
