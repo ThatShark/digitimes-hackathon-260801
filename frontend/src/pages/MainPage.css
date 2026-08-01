@@ -107,6 +107,15 @@
   color: var(--red);
 }
 
+.coin-price.loading {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.coin-change.loading {
+  color: var(--text-muted);
+}
+
 .coin-change {
   font-size: 12px;
 }

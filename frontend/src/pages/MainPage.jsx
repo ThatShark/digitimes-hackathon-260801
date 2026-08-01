@@ -8,20 +8,35 @@ import { getCoinPrice } from '../services/coinApi'
 import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
 
+// 初始狀態不帶假價格 — price/change 為 null 時卡片會顯示「載入中...」
+// 只有真的連上後端拿到資料才會填入實際數字；若最終失敗才 fallback 回下方的 mock 價格。
 const MOCK_COINS = [
-  { symbol: 'BTC', name: 'Bitcoin', price: 2850000, change: 2.3 },
-  { symbol: 'ETH', name: 'Ethereum', price: 98500, change: -1.2 },
-  { symbol: 'SOL', name: 'Solana', price: 5420, change: 5.7 },
-  { symbol: 'DOGE', name: 'Dogecoin', price: 8.2, change: 0.4 },
-  { symbol: 'ADA', name: 'Cardano', price: 21.5, change: -0.8 },
-  { symbol: 'DOT', name: 'Polkadot', price: 245, change: 3.1 },
+  { symbol: 'BTC', name: 'Bitcoin', price: null, change: null },
+  { symbol: 'ETH', name: 'Ethereum', price: null, change: null },
+  { symbol: 'SOL', name: 'Solana', price: null, change: null },
+  { symbol: 'DOGE', name: 'Dogecoin', price: null, change: null },
+  { symbol: 'ADA', name: 'Cardano', price: null, change: null },
+  { symbol: 'DOT', name: 'Polkadot', price: null, change: null },
 ]
 
 const TRENDING = [
-  { symbol: 'PEPE', name: 'Pepe', price: 0.032, change: 15.2 },
-  { symbol: 'WIF', name: 'dogwifhat', price: 12.8, change: 8.9 },
-  { symbol: 'ARB', name: 'Arbitrum', price: 38.5, change: 4.2 },
+  { symbol: 'PEPE', name: 'Pepe', price: null, change: null },
+  { symbol: 'WIF', name: 'dogwifhat', price: null, change: null },
+  { symbol: 'ARB', name: 'Arbitrum', price: null, change: null },
 ]
+
+// 後端請求失敗時的 fallback 假資料（僅在即時價格拿不到時使用）
+const FALLBACK_PRICES = {
+  BTC: { price: 2850000, change: 2.3 },
+  ETH: { price: 98500, change: -1.2 },
+  SOL: { price: 5420, change: 5.7 },
+  DOGE: { price: 8.2, change: 0.4 },
+  ADA: { price: 21.5, change: -0.8 },
+  DOT: { price: 245, change: 3.1 },
+  PEPE: { price: 0.032, change: 15.2 },
+  WIF: { price: 12.8, change: 8.9 },
+  ARB: { price: 38.5, change: 4.2 },
+}
 
 /**
  * 幣種對應的中文/展示名稱（後端只回傳 currency/last 等原始價格欄位，
@@ -53,12 +68,14 @@ async function fetchLivePrice(symbol) {
 }
 
 function CoinCard({ coin }) {
+  const isLoading = coin.price === null || coin.price === undefined
   const isUp = coin.change >= 0
+
   return (
     <Link to={`/coin/${coin.symbol}`} className="coin-card">
       <div className="coin-card-header">
         <div className="coin-icon">{coin.symbol.charAt(0)}</div>
-        {coin.change !== undefined && (
+        {!isLoading && (
           <span className={`coin-badge ${isUp ? 'up' : 'down'}`}>
             {isUp ? '▲' : '▼'}
           </span>
@@ -67,13 +84,21 @@ function CoinCard({ coin }) {
       <div className="coin-card-body">
         <div className="coin-name">{coin.name}</div>
         <div className="coin-symbol">{coin.symbol}</div>
-        <div className={`coin-price ${isUp ? 'up' : 'down'}`}>
-          NT$ {coin.price.toLocaleString()}
-        </div>
+        {isLoading ? (
+          <div className="coin-price loading">載入中...</div>
+        ) : (
+          <div className={`coin-price ${isUp ? 'up' : 'down'}`}>
+            NT$ {coin.price.toLocaleString()}
+          </div>
+        )}
         <div className="coin-card-bottom-row">
-          <span className={`coin-change ${isUp ? 'up' : 'down'}`}>
-            {isUp ? '+' : ''}{coin.change}%
-          </span>
+          {isLoading ? (
+            <span className="coin-change loading">--</span>
+          ) : (
+            <span className={`coin-change ${isUp ? 'up' : 'down'}`}>
+              {isUp ? '+' : ''}{coin.change}%
+            </span>
+          )}
           <BookmarkButton symbol={coin.symbol} size="sm" />
         </div>
       </div>
@@ -88,19 +113,27 @@ export default function MainPage() {
   const [trendingCoins, setTrendingCoins] = useState(TRENDING)
 
   const refreshPrices = useCallback(async () => {
-    if (!isBackendConfigured()) return
-
     const allSymbols = [...MOCK_COINS, ...TRENDING].map((c) => c.symbol)
-    const results = await Promise.all(allSymbols.map(fetchLivePrice))
+    const results = isBackendConfigured()
+      ? await Promise.all(allSymbols.map(fetchLivePrice))
+      : []
 
     const liveBySymbol = new Map()
     results.forEach((live) => {
       if (live) liveBySymbol.set(live.symbol, live)
     })
-    if (liveBySymbol.size === 0) return // 全部失敗，維持 mock 資料
 
-    setFocusCoins((prev) => prev.map((c) => liveBySymbol.get(c.symbol) || c))
-    setTrendingCoins((prev) => prev.map((c) => liveBySymbol.get(c.symbol) || c))
+    // 套用即時價格；沒拿到即時價格的幣種 fallback 回假資料，
+    // 這樣「載入中...」只會在真正還在等待時顯示，不會卡住。
+    const applyResult = (coin) => {
+      const live = liveBySymbol.get(coin.symbol)
+      if (live) return live
+      const fallback = FALLBACK_PRICES[coin.symbol]
+      return fallback ? { ...coin, ...fallback } : coin
+    }
+
+    setFocusCoins((prev) => prev.map(applyResult))
+    setTrendingCoins((prev) => prev.map(applyResult))
   }, [])
 
   useEffect(() => {
