@@ -75,3 +75,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 搜尋結果高亮 */
+.highlight > .post-card {
+  animation: postHighlight 2s ease;
+}
+
+@keyframes postHighlight {
+  0% { box-shadow: 0 0 0 2px var(--accent, #3b82f6); }
+  100% { box-shadow: none; }
+}
