@@ -72,9 +72,14 @@ def lambda_handler(event, context):
 
         # Short description
         short_prompt = load_personality_prompt()
-        short_message = f"R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
-        messages = [{"role": "user", "content": [{"text": short_message}]}]
-        personality_description = bedrock_client.chat(messages, system_prompt=short_prompt)
+        short_message = f"請用一句話（30-50字）描述以下投資人格的特色：R={r:.0f}, E={e:.0f}, F={f:.0f}, S={s:.0f}"
+        if short_prompt:
+            messages = [{"role": "user", "content": [{"text": short_message}]}]
+            personality_description = bedrock_client.chat(messages, system_prompt=short_prompt)
+        else:
+            # fallback: 沒有 prompt 檔案時直接問
+            messages = [{"role": "user", "content": [{"text": short_message}]}]
+            personality_description = bedrock_client.chat(messages)
 
         # Long analysis
         long_prompt = load_personality_long_prompt()
@@ -94,6 +99,12 @@ def lambda_handler(event, context):
 
     parsed["personality_description"] = personality_description
     parsed["personality_analysis"] = personality_analysis
+
+    # Fallback: 如果短描述為空但長描述有值，取長描述第一句話
+    if not personality_description and personality_analysis:
+        first_sentence = personality_analysis.split("。")[0] + "。" if "。" in personality_analysis else personality_analysis[:50]
+        parsed["personality_description"] = first_sentence
+        personality_description = first_sentence
 
     # ── Save to S3 ────────────────────────────────────────────────────────────
     metrics_json = json.dumps(parsed, ensure_ascii=False)

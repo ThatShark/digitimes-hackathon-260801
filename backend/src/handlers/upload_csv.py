@@ -146,6 +146,13 @@ def lambda_handler(event, context):
     # Attach AI descriptions to metrics before saving
     parsed["personality_description"] = personality_description
     parsed["personality_analysis"] = personality_analysis
+
+    # Fallback: 如果短描述為空但長描述有值，取長描述第一句話
+    if not personality_description and personality_analysis:
+        first_sentence = personality_analysis.split("。")[0] + "。" if "。" in personality_analysis else personality_analysis[:50]
+        parsed["personality_description"] = first_sentence
+        personality_description = first_sentence
+
     metrics_json = json.dumps(parsed, ensure_ascii=False)
 
     try:
