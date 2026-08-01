@@ -32,6 +32,25 @@ const MOCK_HISTORY = [
   { id: 8, date: '2025/07/12', action: 'sell', currency: 'SOL', amount: 4000, price: 5380, pnl: +12.6 },
 ]
 
+const PERSONALITY_DESCRIPTIONS = {
+  ACSI: '你是高頻交易的逆勢短線玩家，享受市場波動帶來的刺激。',
+  ACSQ: '你是精準狙擊的計畫型選手，出手果斷但不盲從。',
+  ACLI: '你是勇於嘗試的拓荒者，在未知市場中尋找機會。',
+  ACLQ: '你是耐心等待獵物的狙擊手，一擊必中。',
+  AESI: '你是喜歡冒險的探索者，什麼熱就追什麼。',
+  AESQ: '你追逐風口，善於捕捉短期趨勢的爆發力。',
+  AELI: '你是充滿想像力的造夢者，敢於押注未來。',
+  AELQ: '你是全力以赴的賭徒，高風險高回報是你的信條。',
+  DCSI: '你善於觀察風向，穩中求變的靈活投資者。',
+  DCSQ: '你是穩健的守望者，用數據和紀律守護資產。',
+  DCLI: '你是最穩健的長期持有者，不輕易被市場動搖。',
+  DCLQ: '你如磐石般堅定，以長期複利為核心策略。',
+  DESI: '你是低調的隱者，偶爾出手但求穩不求快。',
+  DESQ: '你是冷靜的觀察家，善於在混亂中找到規律。',
+  DELI: '你是靜靜守候的守夜人，等待最佳時機才行動。',
+  DELQ: '你幾乎不交易，安安靜靜等待最好的時機。',
+}
+
 const PERSONALITY_NAMES = {
   ACSI: '弄潮兒', ACSQ: '狙擊手', ACLI: '拓荒者', ACLQ: '獵手',
   AESI: '探險家', AESQ: '追風者', AELI: '造夢者', AELQ: '賭徒',
@@ -51,9 +70,18 @@ function _buildPersonalityFromScores(r, e, f, s) {
 export default function ProfilePage() {
   const [user, setUser] = useState(MOCK_USER)
   const [personality, setPersonality] = useState(getUserPersonality())
-  const [personalityDesc, setPersonalityDesc] = useState(
-    localStorage.getItem('personality_description') || ''
-  )
+
+  // 初始化短描述：優先讀 localStorage，其次根據 code 用本地 fallback
+  const initDesc = () => {
+    const stored = localStorage.getItem('personality_description')
+    if (stored) return stored
+    const p = getUserPersonality()
+    if (p && p.code && p.code !== '????') {
+      return PERSONALITY_DESCRIPTIONS[p.code] || ''
+    }
+    return ''
+  }
+  const [personalityDesc, setPersonalityDesc] = useState(initDesc())
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
   const fileInputRef = useRef(null)
