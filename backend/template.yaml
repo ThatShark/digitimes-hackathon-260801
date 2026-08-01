@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  智慧投資 L.I.V.E. Backend API — Lambda + API Gateway
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        TRADES_BUCKET_NAME: !Ref TradesBucket
+
+Resources:
+  # ─────────────────────────────────────────────
+  # API Gateway
+  # ─────────────────────────────────────────────
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # ─────────────────────────────────────────────
+  # Lambda Functions
+  # ─────────────────────────────────────────────
+  CoinPriceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-coin-price"
+      Handler: src.handlers.coin_price.lambda_handler
+      CodeUri: .
+      Events:
+        GetCoinPrice:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /coin/price
+            Method: GET
+
+  FearGreedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-fear-greed"
+      Handler: src.handlers.fear_greed.lambda_handler
+      CodeUri: .
+      Events:
+        GetFearGreed:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /market/fear-greed
+            Method: GET
+
+  CandlestickChartFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-candlestick-chart"
+      Handler: src.handlers.candlestick_chart.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetCandlestickChart:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /candlestick_chart
+            Method: GET
+
+  UploadCsvFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-upload-csv"
+      Handler: src.handlers.upload_csv.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostUploadCsv:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /upload_csv
+            Method: POST
+
+  # ─────────────────────────────────────────────
+  # S3 Bucket for trade data
+  # ─────────────────────────────────────────────
+  TradesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL (prod stage)
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  TradesBucketName:
+    Description: S3 bucket for user trade CSVs and metrics
+    Value: !Ref TradesBucket

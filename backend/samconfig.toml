@@ -1,0 +1,16 @@
+# Run `sam deploy` (no --guided needed after first deploy)
+# Override parameters: sam deploy --parameter-overrides CmcApiKey=YOUR_KEY
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "live-invest-api"
+resolve_s3 = true
+s3_prefix = "live-invest-api"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+image_repositories = []
+
+
+[default.global.parameters]
+region = "us-west-2"

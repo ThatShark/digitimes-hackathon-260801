@@ -14,8 +14,8 @@ the JSON returned by `compute_metrics_json`.
 import json
 import os
 
-from backend.src.services.s3_storage import S3StorageError, S3StorageService
-from backend.src.utils.metrics import compute_metrics_json
+from src.services.s3_storage import S3StorageError, S3StorageService
+from src.utils.metrics import compute_metrics_json
 
 # Assumption: the S3 bucket name is not yet wired up elsewhere in this
 # codebase, so it is read from an environment variable with this name. This

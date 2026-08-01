@@ -28,7 +28,7 @@ Error 502 — MAX API unreachable after retries
 
 import json
 
-from backend.src.services.max_api import MaxApiClient, MaxApiError
+from src.services.max_api import MaxApiClient, MaxApiError
 
 
 def lambda_handler(event, context):
