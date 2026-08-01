@@ -1,79 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
-import { savePersonality } from '../services/personalityApi'
+import { getQuestionnaire, submitQuestionnaire } from '../services/questionnaireApi'
+import { setUserPersonality } from '../utils/userPersonality'
 import './QuestionnairePage.css'
 
-// 問卷列表
+// 問卷列表。「投資人格基礎測驗」的題目改由後端 GET /questionnaire 隨機抽樣提供
+// （EFS 32 題題庫，每次抽 20 題），不再寫死在前端；其餘兩份問卷維持原本的
+// 純前端假資料（尚未串接後端評分）。
 const QUESTIONNAIRES = [
   {
     id: 'personality-basic',
     title: '投資人格基礎測驗',
-    description: '透過 6 個問題了解你的投資風格，系統將根據結果校準個人化建議。',
-    duration: '2 分鐘',
+    description: '從 32 題 EFS 投資人格題庫隨機抽取 20 題，系統將根據結果校準個人化建議。',
+    duration: '3 分鐘',
     icon: '🧠',
-    questions: [
-      {
-        id: 1,
-        question: '當市場突然下跌 10%，你通常會怎麼做？',
-        options: [
-          { value: 'A', label: '立刻加倉抄底' },
-          { value: 'B', label: '觀望等待止跌訊號' },
-          { value: 'C', label: '馬上停損賣出' },
-          { value: 'D', label: '完全不看盤，長期持有' },
-        ],
-      },
-      {
-        id: 2,
-        question: '你通常持有一個幣種多長時間？',
-        options: [
-          { value: 'A', label: '幾小時到一天' },
-          { value: 'B', label: '幾天到一週' },
-          { value: 'C', label: '幾週到一個月' },
-          { value: 'D', label: '超過一個月' },
-        ],
-      },
-      {
-        id: 3,
-        question: '你把多少資金放在穩定幣（USDT/USDC）？',
-        options: [
-          { value: 'A', label: '幾乎沒有，全部投入' },
-          { value: 'B', label: '約 20-30%' },
-          { value: 'C', label: '約 50%' },
-          { value: 'D', label: '大部分都是穩定幣' },
-        ],
-      },
-      {
-        id: 4,
-        question: '當你看到社群大量討論某個幣即將大漲，你會？',
-        options: [
-          { value: 'A', label: '立刻跟進買入' },
-          { value: 'B', label: '先做自己的分析再決定' },
-          { value: 'C', label: '覺得要漲的時候反而該小心' },
-          { value: 'D', label: '完全不受影響，按自己計畫走' },
-        ],
-      },
-      {
-        id: 5,
-        question: '過去一個月，你最大的一筆交易大約是總資金的多少？',
-        options: [
-          { value: 'A', label: '超過 50%（集中押注）' },
-          { value: 'B', label: '30-50%' },
-          { value: 'C', label: '10-30%' },
-          { value: 'D', label: '不超過 10%（分散佈局）' },
-        ],
-      },
-      {
-        id: 6,
-        question: '你做交易前通常會？',
-        options: [
-          { value: 'A', label: '憑感覺和市場氣氛' },
-          { value: 'B', label: '看看 K 線就出手' },
-          { value: 'C', label: '設好止盈止損才進場' },
-          { value: 'D', label: '有完整的交易計畫和日誌' },
-        ],
-      },
-    ],
+    questionCount: 20,
+    remote: true,
   },
   {
     id: 'risk-tolerance',
@@ -145,99 +88,115 @@ const QUESTIONNAIRES = [
   },
 ]
 
-// 簡易人格計算
-function calculatePersonality(answers) {
-  let R = 50, E = 50, F = 50, S = 50
-  if (answers[1] === 'A') R += 25
-  else if (answers[1] === 'C') R -= 20
-  else if (answers[1] === 'D') R -= 25
-  if (answers[2] === 'A') F += 30
-  else if (answers[2] === 'B') F += 15
-  else if (answers[2] === 'D') F -= 25
-  if (answers[3] === 'A') R += 20
-  else if (answers[3] === 'C') R -= 15
-  else if (answers[3] === 'D') R -= 25
-  if (answers[4] === 'A') S += 25
-  else if (answers[4] === 'C') S -= 25
-  else if (answers[4] === 'D') S -= 10
-  if (answers[5] === 'A') E += 25
-  else if (answers[5] === 'B') E += 10
-  else if (answers[5] === 'D') E -= 25
-  if (answers[6] === 'A') { F += 10; E += 10 }
-  else if (answers[6] === 'C') { F -= 10; E -= 15 }
-  else if (answers[6] === 'D') { F -= 20; E -= 20 }
-  R = Math.max(0, Math.min(100, R))
-  E = Math.max(0, Math.min(100, E))
-  F = Math.max(0, Math.min(100, F))
-  S = Math.max(0, Math.min(100, S))
-  const code =
-    (F >= 50 ? 'A' : 'D') +
-    (R >= 50 ? 'C' : 'E') +
-    (E < 50 ? 'S' : 'L') +
-    (S >= 50 ? 'I' : 'Q')
-  const NAMES = {
-    ACSI: '弄潮兒', ACSQ: '狙擊手', ACLI: '拓荒者', ACLQ: '獵手',
-    AESI: '探險家', AESQ: '追風者', AELI: '造夢者', AELQ: '賭徒',
-    DCSI: '風向球', DCSQ: '守望者', DCLI: '長青樹', DCLQ: '磐石',
-    DESI: '隱者', DESQ: '觀察家', DELI: '守夜人', DELQ: '冬眠者',
-  }
-  return { code, name: NAMES[code] || '未知', axes: { R, E, F, S } }
-}
-
 export default function QuestionnairePage() {
   const navigate = useNavigate()
   const [activeQuiz, setActiveQuiz] = useState(null)
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
+  const [resultDescription, setResultDescription] = useState('')
   const [completedIds, setCompletedIds] = useState([])
+  const [questionnaireId, setQuestionnaireId] = useState(null)
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
-  const handleStartQuiz = (quiz) => {
-    setActiveQuiz(quiz)
-    setCurrentQ(0)
-    setAnswers({})
+  const handleStartQuiz = async (quiz) => {
     setResult(null)
+    setResultDescription('')
+    setSubmitError('')
+
+    if (!quiz.remote) {
+      setActiveQuiz(quiz)
+      setCurrentQ(0)
+      setAnswers({})
+      return
+    }
+
+    setIsLoadingQuiz(true)
+    setLoadError('')
+    try {
+      const data = await getQuestionnaire()
+      setQuestionnaireId(data.id)
+      setActiveQuiz({
+        id: quiz.id,
+        title: quiz.title,
+        questions: data.questions.map((q) => ({
+          id: q.id,
+          question: q.text,
+          options: q.options.map((o) => ({ value: o.id, label: o.text })),
+        })),
+      })
+      setCurrentQ(0)
+      setAnswers({})
+    } catch (err) {
+      setLoadError(err.message || '題目載入失敗，請稍後再試')
+    } finally {
+      setIsLoadingQuiz(false)
+    }
   }
 
   const handleBackToList = () => {
     setActiveQuiz(null)
     setResult(null)
+    setLoadError('')
+    setSubmitError('')
   }
 
   const handleSelect = (questionId, value) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQ < activeQuiz.questions.length - 1) {
       setCurrentQ((prev) => prev + 1)
-    } else {
-      if (activeQuiz.id === 'personality-basic') {
-        const personality = calculatePersonality(answers)
-        setResult(personality)
-        // 存到 localStorage 供 AI 對話即時使用
-        localStorage.setItem('user_personality', JSON.stringify(personality))
-        // 先存本地 fallback 描述
-        const fallbackDesc = getDescription(personality.code)
-        localStorage.setItem('personality_description', fallbackDesc)
-        // 嘗試從後端取得 AI 生成的描述（成功則覆蓋 fallback）
-        savePersonality(personality).then((data) => {
-          if (data?.personality_description) {
-            localStorage.setItem('personality_description', data.personality_description)
-          }
-        }).catch(() => {})
-      } else {
-        setResult({ code: 'DONE', name: '已完成', axes: {} })
-      }
-      setCompletedIds((prev) => [...prev, activeQuiz.id])
+      return
     }
+
+    if (activeQuiz.id === 'personality-basic') {
+      setIsSubmitting(true)
+      setSubmitError('')
+      try {
+        const payload = {
+          questionnaire_id: questionnaireId,
+          answers: Object.entries(answers).map(([question_id, option_id]) => ({
+            question_id,
+            option_id,
+          })),
+        }
+        const data = await submitQuestionnaire(payload)
+        setUserPersonality(data.personality)
+        localStorage.setItem('personality_description', data.personality_description || '')
+        setResult(data.personality)
+        setResultDescription(data.personality_description || '')
+        setCompletedIds((prev) => [...prev, activeQuiz.id])
+      } catch (err) {
+        setSubmitError(err.message || '分析失敗，請稍後再試，或稍等片刻後重試')
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
+    setResult({ code: 'DONE', name: '已完成', axes: {} })
+    setCompletedIds((prev) => [...prev, activeQuiz.id])
   }
 
   const handlePrev = () => {
     if (currentQ > 0) setCurrentQ((prev) => prev - 1)
   }
 
-  // --- Result view ---
+  // --- Loading questions from backend ---
+  if (isLoadingQuiz) {
+    return (
+      <div className="questionnaire-page">
+        <p className="quiz-loading">載入題目中...</p>
+      </div>
+    )
+  }
+
+  // --- Result view (personality-basic) ---
   if (result && activeQuiz?.id === 'personality-basic') {
     return (
       <div className="questionnaire-page">
@@ -249,9 +208,9 @@ export default function QuestionnairePage() {
           <div className="result-personality">
             <PersonalityBadge personality={result} showName />
           </div>
-          <p className="result-description">{getDescription(result.code)}</p>
+          <p className="result-description">{resultDescription || getDescription(result.code)}</p>
           <div className="result-axes">
-            {Object.entries({ R: '風險', E: '集中度', F: '頻率', S: '追勢' }).map(([key, label]) => (
+            {Object.entries({ R: '風險', E: '情緒', F: '頻率', S: '策略' }).map(([key, label]) => (
               <div key={key} className="result-axis">
                 <span className="axis-label">{label}</span>
                 <div className="axis-bar">
@@ -301,6 +260,7 @@ export default function QuestionnairePage() {
     const q = activeQuiz.questions[currentQ]
     const answered = answers[q.id] !== undefined
     const progress = ((currentQ + 1) / activeQuiz.questions.length) * 100
+    const isLastQuestion = currentQ === activeQuiz.questions.length - 1
 
     return (
       <div className="questionnaire-page">
@@ -331,12 +291,14 @@ export default function QuestionnairePage() {
             ))}
           </div>
 
+          {submitError && <p className="quiz-error">{submitError}</p>}
+
           <div className="question-nav">
-            <button className="nav-btn prev" onClick={handlePrev} disabled={currentQ === 0}>
+            <button className="nav-btn prev" onClick={handlePrev} disabled={currentQ === 0 || isSubmitting}>
               ← 上一題
             </button>
-            <button className="nav-btn next" onClick={handleNext} disabled={!answered}>
-              {currentQ === activeQuiz.questions.length - 1 ? '查看結果 →' : '下一題 →'}
+            <button className="nav-btn next" onClick={handleNext} disabled={!answered || isSubmitting}>
+              {isSubmitting ? '分析中...' : isLastQuestion ? '查看結果 →' : '下一題 →'}
             </button>
           </div>
         </div>
@@ -353,9 +315,12 @@ export default function QuestionnairePage() {
           完成問卷幫助 AI 更了解你的投資風格，提供更精準的個人化建議。
         </p>
 
+        {loadError && <p className="quiz-error">{loadError}</p>}
+
         <div className="quiz-list">
           {QUESTIONNAIRES.map((quiz) => {
             const isCompleted = completedIds.includes(quiz.id)
+            const questionCount = quiz.remote ? quiz.questionCount : quiz.questions.length
             return (
               <div key={quiz.id} className={`quiz-card ${isCompleted ? 'completed' : ''}`}>
                 <div className="quiz-card-icon">{quiz.icon}</div>
@@ -364,7 +329,7 @@ export default function QuestionnairePage() {
                   <p className="quiz-card-desc">{quiz.description}</p>
                   <div className="quiz-card-meta">
                     <span className="quiz-duration">⏱ {quiz.duration}</span>
-                    <span className="quiz-questions">{quiz.questions.length} 題</span>
+                    <span className="quiz-questions">{questionCount} 題</span>
                     {isCompleted && <span className="quiz-done-badge">✓ 已完成</span>}
                   </div>
                 </div>
@@ -385,12 +350,12 @@ export default function QuestionnairePage() {
 
 function getDescription(code) {
   const desc = {
-    ACSI: '你是高頻交易的逆勢短線玩家，享受市場波動帶來的刺激。',
-    ACSQ: '你是精準狙擊的計畫型選手，出手果斷但不盲從。',
-    AESI: '你是喜歡冒險的探索者，什麼熱就追什麼。',
-    DCSI: '你善於觀察風向，穩中求變。',
-    DCLQ: '你是最穩健的長期持有者，不輕易被市場動搖。',
-    DELQ: '你幾乎不交易，安安靜靜等待最好的時機。',
+    ACSI: '享受市場波動的藝術，以輕鬆寫意的心態在短線熱點中衝浪，盡情體驗投資樂趣。',
+    ACSQ: '出手快狠準，具備極佳的風險報酬計算能力，是追求高勝率的短線操盤高手。',
+    AESI: '對新事物抱持無限好奇，勇敢追逐市場熱點與浪潮，活出精彩刺激的投資人生。',
+    DCSI: '敏銳靈活、進退有據，能迅速捕捉市場趨勢並冷靜抽身，保全戰果。',
+    DCLQ: '穩健踏實、重視資產配置，透過時間與複利打造安心的財富城堡。',
+    DELQ: '以高度責任感守護資產，用嚴謹的數據為家庭與未來築起最安全的防線。',
   }
   return desc[code] || '你有獨特的交易風格，AI 將根據你的歷史數據做更精確的分析。'
 }
