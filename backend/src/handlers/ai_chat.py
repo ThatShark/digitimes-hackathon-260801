@@ -29,6 +29,8 @@ import os
 import re
 
 from src.services.bedrock import BedrockChatClient, BedrockError
+from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
+from src.services.max_api import MaxApiClient, MaxApiError
 from src.services.s3_storage import S3StorageService
 from src.utils.http import json_response
 
@@ -86,13 +88,16 @@ def lambda_handler(event, context):
             "但如果用戶只是問一般市場問題，不需要每次都提醒。"
         )
 
+    # ── Fetch real-time market data ──────────────────────────────────────────
+    market_context = _fetch_market_context(currency)
+
     # ── Call Bedrock ──────────────────────────────────────────────────────────
     client = BedrockChatClient()
 
     try:
         from src.services.bedrock import _load_system_prompt
         base_prompt = _load_system_prompt()
-        full_prompt = f"{base_prompt}\n\n{enhanced_system_prompt}"
+        full_prompt = f"{base_prompt}\n\n{enhanced_system_prompt}\n\n{market_context}"
         ai_reply = client.chat(messages, system_prompt=full_prompt)
     except BedrockError as exc:
         # Log the actual error for debugging
@@ -107,6 +112,63 @@ def lambda_handler(event, context):
         "message": ai_reply,
         "investment_suggestion": suggestion,
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Market data helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fetch_market_context(currency: "str | None") -> str:
+    """Fetch real-time price and Fear & Greed index, return as prompt context.
+
+    Best-effort: returns partial data or empty string on failures.
+    """
+    sections: list[str] = []
+
+    # ── Fear & Greed Index ────────────────────────────────────────────────────
+    try:
+        cmc = CoinMarketCapClient()
+        raw = cmc.get_fear_greed_latest()
+        data = raw.get("data") if isinstance(raw, dict) else None
+        if isinstance(data, dict) and "value" in data:
+            value = int(data["value"])
+            classification = data.get("value_classification", "")
+            sections.append(
+                f"## 即時市場情緒\n"
+                f"恐懼貪婪指數: {value}/100 ({classification})\n"
+                f"更新時間: {data.get('update_time', 'N/A')}"
+            )
+    except (CoinMarketCapError, Exception):
+        pass
+
+    # ── Currency price data ───────────────────────────────────────────────────
+    if currency:
+        try:
+            max_client = MaxApiClient()
+            market = f"{currency.lower()}twd"
+            ticker = max_client.get_ticker(market)
+            if isinstance(ticker, dict) and "last" in ticker:
+                last = float(ticker.get("last", 0))
+                high = float(ticker.get("high", 0))
+                low = float(ticker.get("low", 0))
+                open_price = float(ticker.get("open", 0))
+                vol = float(ticker.get("vol", 0))
+                change_pct = ((last - open_price) / open_price * 100) if open_price else 0
+                sections.append(
+                    f"## {currency}/TWD 即時行情\n"
+                    f"最新價: NT${last:,.1f}\n"
+                    f"24h 開盤: NT${open_price:,.1f}\n"
+                    f"24h 最高: NT${high:,.1f}\n"
+                    f"24h 最低: NT${low:,.1f}\n"
+                    f"24h 漲跌: {change_pct:+.2f}%\n"
+                    f"24h 成交量: {vol:.4f} {currency}"
+                )
+        except (MaxApiError, Exception):
+            pass
+
+    if not sections:
+        return ""
+    return "\n\n".join(sections)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
