@@ -61,9 +61,15 @@ function MarketDataTabs({ symbol }) {
 }
 
 const INTERVAL_SECONDS = {
-  '1d': 24 * 3600,
-  '1M': 30 * 86400,
-  '1Y': 365 * 86400,
+  '1m': 60,
+  '5m': 300,
+  '15m': 900,
+  '30m': 1800,
+  '1h': 3600,
+  '4h': 14400,
+  '1D': 86400,
+  '1W': 604800,
+  '1M': 2592000,
 }
 
 const TABS = [
@@ -78,14 +84,14 @@ const TABS = [
 export default function CoinTrendPage() {
   const { symbol } = useParams()
   const [activeTab, setActiveTab] = useState('chart')
-  const [interval, setInterval] = useState('1M')
+  const [interval, setInterval] = useState('1D')
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
   // 聊天室訊息
   const [communityMessages, setCommunityMessages] = useState([])
 
   const now = useRef(Math.floor(Date.now() / 1000)).current
   const dataTo = now
-  const dataFrom = now - (INTERVAL_SECONDS[interval] || INTERVAL_SECONDS['1M'])
+  const dataFrom = now - (INTERVAL_SECONDS[interval] || INTERVAL_SECONDS['1D'])
   const [visibleFrom, setVisibleFrom] = useState(0)
   const [visibleTo, setVisibleTo] = useState(1)
   const [visibleTimeRange, setVisibleTimeRange] = useState(null)
