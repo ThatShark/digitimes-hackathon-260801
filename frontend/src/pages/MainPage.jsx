@@ -126,17 +126,10 @@ export default function MainPage() {
       <MarketOverview />
 
       <section className="coin-section">
-        <h2 className="section-title">平時關注</h2>
         <div className="coin-grid">
           {focusCoins.map((coin) => (
             <CoinCard key={coin.symbol} coin={coin} />
           ))}
-        </div>
-      </section>
-
-      <section className="coin-section">
-        <h2 className="section-title">熱門</h2>
-        <div className="coin-grid">
           {trendingCoins.map((coin) => (
             <CoinCard key={coin.symbol} coin={coin} />
           ))}

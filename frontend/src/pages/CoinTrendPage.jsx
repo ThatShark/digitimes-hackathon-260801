@@ -85,7 +85,7 @@ const TABS = [
 export default function CoinTrendPage() {
   const { symbol } = useParams()
   const [activeTab, setActiveTab] = useState('chart')
-  const [interval, setInterval] = useState('1M')
+  const [interval, setInterval] = useState('1D')
   // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
   const [currency, setCurrency] = useState('TWD') // 'TWD' | 'USD'
@@ -279,6 +279,7 @@ export default function CoinTrendPage() {
                   ref={chartRef}
                   symbol={symbol}
                   interval={interval}
+                  currency={currency}
                   onTimeRangeChange={handleTimeRangeChange}
                 />
                 {danmakuVisible && (
@@ -321,7 +322,7 @@ export default function CoinTrendPage() {
           </div>
           <div className="trend-bottom">
             <div className="trend-indicators">
-              <IndicatorPanel symbol={symbol} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
+              <IndicatorPanel symbol={symbol} currency={currency} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
             </div>
             <div className="trend-trade">
               <TradePanel symbol={symbol} currency={currency} />
@@ -334,7 +335,7 @@ export default function CoinTrendPage() {
       )}
 
       {/* 概況 tab */}
-      {activeTab === 'overview' && <CoinOverview symbol={symbol} />}
+      {activeTab === 'overview' && <CoinOverview symbol={symbol} currency={currency} />}
 
       {/* 數據 tab */}
       {activeTab === 'data' && <FundFlowChart symbol={symbol} />}
@@ -345,7 +346,7 @@ export default function CoinTrendPage() {
       )}
 
       {/* 策略 tab */}
-      {activeTab === 'strategy' && <StrategyHub symbol={symbol} />}
+      {activeTab === 'strategy' && <StrategyHub symbol={symbol} currency={currency} />}
     </div>
   )
 }
