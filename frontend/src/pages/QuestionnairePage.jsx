@@ -217,8 +217,15 @@ export default function QuestionnairePage() {
         setResult(personality)
         // 存到 localStorage 供 AI 對話即時使用
         localStorage.setItem('user_personality', JSON.stringify(personality))
-        // 同步存到後端 S3（非阻塞，失敗不影響前端顯示）
-        savePersonality(personality).catch(() => {})
+        // 先存本地 fallback 描述
+        const fallbackDesc = getDescription(personality.code)
+        localStorage.setItem('personality_description', fallbackDesc)
+        // 嘗試從後端取得 AI 生成的描述（成功則覆蓋 fallback）
+        savePersonality(personality).then((data) => {
+          if (data?.personality_description) {
+            localStorage.setItem('personality_description', data.personality_description)
+          }
+        }).catch(() => {})
       } else {
         setResult({ code: 'DONE', name: '已完成', axes: {} })
       }

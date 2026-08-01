@@ -49,13 +49,20 @@ from datetime import datetime, timezone
 
 from src.services.max_api import MaxApiClient, MaxApiError
 from src.services.s3_storage import S3StorageError, S3StorageService
+from src.utils.http import json_response
 from src.utils.metrics import TradeDataError, parse_trades_csv, RawTrade, _BUY_ACTIONS, _SELL_ACTIONS
 
 # ── Interval → MAX period (minutes) ──────────────────────────────────────────
 _INTERVAL_TO_PERIOD: dict[str, int] = {
-    "1d": 60,     # 1-hour candles for a 24 h window
-    "1M": 1440,   # 1-day candles for a 30-day window
-    "1Y": 10080,  # 1-week candles for a 365-day window
+    "15m":  15,    # 15-minute candles
+    "1h":   60,    # 1-hour candles
+    "4h":   240,   # 4-hour candles
+    "1d":   1440,  # 1-day candles
+    "1D":   1440,  # 1-day candles (frontend uses uppercase D)
+    "1w":   10080, # 1-week candles
+    "1W":   10080, # 1-week candles (frontend uses uppercase W)
+    "1M":   1440,  # 1-day candles for monthly view (~30 candles)
+    "1Y":   10080, # 1-week candles for yearly view (~52 candles)
 }
 _DEFAULT_INTERVAL = "1M"
 _MAX_CANDLE_LIMIT = 1000   # safety cap — MAX supports up to 10 000
@@ -91,7 +98,7 @@ def lambda_handler(event, context):
     if interval not in _INTERVAL_TO_PERIOD:
         return _error(
             400,
-            f"不支援的 interval 值 '{interval}'，請使用 1d / 1M / 1Y",
+            f"不支援的 interval 值 '{interval}'，請使用 15m / 1h / 4h / 1D / 1W / 1M",
         )
     period_minutes = _INTERVAL_TO_PERIOD[interval]
     period_seconds = period_minutes * 60
@@ -225,23 +232,12 @@ def _extract_user_id(event: dict) -> "str | None":
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _success(candles: list[dict], trade_markers: list[dict]) -> dict:
-    body = {
+    return json_response(200, {
         "status":        "ready",
         "candles":       candles,
         "trade_markers": trade_markers,
-    }
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(body, ensure_ascii=False),
-    }
+    })
 
 
 def _error(status_code: int, message: str) -> dict:
-    return {
-        "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {"status": "error", "message": message}, ensure_ascii=False
-        ),
-    }
+    return json_response(status_code, {"status": "error", "message": message})

@@ -63,3 +63,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+.sentiment-multi {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 500px) {
+  .sentiment-multi {
+    grid-template-columns: 1fr;
+  }
+}
