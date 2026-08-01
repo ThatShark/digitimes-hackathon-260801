@@ -50,15 +50,25 @@ function _buildPersonalityFromScores(r, e, f, s) {
 export default function ProfilePage() {
   const [user, setUser] = useState(MOCK_USER)
   const [personality, setPersonality] = useState(getUserPersonality())
+  const [personalityDesc, setPersonalityDesc] = useState(
+    localStorage.getItem('personality_description') || ''
+  )
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
   const fileInputRef = useRef(null)
 
   // Listen for personality updates from other pages (e.g. QuestionnairePage)
   useEffect(() => {
-    const handleUpdate = () => setPersonality(getUserPersonality())
+    const handleUpdate = () => {
+      setPersonality(getUserPersonality())
+      setPersonalityDesc(localStorage.getItem('personality_description') || '')
+    }
     window.addEventListener('personality-updated', handleUpdate)
-    return () => window.removeEventListener('personality-updated', handleUpdate)
+    window.addEventListener('storage', handleUpdate)
+    return () => {
+      window.removeEventListener('personality-updated', handleUpdate)
+      window.removeEventListener('storage', handleUpdate)
+    }
   }, [])
 
   const handleUploadClick = () => {
@@ -84,9 +94,10 @@ export default function ProfilePage() {
         localStorage.setItem('user_personality', JSON.stringify(newPersonality))
       }
       if (data.personality_description) {
+        localStorage.setItem('personality_description', data.personality_description)
+        setPersonalityDesc(data.personality_description)
         setUser((prev) => ({
           ...prev,
-          personalityDescription: data.personality_description,
           csvUploadedAt: new Date().toLocaleString('zh-TW'),
         }))
       }
@@ -112,10 +123,8 @@ export default function ProfilePage() {
         localStorage.setItem('user_personality', JSON.stringify(newPersonality))
       }
       if (data.personality_description) {
-        setUser((prev) => ({
-          ...prev,
-          personalityDescription: data.personality_description,
-        }))
+        localStorage.setItem('personality_description', data.personality_description)
+        setPersonalityDesc(data.personality_description)
       }
     } catch (err) {
       setAnalysisError('分析失敗，請稍後再試')
@@ -147,7 +156,7 @@ export default function ProfilePage() {
           <h2 className="card-title">投資人格 4 軸</h2>
           <p className="personality-summary">
             <span className="personality-tag">{personality.code} {personality.name}</span>
-            {' '}{user.personalityDescription || '完成問卷或上傳 CSV 後，AI 將為你生成專屬投資人格描述。'}
+            {' '}{personalityDesc || '完成問卷或上傳 CSV 後，AI 將為你生成專屬投資人格描述。'}
           </p>
           {isAnalyzing && (
             <p className="personality-loading">AI 正在分析你的投資人格...</p>

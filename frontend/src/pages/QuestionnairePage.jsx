@@ -217,8 +217,12 @@ export default function QuestionnairePage() {
         setResult(personality)
         // 存到 localStorage 供 AI 對話即時使用
         localStorage.setItem('user_personality', JSON.stringify(personality))
-        // 同步存到後端 S3（非阻塞，失敗不影響前端顯示）
-        savePersonality(personality).catch(() => {})
+        // 存到後端 S3 + 取得 AI 生成的短描述/長描述
+        savePersonality(personality).then((data) => {
+          if (data?.personality_description) {
+            localStorage.setItem('personality_description', data.personality_description)
+          }
+        }).catch(() => {})
       } else {
         setResult({ code: 'DONE', name: '已完成', axes: {} })
       }
