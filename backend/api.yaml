@@ -31,6 +31,8 @@ tags:
     description: Algorithm-driven content ranking
   - name: User
     description: User profile and settings
+  - name: Notifications
+    description: Rule-based market/community alert notifications
 
 paths:
   # ─────────────────────────────────────────────
@@ -843,6 +845,78 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
   # ─────────────────────────────────────────────
+  # Notification Endpoints
+  # ─────────────────────────────────────────────
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get dynamic market/community alert notifications
+      description: |
+        Returns a rule-based list of alert notifications for the top
+        notification banner (NotificationBanner.jsx). Rules run against
+        live CoinMarketCap data on every call (no persistence/scheduling —
+        see task notes for the simple-vs-scheduled tradeoff):
+
+        - **price_mover**: any top-100-by-market-cap coin whose 24h %
+          change exceeds ±`price_change_threshold` (default 10%).
+        - **fear_greed**: the current Fear & Greed Index classification
+          (e.g. entering "Fear" or "Extreme Greed").
+        - **whale_alert** / **social_buzz**: no real data source exists yet
+          (see backend/.kiro platform-features.md) — deterministically
+          seeded from the current hour so the same alert doesn't repeat
+          every request, clearly not derived from live external data.
+
+        Returns an empty list (never an error) if the CMC calls fail —
+        a missing notification is not worth failing the endpoint over;
+        the frontend already falls back to its own mock strings.
+      operationId: getNotifications
+      parameters:
+        - name: price_change_threshold
+          in: query
+          required: false
+          schema:
+            type: number
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: "Minimum absolute 24h %% change to trigger a price_mover alert"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 8
+          description: Max number of notifications to return
+      responses:
+        "200":
+          description: List of current notifications (may be empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationsResponse"
+              example:
+                status: ready
+                notifications:
+                  - id: "price_mover-PEPE-1785600000"
+                    type: price_mover
+                    icon: "📈"
+                    text: "PEPE 24H 漲幅 +15.2%，注意波動"
+                    created_at: "2026-08-01T06:00:00Z"
+                  - id: "fear_greed-1785600000"
+                    type: fear_greed
+                    icon: "📊"
+                    text: "恐懼貪婪指數降至 38（恐慌），歷史上是進場好時機"
+                    created_at: "2026-08-01T06:00:00Z"
+        "400":
+          description: Invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────────────────────────
   # Recommendation Endpoints
   # ─────────────────────────────────────────────
   /recommend/coins:
@@ -1044,6 +1118,44 @@ components:
           type: number
           description: 24h price change percentage
           example: 15.2
+
+    NotificationsResponse:
+      type: object
+      required: [status, notifications]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationItem"
+
+    NotificationItem:
+      type: object
+      required: [id, type, icon, text, created_at]
+      properties:
+        id:
+          type: string
+          description: Stable id for this alert instance (dedupe key on the frontend)
+        type:
+          type: string
+          enum: [price_mover, fear_greed, whale_alert, social_buzz]
+          description: |
+            price_mover / fear_greed are computed from live CoinMarketCap
+            data. whale_alert / social_buzz have no real data source yet
+            and are deterministically mock-generated (see operation
+            description) — treat them as illustrative, not factual.
+        icon:
+          type: string
+          example: "📈"
+        text:
+          type: string
+          description: Human-readable notification text (Chinese)
+          example: "PEPE 24H 漲幅 +15.2%，注意波動"
+        created_at:
+          type: string
+          format: date-time
 
     CoinPriceResponse:
       type: object

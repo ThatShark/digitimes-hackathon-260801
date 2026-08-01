@@ -85,6 +85,20 @@ Resources:
             Path: /market/overview
             Method: GET
 
+  NotificationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-notifications"
+      Handler: src.handlers.notifications.lambda_handler
+      CodeUri: .
+      Events:
+        GetNotifications:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /notifications
+            Method: GET
+
   CandlestickChartFunction:
     Type: AWS::Serverless::Function
     Properties:

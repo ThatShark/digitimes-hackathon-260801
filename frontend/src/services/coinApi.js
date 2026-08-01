@@ -3,6 +3,7 @@
  * GET /market/fear-greed — 對應 backend/api.yaml operationId getFearGreed
  * GET /market/overview — 對應 backend/api.yaml operationId getMarketOverview
  * GET /candlestick_chart — 對應 backend/api.yaml operationId getCandlestickChart
+ * GET /notifications — 對應 backend/api.yaml operationId getNotifications
  */
 import { apiFetch, isBackendConfigured } from './api'
 
@@ -51,6 +52,21 @@ export function getCandlestickChart(currency, start, end, interval = '1M') {
 export function getMarketOverview(topN = 3) {
   const params = new URLSearchParams({ top_n: String(topN) })
   return apiFetch(`/market/overview?${params}`)
+}
+
+/**
+ * 取得動態通知（漲跌幅異動、恐懼貪婪指數、巨鯨警報、社群討論量等）
+ * @param {object} [opts]
+ * @param {number} [opts.priceChangeThreshold] - 觸發 price_mover 通知的漲跌幅門檻（%），預設 10
+ * @param {number} [opts.limit] - 最多回傳幾筆通知，預設 8
+ * @returns {Promise<{status, notifications: Array<{id, type, icon, text, created_at}>}>}
+ */
+export function getNotifications({ priceChangeThreshold, limit } = {}) {
+  const params = new URLSearchParams()
+  if (priceChangeThreshold != null) params.set('price_change_threshold', String(priceChangeThreshold))
+  if (limit != null) params.set('limit', String(limit))
+  const query = params.toString()
+  return apiFetch(`/notifications${query ? `?${query}` : ''}`)
 }
 
 /**

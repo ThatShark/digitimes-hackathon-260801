@@ -59,7 +59,7 @@ digitimes-hackathon-260801/
 │       │       ├── PersonalityBadge.jsx  # Personality type prefix/title display
 │       │       ├── Avatar.jsx            # Renders CURRENT_USER_AVATAR image for the current user, initial-letter circle for everyone else (mock users)
 │       │       ├── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart — pure rendering, no own mock data (fed via `messages` prop from CoinTrendPage)
-│       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒)
+│       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒) — fetches GET /notifications on mount, falls back to hardcoded mock strings on failure/unconfigured backend
 │       ├── utils/
 │       │   ├── indicators.js     # Technical indicator math: MA/EMA/MACD/BOLL/RSI/KDJ/STOCH/VOL/OBV/ATR (pure functions, candles in → {time,value}[] out)
 │       │   ├── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
@@ -68,7 +68,7 @@ digitimes-hackathon-260801/
 │       │   └── userPersonality.js # Reads/writes the current user's 4-axis personality to localStorage (set by questionnaire or CSV upload)
 │       ├── services/             # API client layer — see tech.md "Backend Connection"
 │       │   ├── api.js            # Base fetch wrapper (apiFetch/ApiError/isBackendConfigured), reads VITE_API_BASE_URL
-│       │   ├── coinApi.js        # /coin/price, /market/fear-greed, /candlestick_chart
+│       │   ├── coinApi.js        # /coin/price, /market/fear-greed, /market/overview, /candlestick_chart, /notifications
 │       │   ├── aiApi.js          # /ai_chat, /allow_trade
 │       │   └── communityApi.js   # /community/feed, /community/post, likes, comments, /tipping
 │       └── __tests__/
@@ -85,7 +85,8 @@ digitimes-hackathon-260801/
 │   │   │   ├── coin_price.py         # GET /coin/price — MAX ticker lookup for one currency
 │   │   │   ├── fear_greed.py         # GET /market/fear-greed — CoinMarketCap latest/historical index
 │   │   │   ├── market_overview.py    # GET /market/overview — Fear&Greed + BTC dominance + market cap/volume + gainers/losers (each field best-effort, only 502s if ALL CMC sources fail)
-│   │   │   └── candlestick_chart.py  # GET /candlestick_chart — MAX K-line + user's S3 CSV buy/sell markers merged (trade_markers is best-effort, never fails the chart)
+│   │   │   ├── candlestick_chart.py  # GET /candlestick_chart — MAX K-line + user's S3 CSV buy/sell markers merged (trade_markers is best-effort, never fails the chart)
+│   │   │   └── notifications.py      # GET /notifications — dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data (reuses market_overview.py's ranking-pool + quote-list-parsing approach), whale_alert + social_buzz mock-generated (hour-seeded, no real data source yet) — always 200, never 502
 │   │   ├── services/
 │   │   │   ├── max_api.py           # MAX Exchange API client (ticker, tickers, klines, markets)
 │   │   │   ├── coinmarketcap.py     # CoinMarketCap keyless public API client (fear&greed, global-metrics, listings) — no API key needed unless CMC_API_KEY env var is set
@@ -96,7 +97,8 @@ digitimes-hackathon-260801/
 │   └── tests/
 │       ├── handlers/
 │       │   ├── test_candlestick_chart.py  # Mocked MAX API + S3; validation, range filtering, malformed rows, marker merge
-│       │   └── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk
+│       │   ├── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk
+│       │   └── test_notifications.py      # Mocked CMC calls; threshold/limit validation, price_mover sorting, fear_greed hints, always-200-with-mocks even if all CMC sources fail
 │       └── utils/
 │           ├── test_metrics_unit.py
 │           └── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
@@ -251,6 +253,7 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
   - `GET /market/fear-greed` — Fear & Greed Index, latest or historical (CoinMarketCap)
   - `GET /market/overview` — 行情看板: Fear & Greed + BTC dominance + market cap/volume + top gainers/losers (CoinMarketCap, keyless)
   - `GET /candlestick_chart` — K-line + trade markers
+  - `GET /notifications` — dynamic NotificationBanner alerts: price_mover + fear_greed (real CMC data), whale_alert + social_buzz (mock, hour-seeded, no real data source yet)
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution
   - `GET/POST /personality`, `/personality/reanalyze` — 4-axis personality profile
