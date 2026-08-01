@@ -3,9 +3,12 @@ import ProgressBar from './ProgressBar'
 import './ChartControls.css'
 
 const INTERVALS = [
-  { value: '1d', label: '日' },
-  { value: '1M', label: '月' },
-  { value: '1Y', label: '年' },
+  { value: '15m', label: '15分' },
+  { value: '1h', label: '1時' },
+  { value: '4h', label: '4時' },
+  { value: '1D', label: '1日' },
+  { value: '1W', label: '1周' },
+  { value: '1M', label: '1月' },
 ]
 
 export default function ChartControls({
