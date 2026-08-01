@@ -61,7 +61,7 @@ _INTERVAL_TO_PERIOD: dict[str, int] = {
     "1D":   1440,  # 1-day candles (frontend uses uppercase D)
     "1w":   10080, # 1-week candles
     "1W":   10080, # 1-week candles (frontend uses uppercase W)
-    "1M":   1440,  # 1-day candles for monthly view (~30 candles)
+    "1M":   4320,  # 3-day candles for monthly view (~10 candles/month)
     "1Y":   10080, # 1-week candles for yearly view (~52 candles)
 }
 _DEFAULT_INTERVAL = "1M"
