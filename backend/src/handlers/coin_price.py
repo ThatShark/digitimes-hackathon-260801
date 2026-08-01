@@ -26,9 +26,8 @@ Error 404 — market not found on MAX
 Error 502 — MAX API unreachable after retries
 """
 
-import json
-
 from src.services.max_api import MaxApiClient, MaxApiError
+from src.utils.http import json_response
 
 
 def lambda_handler(event, context):
@@ -75,21 +74,11 @@ def _success(currency: str, ticker: dict) -> dict:
         "vol":      _float(ticker.get("vol")),
         "at":       ticker.get("at"),
     }
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(body, ensure_ascii=False),
-    }
+    return json_response(200, body)
 
 
 def _error(status_code: int, message: str) -> dict:
-    return {
-        "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {"status": "error", "message": message}, ensure_ascii=False
-        ),
-    }
+    return json_response(status_code, {"status": "error", "message": message})
 
 
 def _float(value) -> "float | None":

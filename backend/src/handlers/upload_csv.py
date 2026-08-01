@@ -15,6 +15,7 @@ import json
 import os
 
 from src.services.s3_storage import S3StorageError, S3StorageService
+from src.utils.http import json_response
 from src.utils.metrics import compute_metrics_json
 
 # Assumption: the S3 bucket name is not yet wired up elsewhere in this
@@ -111,19 +112,9 @@ def _extract_currencies(trades_bytes: bytes) -> list:
 
 def _error_response(status_code: int, message: str) -> dict:
     """Build an API Gateway proxy response matching ErrorResponse."""
-    return {
-        "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({"status": "error", "message": message}, ensure_ascii=False),
-    }
+    return json_response(status_code, {"status": "error", "message": message})
 
 
 def _success_response(currencies: list) -> dict:
     """Build an API Gateway proxy response matching UploadCsvResponse."""
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {"status": "ready", "currencies": currencies}, ensure_ascii=False
-        ),
-    }
+    return json_response(200, {"status": "ready", "currencies": currencies})

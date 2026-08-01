@@ -35,9 +35,8 @@ Error responses:
   503 — CMC returned an unexpected response shape
 """
 
-import json
-
 from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
+from src.utils.http import json_response
 
 _VALID_MODES      = {"latest", "historical"}
 _DEFAULT_MODE     = "latest"
@@ -126,19 +125,8 @@ def _handle_historical(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _success(mode: str, data) -> dict:
-    body = {"status": "ready", "mode": mode, "data": data}
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(body, ensure_ascii=False),
-    }
+    return json_response(200, {"status": "ready", "mode": mode, "data": data})
 
 
 def _error(status_code: int, message: str) -> dict:
-    return {
-        "statusCode": status_code,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {"status": "error", "message": message}, ensure_ascii=False
-        ),
-    }
+    return json_response(status_code, {"status": "error", "message": message})
