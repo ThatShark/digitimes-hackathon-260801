@@ -7,24 +7,21 @@ import { fetchLivePriceInfo } from '../services/coinApi'
 import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
 
-// 初始狀態不帶假價格 — price/change 為 null 時卡片會顯示「載入中...」
-// 只有真的連上後端拿到資料才會填入實際數字；若最終失敗才 fallback 回下方的 mock 價格。
+// 平時關注 = 自己有持有的幣種
 const MOCK_COINS = [
   { symbol: 'BTC', name: 'Bitcoin', price: null, change: null },
   { symbol: 'ETH', name: 'Ethereum', price: null, change: null },
   { symbol: 'SOL', name: 'Solana', price: null, change: null },
+]
+
+// 熱門 = 其他幣種
+const TRENDING = [
   { symbol: 'DOGE', name: 'Dogecoin', price: null, change: null },
   { symbol: 'ADA', name: 'Cardano', price: null, change: null },
   { symbol: 'DOT', name: 'Polkadot', price: null, change: null },
 ]
 
-const TRENDING = [
-  { symbol: 'PEPE', name: 'Pepe', price: null, change: null },
-  { symbol: 'WIF', name: 'dogwifhat', price: null, change: null },
-  { symbol: 'ARB', name: 'Arbitrum', price: null, change: null },
-]
-
-// 後端請求失敗時的 fallback 假資料（僅在即時價格拿不到時使用）
+// 後端請求失敗時的 fallback 假資料
 const FALLBACK_PRICES = {
   BTC: { price: 2850000, change: 2.3 },
   ETH: { price: 98500, change: -1.2 },
@@ -32,18 +29,11 @@ const FALLBACK_PRICES = {
   DOGE: { price: 8.2, change: 0.4 },
   ADA: { price: 21.5, change: -0.8 },
   DOT: { price: 245, change: 3.1 },
-  PEPE: { price: 0.032, change: 15.2 },
-  WIF: { price: 12.8, change: 8.9 },
-  ARB: { price: 38.5, change: 4.2 },
 }
 
-/**
- * 幣種對應的中文/展示名稱（後端只回傳 currency/last 等原始價格欄位，
- * 名稱維持前端自己管理，之後可以改成從 /recommend/coins 拿）
- */
 const COIN_NAMES = {
   BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', DOGE: 'Dogecoin',
-  ADA: 'Cardano', DOT: 'Polkadot', PEPE: 'Pepe', WIF: 'dogwifhat', ARB: 'Arbitrum',
+  ADA: 'Cardano', DOT: 'Polkadot',
 }
 
 /**
