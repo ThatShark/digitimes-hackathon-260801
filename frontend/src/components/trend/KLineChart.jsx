@@ -125,6 +125,7 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency =
   const seriesRef = useRef(null)
   const dataRef = useRef(null)
   const tickTimerRef = useRef(null)
+  const mockTickTimerRef = useRef(null)
   const TWD_USD_RATE = 32.5
 
   const seconds = INTERVAL_SECONDS[interval] || 86400
@@ -221,54 +222,61 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency =
     }
     loadData()
 
-    // 即時更新（每 2 秒）— 使用真實價格或模擬 tick
+    // 真實資料：每 30 秒打一次 /coin/price 更新最新 K 棒。
+    // 這個間隔對齊 apiFetch 的全域快取 TTL（見 services/apiCache.js）——
+    // 打更頻繁在快取有效期內也只會拿到同一份快取值，沒有意義。
     tickTimerRef.current = window.setInterval(async () => {
+      if (!usingRealData || !isBackendConfigured()) return
       if (!dataRef.current || dataRef.current.length === 0) return
       const last = dataRef.current[dataRef.current.length - 1]
 
-      if (usingRealData && isBackendConfigured()) {
-        // Fetch real latest price and update the current candle
-        try {
-          const priceRes = await getCoinPrice(symbol)
-          if (priceRes?.last != null) {
-            const now = Math.floor(Date.now() / 1000)
-            const price = priceRes.last
-            // Check if we need a new candle or update the existing one
-            if (now - last.time >= seconds) {
-              // New candle period started
-              const newCandle = {
-                time: last.time + seconds,
-                open: price,
-                high: price,
-                low: price,
-                close: price,
-              }
-              dataRef.current.push(newCandle)
-              series.update(newCandle)
-            } else {
-              // Update current candle with latest price
-              const updated = {
-                ...last,
-                high: Math.max(last.high, price),
-                low: Math.min(last.low, price),
-                close: price,
-              }
-              dataRef.current[dataRef.current.length - 1] = updated
-              series.update(updated)
+      try {
+        const priceRes = await getCoinPrice(symbol)
+        if (priceRes?.last != null) {
+          const now = Math.floor(Date.now() / 1000)
+          const price = priceRes.last
+          // Check if we need a new candle or update the existing one
+          if (now - last.time >= seconds) {
+            // New candle period started
+            const newCandle = {
+              time: last.time + seconds,
+              open: price,
+              high: price,
+              low: price,
+              close: price,
             }
+            dataRef.current.push(newCandle)
+            series.update(newCandle)
+          } else {
+            // Update current candle with latest price
+            const updated = {
+              ...last,
+              high: Math.max(last.high, price),
+              low: Math.min(last.low, price),
+              close: price,
+            }
+            dataRef.current[dataRef.current.length - 1] = updated
+            series.update(updated)
           }
-        } catch { /* ignore fetch errors for real-time updates */ }
-      } else {
-        // Mock tick for demo mode
-        const tick = generateRealtimeTick(last, seconds)
-        const candle = { time: tick.time, open: tick.open, high: tick.high, low: tick.low, close: tick.close }
-        if (tick.isNew) {
-          dataRef.current.push(candle)
-        } else {
-          dataRef.current[dataRef.current.length - 1] = candle
         }
-        series.update(candle)
+      } catch { /* ignore fetch errors for real-time updates */ }
+    }, 30000)
+
+    // Demo 模式模擬 tick：純視覺效果，不打任何 API，跟快取無關，
+    // 維持原本 2 秒讓沒串後端時 K 線圖看起來仍是「即時在動」。
+    mockTickTimerRef.current = window.setInterval(() => {
+      if (usingRealData && isBackendConfigured()) return
+      if (!dataRef.current || dataRef.current.length === 0) return
+      const last = dataRef.current[dataRef.current.length - 1]
+
+      const tick = generateRealtimeTick(last, seconds)
+      const candle = { time: tick.time, open: tick.open, high: tick.high, low: tick.low, close: tick.close }
+      if (tick.isNew) {
+        dataRef.current.push(candle)
+      } else {
+        dataRef.current[dataRef.current.length - 1] = candle
       }
+      series.update(candle)
     }, 2000)
 
     // 監聽可視範圍
@@ -296,6 +304,7 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency =
 
     return () => {
       if (tickTimerRef.current) clearInterval(tickTimerRef.current)
+      if (mockTickTimerRef.current) clearInterval(mockTickTimerRef.current)
       ro.disconnect()
       chart.remove()
     }

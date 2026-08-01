@@ -10,6 +10,8 @@
  * 讓呼叫端可以 fallback 回 mock 資料，不會讓整個頁面掛掉。
  */
 
+import { getCacheEntry, setCacheEntry, getPendingRequest, setPendingRequest, clearPendingRequest } from './apiCache'
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export class ApiError extends Error {
@@ -24,12 +26,24 @@ export class ApiError extends Error {
 /**
  * 送出一個 API 請求並回傳解析後的 JSON。
  *
+ * GET 請求預設會套用 30 秒的全域快取（見 services/apiCache.js）：同一個
+ * path（含 query string）在 30 秒內重複呼叫會直接回傳快取值，不會真正
+ * 發送網路請求；跨頁面共享（MainPage 幣種卡片、CoinTrendPage 直播頁等
+ * 只要打同一個幣種同一個 API，就只會有一份快取）。若同一瞬間有多處同時
+ * 請求同一筆還沒回來的資料，只會真正發出一次網路請求，其餘呼叫者共用
+ * 同一個 Promise。
+ *
+ * 需要跳過快取（例如未來要加「強制刷新」按鈕）時傳 `{ skipCache: true }`。
+ * K 線圖（/candlestick_chart）等本來就要求即時性、參數幾乎每次都不同的
+ * API，呼叫端也應該用 `skipCache: true`。
+ *
  * @param {string} path - 例如 '/coin/price?currency=BTC'
  * @param {object} [options]
  * @param {'GET'|'POST'|'PUT'|'DELETE'} [options.method]
  * @param {object} [options.body] - 會自動 JSON.stringify
  * @param {object} [options.headers]
  * @param {number} [options.timeoutMs] - 預設 10 秒逾時
+ * @param {boolean} [options.skipCache] - 跳過快取，強制發送真正的請求
  * @returns {Promise<any>}
  */
 export async function apiFetch(path, options = {}) {
@@ -39,8 +53,31 @@ export async function apiFetch(path, options = {}) {
     )
   }
 
-  const { method = 'GET', body, headers = {}, timeoutMs = 10000, rawBody = false } = options
+  const { method = 'GET', body, headers = {}, timeoutMs = 10000, rawBody = false, skipCache = false } = options
+  const isCacheable = method === 'GET' && !skipCache
 
+  if (isCacheable) {
+    const cached = getCacheEntry(path)
+    if (cached !== undefined) return cached
+
+    const inFlight = getPendingRequest(path)
+    if (inFlight) return inFlight
+  }
+
+  const requestPromise = _doFetch(path, { method, body, headers, timeoutMs, rawBody })
+
+  if (isCacheable) {
+    setPendingRequest(path, requestPromise)
+    requestPromise
+      .then((data) => setCacheEntry(path, data))
+      .catch(() => { /* 失敗不快取，下次重試 */ })
+      .finally(() => clearPendingRequest(path))
+  }
+
+  return requestPromise
+}
+
+async function _doFetch(path, { method, body, headers, timeoutMs, rawBody }) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 

@@ -7,6 +7,7 @@
  * GET /trade_history — 對應 operationId getTradeHistory（交易摘要 + 交易歷史）
  */
 import { apiFetch } from './api'
+import { invalidateCache } from './apiCache'
 import { CURRENT_USER_ID } from '../utils/currentUser'
 
 /**
@@ -17,13 +18,20 @@ import { CURRENT_USER_ID } from '../utils/currentUser'
  */
 export async function uploadCsvFile(file, userId = CURRENT_USER_ID) {
   const text = await file.text()
-  return apiFetch(`/upload_csv?user_id=${encodeURIComponent(userId)}`, {
+  const result = await apiFetch(`/upload_csv?user_id=${encodeURIComponent(userId)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'text/csv' },
     body: text,
     rawBody: true,
     timeoutMs: 60000,
   })
+  // 上傳新 CSV 後，這些 GET 端點的快取都是「上傳前」的舊資料，清掉讓下次
+  // 讀取立刻拿到跟新 CSV 一致的結果，不用等 30 秒 TTL 自然過期。
+  invalidateCache('/init')
+  invalidateCache('/personality')
+  invalidateCache('/portfolio')
+  invalidateCache('/trade_history')
+  return result
 }
 
 /**
@@ -31,11 +39,13 @@ export async function uploadCsvFile(file, userId = CURRENT_USER_ID) {
  * @param {string} [userId]
  * @returns {Promise<{status, currencies, personality_description, scores}>}
  */
-export function analyzePersonality(userId = CURRENT_USER_ID) {
-  return apiFetch(`/upload_csv?user_id=${encodeURIComponent(userId)}`, {
+export async function analyzePersonality(userId = CURRENT_USER_ID) {
+  const result = await apiFetch(`/upload_csv?user_id=${encodeURIComponent(userId)}`, {
     method: 'POST',
     timeoutMs: 60000,
   })
+  invalidateCache('/personality')
+  return result
 }
 
 /**
@@ -44,12 +54,14 @@ export function analyzePersonality(userId = CURRENT_USER_ID) {
  * @param {string} [userId]
  * @returns {Promise<{status, personality_description, personality_analysis, scores}>}
  */
-export function savePersonality(personality, userId = CURRENT_USER_ID) {
-  return apiFetch(`/personality?user_id=${encodeURIComponent(userId)}`, {
+export async function savePersonality(personality, userId = CURRENT_USER_ID) {
+  const result = await apiFetch(`/personality?user_id=${encodeURIComponent(userId)}`, {
     method: 'POST',
     body: { personality },
     timeoutMs: 60000,
   })
+  invalidateCache('/personality')
+  return result
 }
 
 /**

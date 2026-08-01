@@ -153,7 +153,9 @@ export default function CoinTrendPage() {
     }
 
     fetchPrice()
-    const timer = window.setInterval(fetchPrice, 2000)
+    // 30 秒對齊 apiFetch 的全域快取 TTL（見 services/apiCache.js）：更短的
+    // 輪詢間隔在快取有效期內只會拿到同一份快取值，沒有意義。
+    const timer = window.setInterval(fetchPrice, 30000)
 
     return () => { cancelled = true; clearInterval(timer) }
   }, [symbol])

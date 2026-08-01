@@ -42,7 +42,9 @@ export function getCandlestickChart(currency, start, end, interval = '1M') {
     end: String(end),
     interval,
   })
-  return apiFetch(`/candlestick_chart?${params}`)
+  // start/end 幾乎每次都不同（拖動進度條、輪詢），快取命中率低又要求即時性，
+  // 直接跳過全域快取，見 services/api.js 的 skipCache 說明。
+  return apiFetch(`/candlestick_chart?${params}`, { skipCache: true })
 }
 
 /**
