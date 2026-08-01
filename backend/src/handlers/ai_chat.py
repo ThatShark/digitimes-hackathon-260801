@@ -77,19 +77,23 @@ def lambda_handler(event, context):
             f"{personality_context}\n\n"
             f"請根據以上用戶特質，調整你的回覆風格和建議方向。"
         )
+    else:
+        enhanced_system_prompt = (
+            "## 用戶狀態\n"
+            "這位用戶尚未完成投資人格分析。在適當的時機（例如用戶詢問個人化建議時），"
+            "溫和地建議他：「建議你先完成投資人格問卷或上傳交易紀錄 CSV，"
+            "這樣我可以根據你的投資風格提供更精準的建議喔！」\n"
+            "但如果用戶只是問一般市場問題，不需要每次都提醒。"
+        )
 
     # ── Call Bedrock ──────────────────────────────────────────────────────────
     client = BedrockChatClient()
 
     try:
-        # If we have personality context, prepend it to the default system prompt
-        if enhanced_system_prompt:
-            from src.services.bedrock import _load_system_prompt
-            base_prompt = _load_system_prompt()
-            full_prompt = f"{base_prompt}\n\n{enhanced_system_prompt}"
-            ai_reply = client.chat(messages, system_prompt=full_prompt)
-        else:
-            ai_reply = client.chat(messages)
+        from src.services.bedrock import _load_system_prompt
+        base_prompt = _load_system_prompt()
+        full_prompt = f"{base_prompt}\n\n{enhanced_system_prompt}"
+        ai_reply = client.chat(messages, system_prompt=full_prompt)
     except BedrockError as exc:
         # Log the actual error for debugging
         print(f"[AI_CHAT] Bedrock error: {exc}")
