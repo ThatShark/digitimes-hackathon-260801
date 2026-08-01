@@ -7,6 +7,7 @@ import CopyTradeButton from '../components/community/CopyTradeButton'
 import CommentItem from '../components/community/CommentItem'
 import CommentComposer from '../components/community/CommentComposer'
 import ShareButton from '../components/community/ShareButton'
+import Avatar from '../components/shared/Avatar'
 import { parseTickerTags } from '../components/community/TickerCard'
 import { MOCK_POSTS, CURRENT_USER } from '../utils/mockCommunity'
 import './PostDetailPage.css'
@@ -65,7 +66,7 @@ export default function PostDetailPage() {
       {/* 貼文本體 */}
       <article className="post-detail-main">
         <div className="post-card-header">
-          <div className="post-avatar">{post.author.charAt(0)}</div>
+          <Avatar name={post.author} className="post-avatar" />
           <div className="post-meta">
             <div className="post-author-row">
               <PersonalityBadge personality={post.personality} compact />

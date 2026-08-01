@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
+import Avatar from '../shared/Avatar'
 import TipButton from './TipButton'
 import { parseTickerTags } from './TickerCard'
 import './CommentItem.css'
@@ -24,7 +25,7 @@ export default function CommentItem({ comment }) {
     <article className="comment-item">
       <div className="comment-floor">{comment.floor}F</div>
 
-      <div className="comment-avatar">{comment.author.charAt(0)}</div>
+      <Avatar name={comment.author} className="comment-avatar" />
 
       <div className="comment-body-wrapper">
         <div className="comment-header-row">

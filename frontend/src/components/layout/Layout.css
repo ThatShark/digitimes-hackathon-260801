@@ -47,8 +47,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--accent);
-  opacity: 0.8;
+  object-fit: cover;
+  display: block;
 }
 
 .layout-content {

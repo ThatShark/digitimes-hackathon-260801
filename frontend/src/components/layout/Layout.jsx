@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import SearchBar from './SearchBar'
+import { CURRENT_USER_AVATAR, CURRENT_USER_NAME } from '../../utils/currentUser'
 import './Layout.css'
 
 export default function Layout() {
@@ -23,7 +24,7 @@ export default function Layout() {
             title="個人資料"
             onClick={() => navigate('/profile')}
           >
-            <div className="avatar-circle" />
+            <img src={CURRENT_USER_AVATAR} alt={CURRENT_USER_NAME} className="avatar-circle" />
           </button>
         </header>
         <main className="layout-content">

@@ -57,12 +57,15 @@ digitimes-hackathon-260801/
 │       │   │   └── PortfolioOverview.jsx # 資產總覽 (holdings × price, P&L)
 │       │   └── shared/
 │       │       ├── PersonalityBadge.jsx  # Personality type prefix/title display
+│       │       ├── Avatar.jsx            # Renders CURRENT_USER_AVATAR image for the current user, initial-letter circle for everyone else (mock users)
 │       │       ├── DanmakuOverlay.jsx    # Danmaku overlay on K-line chart — pure rendering, no own mock data (fed via `messages` prop from CoinTrendPage)
 │       │       └── NotificationBanner.jsx # 系統通知 (市場異動/AI提醒)
 │       ├── utils/
 │       │   ├── indicators.js     # Technical indicator math: MA/EMA/MACD/BOLL/RSI/KDJ/STOCH/VOL/OBV/ATR (pure functions, candles in → {time,value}[] out)
 │       │   ├── mockChat.js       # Shared mock chat/danmaku data (users, message pool) — single source so chat panel and danmaku overlay stay in sync
-│       │   └── mockCommunity.js  # Shared mock posts/comments/bounties — single source so CommunityPage (feed) and PostDetailPage (thread) never diverge
+│       │   ├── mockCommunity.js  # Shared mock posts/comments/bounties — single source so CommunityPage (feed) and PostDetailPage (thread) never diverge
+│       │   ├── currentUser.js    # MVP single-user identity: CURRENT_USER_NAME ('王大帥') + CURRENT_USER_AVATAR (src/assets/icon.png) + isCurrentUser(name)
+│       │   └── userPersonality.js # Reads/writes the current user's 4-axis personality to localStorage (set by questionnaire or CSV upload)
 │       ├── services/             # API client layer — see tech.md "Backend Connection"
 │       │   ├── api.js            # Base fetch wrapper (apiFetch/ApiError/isBackendConfigured), reads VITE_API_BASE_URL
 │       │   ├── coinApi.js        # /coin/price, /market/fear-greed, /candlestick_chart
@@ -206,6 +209,14 @@ Chat-like scrolling containers (AI chat, community chat) must **never** use `scr
 - On new message: if the ref says "was at bottom", set `container.scrollTop = container.scrollHeight` (scopes the scroll to that container only).
 - If the user has scrolled up and a new message arrives, show a floating "跳到最新訊息" button (Discord-style) instead of forcing a scroll; clicking it does a smooth `scrollTo` and clears the flag.
 - Page-level containers that should never scroll (e.g. `CoinTrendPage`) should set `overflow: hidden` explicitly rather than relying on inner components to behave.
+
+## Single-User Identity (MVP, no login)
+
+This hackathon MVP has no login/auth — there is exactly one "current user" across the whole app, defined once in `utils/currentUser.js` (`CURRENT_USER_NAME = '王大帥'`, `CURRENT_USER_AVATAR` = `src/assets/icon.png`). Everything that needs to display "who is using the app right now" imports from there rather than hardcoding a name string, to avoid the name drifting out of sync across pages (this happened before — ProfilePage and CommunityPage each hardcoded a different name).
+
+- `components/shared/Avatar.jsx` — renders the real avatar image if `name === CURRENT_USER_NAME`, otherwise falls back to an initial-letter circle (used for all the mock/other users in `mockCommunity.js`). Use this instead of `{name.charAt(0)}` divs anywhere a user avatar is shown.
+- `utils/mockCommunity.js`'s `CURRENT_USER.name` reads from `CURRENT_USER_NAME`, so community posts/comments authored by "yourself" show the correct name and avatar automatically.
+- If real multi-user auth is added later, `currentUser.js` is the single place to swap in "read the logged-in user" logic.
 
 ## Community Comment Threads
 

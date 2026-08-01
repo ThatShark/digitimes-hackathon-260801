@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
+import Avatar from '../shared/Avatar'
 import './PostComposer.css'
 
 const COIN_OPTIONS = ['', 'BTC', 'ETH', 'SOL', 'DOGE', 'ADA', 'DOT']
@@ -31,7 +32,7 @@ export default function PostComposer({ onPost, currentUser }) {
   return (
     <div className="post-composer">
       <div className="composer-header">
-        <div className="composer-avatar">{currentUser.name.charAt(0)}</div>
+        <Avatar name={currentUser.name} className="composer-avatar" />
         <PersonalityBadge personality={currentUser.personality} compact />
         <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
           {currentUser.name}

@@ -6,6 +6,7 @@ import TipButton from './TipButton'
 import CopyTradeButton from './CopyTradeButton'
 import { parseTickerTags } from './TickerCard'
 import ShareButton from './ShareButton'
+import Avatar from '../shared/Avatar'
 import './PostCard.css'
 
 import { getUserPersonality } from '../../utils/userPersonality'
@@ -38,7 +39,7 @@ export default function PostCard({ post }) {
   return (
     <article className="post-card" onClick={goToDetail}>
       <div className="post-card-header">
-        <div className="post-avatar">{post.author.charAt(0)}</div>
+        <Avatar name={post.author} className="post-avatar" />
         <div className="post-meta">
           <div className="post-author-row">
             <PersonalityBadge personality={post.personality} compact />

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
+import Avatar from '../shared/Avatar'
 import './CommentComposer.css'
 
 /**
@@ -44,7 +45,7 @@ export default function CommentComposer({ currentUser, onSubmit }) {
 
   return (
     <div className="comment-composer">
-      <div className="comment-composer-avatar">{currentUser.name.charAt(0)}</div>
+      <Avatar name={currentUser.name} className="comment-composer-avatar" />
 
       <div className="comment-composer-main">
         <div className="comment-composer-name-row">

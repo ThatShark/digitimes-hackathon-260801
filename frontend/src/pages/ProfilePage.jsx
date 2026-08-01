@@ -3,11 +3,12 @@ import PersonalityBadge from '../components/shared/PersonalityBadge'
 import PortfolioOverview from '../components/profile/PortfolioOverview'
 import { analyzePersonality, uploadCsvFile } from '../services/personalityApi'
 import { getUserPersonality } from '../utils/userPersonality'
+import { CURRENT_USER_NAME, CURRENT_USER_AVATAR } from '../utils/currentUser'
 import './ProfilePage.css'
 
 // Mock user data (personality will be read from localStorage)
 const MOCK_USER = {
-  displayName: '林睿瑜',
+  displayName: CURRENT_USER_NAME,
   bio: '目標在大學畢業前賺進人生第一桶金',
   personalityDescription: '',
   csvUploadedAt: '2025/07/28 14:30',
@@ -128,9 +129,7 @@ export default function ProfilePage() {
     <div className="profile-page">
       {/* Header section */}
       <section className="profile-header-section">
-        <div className="profile-avatar-large">
-          {user.displayName.charAt(0)}
-        </div>
+        <img src={CURRENT_USER_AVATAR} alt={user.displayName} className="profile-avatar-large" />
         <div className="profile-header-info">
           <h1 className="profile-display-name">{user.displayName}</h1>
           <PersonalityBadge personality={personality} compact showName />

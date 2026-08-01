@@ -1,13 +1,14 @@
 import { getUserPersonality } from './userPersonality'
+import { CURRENT_USER_NAME } from './currentUser'
 
 /**
  * 共用的社群模擬資料 — CommunityPage（列表）與 PostDetailPage（詳情+留言）
  * 共用同一份來源，確保兩邊顯示的貼文內容一致。
  */
 
-// 當前使用者（人格從 localStorage 動態讀取）
+// 當前使用者（名稱來自 utils/currentUser.js，人格從 localStorage 動態讀取）
 export const CURRENT_USER = {
-  name: '林小明',
+  name: CURRENT_USER_NAME,
   get personality() { return getUserPersonality() },
   coins: ['BTC', 'ETH', 'SOL'],
 }
