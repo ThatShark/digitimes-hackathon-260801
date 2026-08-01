@@ -37,7 +37,7 @@ Error responses:
 
 import json
 
-from backend.src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
+from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
 
 _VALID_MODES      = {"latest", "historical"}
 _DEFAULT_MODE     = "latest"

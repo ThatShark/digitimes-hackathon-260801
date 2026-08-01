@@ -48,9 +48,9 @@ import os
 from calendar import timegm
 from datetime import datetime, timezone
 
-from backend.src.services.max_api import MaxApiClient, MaxApiError
-from backend.src.services.s3_storage import S3StorageError, S3StorageService
-from backend.src.utils.metrics import TradeDataError, parse_trades_csv
+from src.services.max_api import MaxApiClient, MaxApiError
+from src.services.s3_storage import S3StorageError, S3StorageService
+from src.utils.metrics import TradeDataError, parse_trades_csv
 
 # ── Interval → MAX period (minutes) ──────────────────────────────────────────
 _INTERVAL_TO_PERIOD: dict[str, int] = {
