@@ -5,6 +5,35 @@
 import { apiFetch } from './api'
 import { getUserPersonality } from '../utils/userPersonality'
 
+const HISTORY_KEY = 'ai_chat_history'
+
+/**
+ * 讀取對話歷史（保留該段對話所有紀錄）
+ */
+function getChatHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 儲存對話歷史（保留所有紀錄）
+ */
+export function saveChatHistory(userMsg, aiReply) {
+  const history = getChatHistory()
+  history.push({ user: userMsg, ai: aiReply })
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
+}
+
+/**
+ * 清除對話歷史（換頁或手動重置時呼叫）
+ */
+export function clearChatHistory() {
+  localStorage.removeItem(HISTORY_KEY)
+}
+
 /**
  * 傳送訊息給 AI 投資助理
  * @param {string} message
@@ -13,12 +42,14 @@ import { getUserPersonality } from '../utils/userPersonality'
  */
 export function sendAiChat(message, currency) {
   const personality = getUserPersonality()
+  const history = getChatHistory()
   return apiFetch('/ai_chat?user_id=demo-user', {
     method: 'POST',
     body: {
       message,
       ...(currency ? { currency } : {}),
       ...(personality && personality.code !== '????' ? { personality } : {}),
+      ...(history.length > 0 ? { before_messages: history } : {}),
     },
     timeoutMs: 30000,
   })

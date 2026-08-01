@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import PersonalityBadge from '../shared/PersonalityBadge'
-import { sendAiChat } from '../../services/aiApi'
+import { sendAiChat, saveChatHistory } from '../../services/aiApi'
 import './AIChatPanel.css'
 
 const INITIAL_MESSAGES = [
@@ -107,6 +107,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
       try {
         const data = await sendAiChat(userMsg, symbol)
         setMessages((prev) => [...prev, { role: 'ai', content: data.message }])
+        saveChatHistory(userMsg, data.message)
         if (data.investment_suggestion) {
           setPendingSuggestion({
             action: data.investment_suggestion.action,
