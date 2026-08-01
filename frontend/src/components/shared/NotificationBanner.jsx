@@ -3,13 +3,16 @@ import { getNotifications } from '../../services/coinApi'
 import { isBackendConfigured } from '../../services/api'
 import './NotificationBanner.css'
 
-// 後端未設定或請求失敗時的 fallback 內容，確保畫面不會空白
+// 後端未設定或請求失敗時的 fallback 內容，確保畫面不會空白。
+// 只能出現這個產品支援的 6 種貨幣（BTC/ETH/SOL/DOGE/USDT/USDC），
+// 巨鯨警報/社群討論量沒有真實資料源，一律加上「（展示用）」標記，
+// 跟後端 notifications.py 的規則保持一致（見 backend/src/utils/constants.py）。
 const MOCK_NOTIFICATIONS = [
   '🚨 BTC 突破 285 萬 TWD，24H 漲幅 +2.3%',
-  '🐋 巨鯨警報：500 BTC 從冷錢包轉入 Binance',
+  '🐋 巨鯨警報：500 BTC 從冷錢包轉入交易所（展示用）',
   '📊 恐懼貪婪指數降至 38（恐慌），歷史上是進場好時機',
-  '🔥 SOL 鏈上活躍度創 30 天新高',
-  '📈 PEPE 24H 漲幅 +15.2%，社群討論量暴增',
+  '🔥 SOL 鏈上活躍度創 30 天新高（展示用）',
+  '📈 DOGE 24H 漲幅 +15.2%，社群討論量暴增（展示用）',
 ]
 
 /**
