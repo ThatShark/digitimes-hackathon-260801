@@ -79,7 +79,6 @@ const TABS = [
   { key: 'overview', label: '概況' },
   { key: 'data', label: '數據' },
   { key: 'social', label: '動態' },
-  { key: 'trade', label: '交易' },
   { key: 'strategy', label: '策略' },
 ]
 
@@ -90,6 +89,11 @@ export default function CoinTrendPage() {
   // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
+  const [danmakuSettings, setDanmakuSettings] = useState({
+    speed: 'normal',
+    size: 'medium',
+    position: 'top20',
+  })
   // 聊天室訊息
   const [communityMessages, setCommunityMessages] = useState([])
 
@@ -166,11 +170,6 @@ export default function CoinTrendPage() {
       danmakuRef.current?.addBullet(user.name, text, isMe)
     }
   }, [])
-
-  // K 線圖控制列的「發送」走同一個入口
-  const handleSendMessage = useCallback((text) => {
-    addCommunityMessage(ME_USER, text, true)
-  }, [addCommunityMessage])
 
   const handleFullscreen = useCallback(() => {
     const el = document.querySelector('.trend-chart-area')
@@ -267,9 +266,9 @@ export default function CoinTrendPage() {
                 {danmakuVisible && (
                   <DanmakuOverlay
                     ref={danmakuRef}
-                    speed="normal"
-                    size="medium"
-                    position="top20"
+                    speed={danmakuSettings.speed}
+                    size={danmakuSettings.size}
+                    position={danmakuSettings.position}
                   />
                 )}
                 <button
@@ -283,9 +282,10 @@ export default function CoinTrendPage() {
               <ChartControls
                 interval={interval}
                 onIntervalChange={handleIntervalChange}
-                onSendMessage={handleSendMessage}
                 danmakuEnabled={danmakuEnabled}
                 onDanmakuToggle={() => setDanmakuEnabled((v) => !v)}
+                danmakuSettings={danmakuSettings}
+                onDanmakuSettingsChange={setDanmakuSettings}
                 dataFrom={dataFrom}
                 dataTo={dataTo}
                 visibleFrom={visibleFrom}
@@ -324,18 +324,6 @@ export default function CoinTrendPage() {
       {/* 動態 tab */}
       {activeTab === 'social' && (
         <CoinSocialFeed symbol={symbol} />
-      )}
-
-      {/* 交易 tab */}
-      {activeTab === 'trade' && (
-        <div className="trade-tab-layout">
-          <div className="trade-tab-panel">
-            <TradePanel symbol={symbol} />
-          </div>
-          <div className="trade-tab-depth">
-            <DepthChart symbol={symbol} />
-          </div>
-        </div>
       )}
 
       {/* 策略 tab */}
