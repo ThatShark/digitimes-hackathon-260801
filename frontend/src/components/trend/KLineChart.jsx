@@ -119,12 +119,13 @@ function generateRealtimeTick(lastCandle, intervalSeconds) {
   }
 }
 
-const KLineChart = forwardRef(function KLineChart({ symbol, interval, onTimeRangeChange }, ref) {
+const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency = 'TWD', onTimeRangeChange }, ref) {
   const containerRef = useRef(null)
   const chartInstanceRef = useRef(null)
   const seriesRef = useRef(null)
   const dataRef = useRef(null)
   const tickTimerRef = useRef(null)
+  const TWD_USD_RATE = 32.5
 
   const seconds = INTERVAL_SECONDS[interval] || 86400
   const mockData = useMemo(() => generateMockData(interval, symbol), [interval, symbol])
@@ -158,7 +159,15 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, onTimeRang
         horzLines: { color: '#2e303a' },
       },
       crosshair: { mode: 0 },
-      rightPriceScale: { borderColor: '#2e303a' },
+      rightPriceScale: {
+        borderColor: '#2e303a',
+      },
+      localization: {
+        priceFormatter: (price) => {
+          const p = currency === 'USD' ? price / TWD_USD_RATE : price
+          return p.toLocaleString(undefined, { maximumFractionDigits: 2 })
+        },
+      },
       timeScale: {
         borderColor: '#2e303a',
         timeVisible: seconds < 86400, // 日線以下顯示時間
@@ -290,7 +299,7 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, onTimeRang
       ro.disconnect()
       chart.remove()
     }
-  }, [mockData, seconds, symbol, interval, onTimeRangeChange])
+  }, [mockData, seconds, symbol, interval, currency, onTimeRangeChange])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 })

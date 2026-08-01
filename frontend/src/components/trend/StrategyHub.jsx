@@ -1,3 +1,4 @@
+import { formatPrice } from '../../utils/currency'
 import './StrategyHub.css'
 
 const STRATEGY_TYPES = [
@@ -13,27 +14,27 @@ const AI_TEMPLATES = [
   {
     id: 1, type: 'grid', label: '短期波動型',
     duration: '7~20 天', apy: '85.4%', coin: 'BTC',
-    range: '2,700,000 - 3,000,000', grids: 50,
+    rangeLow: 2700000, rangeHigh: 3000000, grids: 50,
   },
   {
     id: 2, type: 'grid', label: '中期震盪型',
     duration: '1~2 個月', apy: '42.1%', coin: 'ETH',
-    range: '90,000 - 110,000', grids: 30,
+    rangeLow: 90000, rangeHigh: 110000, grids: 30,
   },
   {
     id: 3, type: 'grid', label: '長期穩健型',
     duration: '3~6 個月', apy: '18.5%', coin: 'BTC',
-    range: '2,400,000 - 3,200,000', grids: 80,
+    rangeLow: 2400000, rangeHigh: 3200000, grids: 80,
   },
 ]
 
-const LIVE_PROFITS = [
-  { user: '趙柏翰', strategy: '現貨網格', profit: '+1,280 TWD', time: '2 分鐘前' },
-  { user: '王大壯', strategy: 'DCA 定投', profit: '+680 TWD', time: '5 分鐘前' },
-  { user: '陳Ｊ哥', strategy: '馬丁格爾', profit: '+3,420 TWD', time: '8 分鐘前' },
+const LIVE_PROFITS_TWD = [
+  { user: '趙柏翰', strategy: '現貨網格', profitTWD: 1280, time: '2 分鐘前' },
+  { user: '王大壯', strategy: 'DCA 定投', profitTWD: 680, time: '5 分鐘前' },
+  { user: '陳Ｊ哥', strategy: '馬丁格爾', profitTWD: 3420, time: '8 分鐘前' },
 ]
 
-export default function StrategyHub({ symbol }) {
+export default function StrategyHub({ symbol, currency = 'TWD' }) {
   return (
     <div className="strategy-hub">
       {/* 策略建立入口 */}
@@ -69,7 +70,7 @@ export default function StrategyHub({ symbol }) {
                 </div>
                 <div className="template-stat">
                   <span className="ts-label">區間</span>
-                  <span className="ts-value">{t.range}</span>
+                  <span className="ts-value">{formatPrice(t.rangeLow, currency)} - {formatPrice(t.rangeHigh, currency)}</span>
                 </div>
                 <div className="template-stat">
                   <span className="ts-label">網格數</span>
@@ -86,11 +87,11 @@ export default function StrategyHub({ symbol }) {
       <section className="hub-section">
         <h3 className="hub-section-title">💰 實盤賺取動態</h3>
         <div className="live-profits">
-          {LIVE_PROFITS.map((p, i) => (
+          {LIVE_PROFITS_TWD.map((p, i) => (
             <div key={i} className="profit-row">
               <span className="profit-user">{p.user}</span>
               <span className="profit-strategy">{p.strategy}</span>
-              <span className="profit-amount">{p.profit}</span>
+              <span className="profit-amount">+{formatPrice(p.profitTWD, currency)}</span>
               <span className="profit-time">{p.time}</span>
             </div>
           ))}
