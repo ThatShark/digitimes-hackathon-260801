@@ -32,3 +32,17 @@ export function analyzePersonality(userId) {
     timeoutMs: 60000,
   })
 }
+
+/**
+ * 儲存問卷結果到後端（會觸發 AI 生成人格描述並存到 S3）
+ * @param {object} personality - { code, name, axes: {R, E, F, S} }
+ * @param {string} [userId]
+ * @returns {Promise<{status, personality_description, personality_analysis, scores}>}
+ */
+export function savePersonality(personality, userId = 'demo-user') {
+  return apiFetch(`/personality?user_id=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+    body: { personality },
+    timeoutMs: 60000,
+  })
+}
