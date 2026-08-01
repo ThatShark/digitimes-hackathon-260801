@@ -15,7 +15,7 @@ Success response 200 — MarketOverviewResponse:
   "btc_dominance": 58.2,
   "total_market_cap": 3120000000000.0,
   "volume_24h": 98500000000.0,
-  "top_gainers": [{"symbol": "PEPE", "change_24h": 15.2}, ...],
+  "top_gainers": [{"symbol": "SOL", "change_24h": 5.7}, ...],
   "top_losers":  [{"symbol": "ETH", "change_24h": -1.2}, ...]
 }
 
@@ -29,6 +29,7 @@ Error 502 — ALL four CMC calls failed (nothing to show)
 """
 
 from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
+from src.utils.constants import RANKABLE_CURRENCIES
 from src.utils.http import json_response
 
 _DEFAULT_TOP_N = 3
@@ -112,11 +113,13 @@ def _fetch_global_metrics(client: CoinMarketCapClient):
     return dominance, market_cap, volume_24h
 
 
-# Ranking pool size for gainers/losers: pull the top N coins by market cap
-# first, then sort that pool by 24h % change locally. Sorting the *entire*
-# CMC universe directly by percent_change_24h surfaces near-zero-market-cap
-# microcap/scam tokens with meaningless four-digit percentage swings, which
-# is not what "top gainers/losers" means to an end user.
+# Ranking pool size: pull the top N coins by market cap from CMC, then
+# filter down to RANKABLE_CURRENCIES (the 6 coins this product actually
+# supports, minus stablecoins) before sorting by 24h % change. This product
+# only ever shows BTC/ETH/SOL/DOGE/USDT/USDC — surfacing gainers/losers from
+# the full CMC universe (e.g. ADA, DOT, PEPE) would show coins the user
+# can't view or trade here at all, on top of the pre-existing microcap-noise
+# problem (near-zero-market-cap tokens with meaningless four-digit swings).
 _RANKING_POOL_SIZE = 100
 
 
@@ -124,6 +127,8 @@ def _fetch_movers(client: CoinMarketCapClient, limit: int):
     """Returns (top_gainers, top_losers), each [] on failure — gainers/losers
     are non-critical widgets, a failure here must not fail the whole request.
     Single API call serves both lists (sorted from the same candidate pool).
+    Only ranks RANKABLE_CURRENCIES (excludes stablecoins — their 24h change
+    is always ~0% and carries no signal for a "movers" widget).
     """
     try:
         raw = client.get_listings(
@@ -141,8 +146,10 @@ def _fetch_movers(client: CoinMarketCapClient, limit: int):
         if not isinstance(entry, dict):
             continue
         symbol = entry.get("symbol")
+        if symbol is None or symbol not in RANKABLE_CURRENCIES:
+            continue
         change = _extract_usd_quote_field(entry, "percent_change_24h")
-        if symbol is None or change is None:
+        if change is None:
             continue
         candidates.append({"symbol": symbol, "change_24h": round(change, 1)})
 

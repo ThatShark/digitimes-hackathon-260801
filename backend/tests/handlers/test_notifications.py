@@ -58,7 +58,7 @@ def test_price_mover_included_when_above_threshold(mock_fg, mock_listings):
     mock_fg.return_value = {"data": {"value": 50, "value_classification": "Neutral"}}
     mock_listings.return_value = {
         "data": [
-            {"symbol": "PEPE", "quote": _quote_list(15.2)},
+            {"symbol": "DOGE", "quote": _quote_list(15.2)},
             {"symbol": "BTC", "quote": _quote_list(1.0)},  # below default 10% threshold
         ]
     }
@@ -70,9 +70,26 @@ def test_price_mover_included_when_above_threshold(mock_fg, mock_listings):
 
     movers = [n for n in body["notifications"] if n["type"] == "price_mover"]
     assert len(movers) == 1
-    assert "PEPE" in movers[0]["text"]
+    assert "DOGE" in movers[0]["text"]
     assert "+15.2%" in movers[0]["text"]
     assert movers[0]["icon"] == "📈"
+
+
+@patch.object(notifications.CoinMarketCapClient, "get_listings")
+@patch.object(notifications.CoinMarketCapClient, "get_fear_greed_latest")
+def test_unsupported_currency_excluded_from_price_mover(mock_fg, mock_listings):
+    mock_fg.return_value = {"data": {"value": 50, "value_classification": "Neutral"}}
+    mock_listings.return_value = {
+        "data": [
+            {"symbol": "PEPE", "quote": _quote_list(50.0)},  # not one of the 6 supported coins
+            {"symbol": "USDT", "quote": _quote_list(0.5)},   # stablecoin, excluded even if it clears threshold
+        ]
+    }
+
+    resp = notifications.lambda_handler(_event(price_change_threshold="1"), None)
+    body = json.loads(resp["body"])
+    movers = [n for n in body["notifications"] if n["type"] == "price_mover"]
+    assert movers == []
 
 
 @patch.object(notifications.CoinMarketCapClient, "get_listings")
@@ -120,9 +137,9 @@ def test_multiple_movers_sorted_by_magnitude_descending(mock_fg, mock_listings):
     mock_fg.return_value = {"data": {"value": 50, "value_classification": "Neutral"}}
     mock_listings.return_value = {
         "data": [
-            {"symbol": "A", "quote": _quote_list(12.0)},
-            {"symbol": "B", "quote": _quote_list(-30.0)},
-            {"symbol": "C", "quote": _quote_list(20.0)},
+            {"symbol": "BTC", "quote": _quote_list(12.0)},
+            {"symbol": "ETH", "quote": _quote_list(-30.0)},
+            {"symbol": "SOL", "quote": _quote_list(20.0)},
         ]
     }
 
@@ -130,7 +147,7 @@ def test_multiple_movers_sorted_by_magnitude_descending(mock_fg, mock_listings):
     body = json.loads(resp["body"])
     movers = [n for n in body["notifications"] if n["type"] == "price_mover"]
     symbols_in_order = [m["text"].split()[0] for m in movers]
-    assert symbols_in_order == ["B", "C", "A"]
+    assert symbols_in_order == ["ETH", "SOL", "BTC"]
 
 
 # ── Happy path: fear_greed from real (mocked) CMC data ───────────────────────
@@ -179,6 +196,23 @@ def test_mock_types_always_present_on_success(mock_fg, mock_listings):
 
 @patch.object(notifications.CoinMarketCapClient, "get_listings")
 @patch.object(notifications.CoinMarketCapClient, "get_fear_greed_latest")
+def test_mock_notifications_are_labeled_as_demo(mock_fg, mock_listings):
+    """whale_alert/social_buzz have no real data source — their text must
+    always be suffixed with the demo marker so the UI never presents them
+    as real data (see notifications.py's _DEMO_MARKER)."""
+    mock_fg.return_value = {"data": {"value": 50, "value_classification": "Neutral"}}
+    mock_listings.return_value = {"data": []}
+
+    resp = notifications.lambda_handler(_event(), None)
+    body = json.loads(resp["body"])
+    mock_items = [n for n in body["notifications"] if n["type"] in ("whale_alert", "social_buzz")]
+    assert len(mock_items) == 2
+    for item in mock_items:
+        assert item["text"].endswith("（展示用）")
+
+
+@patch.object(notifications.CoinMarketCapClient, "get_listings")
+@patch.object(notifications.CoinMarketCapClient, "get_fear_greed_latest")
 def test_all_cmc_sources_fail_still_returns_200_with_mock_notifications(mock_fg, mock_listings):
     """Unlike market_overview.py's 502-on-total-failure, /notifications
     always returns 200 — a missing real alert isn't worth erroring the
@@ -206,7 +240,7 @@ def test_entries_missing_usd_quote_are_skipped(mock_fg, mock_listings):
     mock_fg.return_value = {"data": {"value": 50, "value_classification": "Neutral"}}
     mock_listings.return_value = {
         "data": [
-            {"symbol": "GOOD", "quote": _quote_list(20.0)},
+            {"symbol": "BTC", "quote": _quote_list(20.0)},
             {"symbol": "NOQUOTE", "quote": []},  # no USD entry -> skipped
             {"symbol": "MALFORMED", "quote": "not-a-list"},  # wrong type -> skipped
         ]
@@ -216,7 +250,7 @@ def test_entries_missing_usd_quote_are_skipped(mock_fg, mock_listings):
     body = json.loads(resp["body"])
     movers = [n for n in body["notifications"] if n["type"] == "price_mover"]
     assert len(movers) == 1
-    assert "GOOD" in movers[0]["text"]
+    assert "BTC" in movers[0]["text"]
 
 
 # ── limit trims the combined notification list ───────────────────────────────

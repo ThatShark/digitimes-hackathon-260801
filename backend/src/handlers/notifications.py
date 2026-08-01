@@ -13,18 +13,27 @@ but for a hackathon MVP the extra EventBridge + S3 plumbing isn't worth it
 when the CMC calls are already fast and already used by market_overview.py.
 
 Four notification types (see NotificationItem.type in api.yaml):
-    price_mover  — real: any top-100-by-market-cap coin whose 24h % change
-                   exceeds ±price_change_threshold (reuses the same
-                   ranking-pool approach as market_overview.py to avoid
-                   surfacing meaningless microcap swings).
+    price_mover  — real: any of the 6 supported non-stablecoin currencies
+                   (RANKABLE_CURRENCIES — BTC/ETH/SOL/DOGE) whose 24h %
+                   change exceeds ±price_change_threshold, ranked within
+                   the top-100-by-market-cap pool (reuses the same
+                   approach as market_overview.py to avoid surfacing
+                   meaningless microcap swings, and to avoid surfacing
+                   coins this product doesn't even support, e.g. ADA/DOT).
     fear_greed   — real: the current Fear & Greed Index classification.
-    whale_alert  — mock: no real on-chain data source exists yet (see
-                   .kiro/steering/platform-features.md). Deterministically
-                   seeded from the current hour so it doesn't reroll on
-                   every request within the same hour, but is NOT derived
-                   from any live external data — purely illustrative.
-    social_buzz  — mock: same caveat as whale_alert; no real community
-                   activity metric is wired up yet.
+    whale_alert  — MOCK, explicitly labeled: no real on-chain data source
+                   exists yet (see .kiro/steering/platform-features.md —
+                   Whale Alert's official API has no free tier, and a
+                   multi-chain address-attribution DB is out of scope for
+                   this hackathon). Deterministically seeded from the
+                   current hour so it doesn't reroll on every request
+                   within the same hour. The text is suffixed with
+                   "（展示用）" (_DEMO_MARKER) so it's unmistakable in the
+                   UI that this is a planned-but-not-yet-implemented
+                   feature, not real data — do not remove this suffix.
+    social_buzz  — MOCK, explicitly labeled: same caveat and _DEMO_MARKER
+                   suffix as whale_alert; no real community activity
+                   metric is wired up yet.
 
 Never returns an error for partial CMC failures — a missing notification
 is not worth failing the endpoint over. Only truly invalid query
@@ -35,11 +44,18 @@ import random
 import time
 
 from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
+from src.utils.constants import RANKABLE_CURRENCIES
 from src.utils.http import json_response
 
 _DEFAULT_THRESHOLD = 10.0
 _DEFAULT_LIMIT = 8
 _RANKING_POOL_SIZE = 100  # same rationale as market_overview.py
+
+# Suffix appended to whale_alert/social_buzz text so it's unmistakable in
+# the UI that these are illustrative placeholders, not real data — see the
+# docstring above for why (Whale Alert's official API has no free tier and
+# a multi-chain address-attribution DB is out of scope for this hackathon).
+_DEMO_MARKER = "（展示用）"
 
 _FEAR_GREED_LABELS_ZH = {
     "Extreme Fear": "極度恐慌",
@@ -56,9 +72,12 @@ _MOCK_WHALE_ALERTS = [
     "🐋 巨鯨警報：一筆 2,000 ETH 轉帳流向未知錢包",
     "🐋 巨鯨警報：大戶錢包新增 1,200 萬 USDT",
 ]
+# Only use symbols from RANKABLE_CURRENCIES here — this pool must not
+# surface coins the product doesn't support (previously included PEPE,
+# which isn't one of the 6 supported currencies).
 _MOCK_SOCIAL_ALERTS = [
     ("SOL", "🔥 {symbol} 鏈上活躍度創 30 天新高"),
-    ("PEPE", "📈 {symbol} 社群討論量暴增"),
+    ("ETH", "📈 {symbol} 社群討論量暴增"),
     ("DOGE", "💬 {symbol} 社群情緒轉為樂觀"),
 ]
 
@@ -117,8 +136,10 @@ def _price_mover_notifications(client: CoinMarketCapClient, threshold: float, no
         if not isinstance(entry, dict):
             continue
         symbol = entry.get("symbol")
+        if symbol is None or symbol not in RANKABLE_CURRENCIES:
+            continue
         change = _extract_usd_quote_field(entry, "percent_change_24h")
-        if symbol is None or change is None or abs(change) < threshold:
+        if change is None or abs(change) < threshold:
             continue
         candidates.append((symbol, change))
 
@@ -199,9 +220,9 @@ def _mock_notifications(now: int) -> list:
     hour_bucket = now // 3600
     rng = random.Random(hour_bucket)
 
-    whale_text = rng.choice(_MOCK_WHALE_ALERTS)
+    whale_text = rng.choice(_MOCK_WHALE_ALERTS) + _DEMO_MARKER
     symbol, template = rng.choice(_MOCK_SOCIAL_ALERTS)
-    social_text = template.format(symbol=symbol)
+    social_text = template.format(symbol=symbol) + _DEMO_MARKER
 
     return [
         {

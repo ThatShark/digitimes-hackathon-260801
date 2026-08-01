@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import './WhaleAlertCard.css'
 
-// Mock 巨鯨警報數據
+// Mock 巨鯨警報數據 —— 目前沒有真實鏈上資料源（Whale Alert 官方 API 沒有
+// 免費方案，多鏈位址標記資料庫也超出黑客松時間範圍），這是計畫要做但尚未
+// 實作的功能，資料完全是假的。value/time 字尾統一加上「（展示用）」，
+// 確保評審不會誤以為這是真實鏈上監控數據。
 const WHALE_ALERTS = [
   {
     id: 1,
@@ -11,7 +14,7 @@ const WHALE_ALERTS = [
     amount: '500 BTC',
     from: 'Unknown Wallet',
     to: 'Binance',
-    value: '14.2 億 TWD',
+    value: '14.2 億 TWD（展示用）',
     time: '3 分鐘前',
   },
   {
@@ -21,7 +24,7 @@ const WHALE_ALERTS = [
     amount: '12,000 ETH',
     from: '巨鯨地址 0x7a2...',
     to: null,
-    value: '11.8 億 TWD',
+    value: '11.8 億 TWD（展示用）',
     time: '12 分鐘前',
   },
   {
@@ -31,7 +34,7 @@ const WHALE_ALERTS = [
     amount: '200,000 SOL',
     from: 'MAX Exchange',
     to: 'Cold Wallet',
-    value: '10.8 億 TWD',
+    value: '10.8 億 TWD（展示用）',
     time: '28 分鐘前',
   },
 ]
@@ -66,7 +69,7 @@ export default function WhaleAlertCard() {
     <div className="whale-alert-card">
       <div className="whale-header">
         <span className="whale-icon">🐋</span>
-        <span className="whale-title">巨鯨警報</span>
+        <span className="whale-title">巨鯨警報（展示用）</span>
         <span className="whale-time">{alert.time}</span>
       </div>
 

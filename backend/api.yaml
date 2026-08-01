@@ -1023,13 +1023,11 @@ paths:
                 total_market_cap: 3120000000000.0
                 volume_24h: 98500000000.0
                 top_gainers:
-                  - { symbol: PEPE, change_24h: 15.2 }
-                  - { symbol: WIF, change_24h: 8.9 }
                   - { symbol: SOL, change_24h: 5.7 }
+                  - { symbol: DOGE, change_24h: 1.5 }
+                  - { symbol: BTC, change_24h: 0.3 }
                 top_losers:
                   - { symbol: ETH, change_24h: -1.2 }
-                  - { symbol: ADA, change_24h: -0.8 }
-                  - { symbol: LINK, change_24h: -2.1 }
         "400":
           description: Invalid query parameter
           content:
@@ -1056,14 +1054,19 @@ paths:
         live CoinMarketCap data on every call (no persistence/scheduling —
         see task notes for the simple-vs-scheduled tradeoff):
 
-        - **price_mover**: any top-100-by-market-cap coin whose 24h %
-          change exceeds ±`price_change_threshold` (default 10%).
+        - **price_mover**: any of the 6 supported non-stablecoin currencies
+          (BTC/ETH/SOL/DOGE) whose 24h % change exceeds
+          ±`price_change_threshold` (default 10%), ranked within the
+          top-100-by-market-cap pool.
         - **fear_greed**: the current Fear & Greed Index classification
           (e.g. entering "Fear" or "Extreme Greed").
         - **whale_alert** / **social_buzz**: no real data source exists yet
-          (see backend/.kiro platform-features.md) — deterministically
-          seeded from the current hour so the same alert doesn't repeat
-          every request, clearly not derived from live external data.
+          (see backend/.kiro platform-features.md — Whale Alert's official
+          API has no free tier) — deterministically seeded from the current
+          hour so the same alert doesn't repeat every request. The `text`
+          is always suffixed with "（展示用）" to make it unmistakable in
+          the UI that this is a planned-but-not-implemented feature, not
+          real data.
 
         Returns an empty list (never an error) if the CMC calls fail —
         a missing notification is not worth failing the endpoint over;
@@ -1287,12 +1290,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MarketMover"
-          description: Top N coins by 24h % change, descending (empty if unavailable)
+          description: |
+            Top N coins by 24h % change, descending (empty if unavailable).
+            Only ranks the 4 supported non-stablecoin currencies
+            (BTC/ETH/SOL/DOGE) — USDT/USDC are excluded (their 24h change
+            is always ~0%, no signal), and coins outside the 6 this
+            product supports are never surfaced here.
         top_losers:
           type: array
           items:
             $ref: "#/components/schemas/MarketMover"
-          description: Bottom N coins by 24h % change, ascending (empty if unavailable)
+          description: Bottom N coins by 24h % change, ascending — same currency restriction as top_gainers
 
     MarketOverviewFearGreed:
       type: object
@@ -1342,9 +1350,11 @@ components:
           enum: [price_mover, fear_greed, whale_alert, social_buzz]
           description: |
             price_mover / fear_greed are computed from live CoinMarketCap
-            data. whale_alert / social_buzz have no real data source yet
-            and are deterministically mock-generated (see operation
-            description) — treat them as illustrative, not factual.
+            data, restricted to the 6 currencies this product supports.
+            whale_alert / social_buzz have no real data source yet and are
+            deterministically mock-generated (see operation description)
+            — their `text` always ends with "（展示用）" so the UI never
+            presents them as real data.
         icon:
           type: string
           example: "📈"
