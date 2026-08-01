@@ -1,0 +1,130 @@
+.comment-composer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.comment-composer-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.comment-composer-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.comment-composer-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comment-composer-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.comment-composer-textarea {
+  width: 100%;
+  resize: none;
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.comment-composer-textarea:focus {
+  outline: 1px solid var(--accent);
+}
+
+.comment-composer-images {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comment-composer-image-preview {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.comment-composer-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comment-composer-image-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-composer-image-btn {
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.comment-composer-image-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.comment-composer-submit {
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.comment-composer-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.comment-composer-submit:not(:disabled):hover {
+  opacity: 0.85;
+}

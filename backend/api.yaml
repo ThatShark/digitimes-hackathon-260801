@@ -229,59 +229,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /coin/price:
-    get:
-      tags: [Core]
-      summary: Get real-time coin prices
-      description: |
-        Returns current prices and 24h change for one or more coins.
-        Backend calls MAX Exchange API to fetch real-time ticker data.
-        Used by the main page coin cards and anywhere that needs live prices.
-      operationId: getCoinPrice
-      parameters:
-        - name: symbols
-          in: query
-          required: true
-          schema:
-            type: string
-            example: BTC,ETH,SOL,DOGE
-          description: Comma-separated list of currency symbols
-      responses:
-        "200":
-          description: Price data for requested coins
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CoinPriceResponse"
-        "502":
-          description: MAX API unavailable after retries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /market/fear-greed:
-    get:
-      tags: [Core]
-      summary: Get Fear & Greed Index
-      description: |
-        Returns the current crypto Fear & Greed Index from CoinMarketCap.
-        Used by the AI for trade timing analysis.
-      operationId: getFearGreedIndex
-      responses:
-        "200":
-          description: Current Fear & Greed Index
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FearGreedResponse"
-        "502":
-          description: CoinMarketCap API unavailable after retries
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
   /ai_chat:
     post:
       tags: [Core]
@@ -494,10 +441,49 @@ paths:
                   like_count:
                     type: integer
 
+  /community/post/{postId}/comments/{commentId}/like:
+    post:
+      tags: [Community]
+      summary: Like / unlike a comment
+      description: |
+        Toggles a like on a single comment (floor). Independent from the
+        parent post's like count.
+      operationId: toggleCommentLike
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Like toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  liked:
+                    type: boolean
+                  like_count:
+                    type: integer
+
   /community/post/{postId}/comments:
     get:
       tags: [Community]
-      summary: Get comments on a post
+      summary: Get comments on a post (floor-numbered thread)
+      description: |
+        Returns comments for a post as a flat, floor-numbered thread — no
+        nested replies. Comments are sorted ascending by `created_at`
+        (oldest first) and `floor` is assigned in that same order starting
+        at 1, so 1F is always the earliest comment. Floor numbers are
+        permanent and never renumbered (e.g. if 2F is deleted, floors stay
+        1F, 3F, 4F...).
       operationId: getPostComments
       parameters:
         - name: postId
@@ -518,7 +504,7 @@ paths:
             default: 20
       responses:
         "200":
-          description: List of comments
+          description: List of comments, oldest first (1F, 2F, 3F...)
           content:
             application/json:
               schema:
@@ -526,6 +512,11 @@ paths:
     post:
       tags: [Community]
       summary: Add a comment to a post
+      description: |
+        Adds a new comment at the end of the thread (highest floor number).
+        Comments do not support nested replies — every comment is a
+        top-level floor entry. Comments support likes and tips independently
+        from the parent post's like/tip counts.
       operationId: addComment
       parameters:
         - name: postId
@@ -544,6 +535,13 @@ paths:
                 content:
                   type: string
                   maxLength: 500
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                  maxItems: 4
+                  description: Image URLs attached to the comment (uploaded separately, referenced here by URL)
       responses:
         "201":
           description: Comment added
@@ -551,6 +549,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommentItem"
+
+  /tipping:
+    post:
+      tags: [Community]
+      summary: Send a virtual tip (積分) to a post or comment
+      description: |
+        Sends virtual points from the current user to the author of a post
+        or a comment (floor). Points are virtual only — no real crypto
+        asset transfer. Tip counts on posts and comments are tracked
+        independently (`tip_count` on `PostItem` / `CommentItem`).
+      operationId: sendTip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendTipRequest"
+      responses:
+        "200":
+          description: Tip sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendTipResponse"
+        "400":
+          description: Insufficient points balance or invalid target
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # ─────────────────────────────────────────────
   # Chat / Danmaku Endpoints
@@ -993,59 +1021,6 @@ components:
             $ref: "#/components/schemas/TradeMarker"
           description: User's historical buy/sell points overlaid on chart
 
-    CoinPriceResponse:
-      type: object
-      required: [prices]
-      properties:
-        prices:
-          type: array
-          items:
-            $ref: "#/components/schemas/CoinPriceItem"
-
-    CoinPriceItem:
-      type: object
-      required: [symbol, price_twd, change_24h]
-      properties:
-        symbol:
-          type: string
-          example: BTC
-        price_twd:
-          type: number
-          description: Current price in TWD
-          example: 2850000
-        change_24h:
-          type: number
-          description: 24h price change percentage
-          example: 2.3
-        volume_24h:
-          type: number
-          description: 24h trading volume in TWD
-        high_24h:
-          type: number
-          description: 24h high price in TWD
-        low_24h:
-          type: number
-          description: 24h low price in TWD
-
-    FearGreedResponse:
-      type: object
-      required: [value, label]
-      properties:
-        value:
-          type: integer
-          minimum: 0
-          maximum: 100
-          description: "Fear & Greed Index (0=Extreme Fear, 100=Extreme Greed)"
-          example: 35
-        label:
-          type: string
-          description: "Human-readable label (e.g. 極度恐慌, 恐慌, 中性, 貪婪, 極度貪婪)"
-          example: "恐慌"
-        updated_at:
-          type: string
-          format: date-time
-          description: When the index was last updated
-
     Candle:
       type: object
       required: [time, open, high, low, close, volume]
@@ -1236,6 +1211,13 @@ components:
           $ref: "#/components/schemas/PostAuthor"
         content:
           type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 4
+          description: Image URLs attached to the post
         currency_tags:
           type: array
           items:
@@ -1247,6 +1229,9 @@ components:
           type: integer
         liked_by_me:
           type: boolean
+        tip_count:
+          type: integer
+          description: Total virtual points tipped on this post
         created_at:
           type: string
           format: date-time
@@ -1271,11 +1256,48 @@ components:
         content:
           type: string
           maxLength: 1000
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 4
+          description: Image URLs attached to the post (uploaded separately, referenced here by URL)
         currency_tags:
           type: array
           items:
             type: string
           description: Coins to tag in the post
+
+    SendTipRequest:
+      type: object
+      required: [target_type, target_id, amount]
+      properties:
+        target_type:
+          type: string
+          enum: [post, comment]
+          description: Whether the tip goes to a post or a comment (floor)
+        target_id:
+          type: string
+          description: "postId (if target_type=post) or commentId (if target_type=comment)"
+        amount:
+          type: integer
+          minimum: 1
+          description: Virtual points to send
+          example: 5
+
+    SendTipResponse:
+      type: object
+      required: [target_type, target_id, tip_count]
+      properties:
+        target_type:
+          type: string
+          enum: [post, comment]
+        target_id:
+          type: string
+        tip_count:
+          type: integer
+          description: Updated total tip count on the target
 
     CommentsResponse:
       type: object
@@ -1291,14 +1313,39 @@ components:
 
     CommentItem:
       type: object
-      required: [id, author, content, created_at]
+      required: [id, floor, author, content, created_at]
       properties:
         id:
           type: string
+        floor:
+          type: integer
+          minimum: 1
+          description: |
+            Permanent floor number (1F = earliest comment). Assigned once at
+            creation based on chronological order and never renumbered, even
+            if earlier comments are later deleted. Comments have no nested
+            replies — every comment is a flat, top-level floor entry.
+          example: 1
         author:
           $ref: "#/components/schemas/PostAuthor"
         content:
           type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          maxItems: 4
+          description: Image URLs attached to the comment
+        like_count:
+          type: integer
+        liked_by_me:
+          type: boolean
+        tip_count:
+          type: integer
+          description: |
+            Total virtual points tipped on this comment. Independent from
+            the parent post's like_count/tip_count.
         created_at:
           type: string
           format: date-time
@@ -1529,7 +1576,7 @@ components:
           enum: [small, medium, large]
         default_interval:
           type: string
-          enum: [1h, 1d, 1w]
+          enum: [1d, 1M, 1Y]
         indicators_enabled:
           type: array
           items:

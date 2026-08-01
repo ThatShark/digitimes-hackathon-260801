@@ -7,10 +7,34 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   transition: background 0.15s;
+  cursor: pointer;
 }
 
 .post-card:hover {
   background: var(--bg-tertiary);
+}
+
+.post-images {
+  display: grid;
+  gap: 6px;
+}
+
+.post-images--1 {
+  grid-template-columns: 1fr;
+}
+
+.post-images--2,
+.post-images--3,
+.post-images--4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.post-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--border);
 }
 
 .post-card-header {

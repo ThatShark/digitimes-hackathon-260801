@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { pickRandomMockMessage, ME_USER } from '../utils/mockChat'
 import KLineChart from '../components/trend/KLineChart'
 import ChartControls from '../components/trend/ChartControls'
 import DanmakuOverlay from '../components/shared/DanmakuOverlay'
@@ -36,6 +37,8 @@ export default function CoinTrendPage() {
   const [interval, setInterval] = useState('1M')
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
   const [danmakuMessages, setDanmakuMessages] = useState([])
+  // 聊天室訊息（與彈幕共用同一份來源）
+  const [communityMessages, setCommunityMessages] = useState([])
   const [danmakuSettings, setDanmakuSettings] = useState({
     speed: 'normal',
     size: 'medium',
@@ -47,6 +50,8 @@ export default function CoinTrendPage() {
   const dataFrom = now - (INTERVAL_SECONDS[interval] || INTERVAL_SECONDS['1M'])
   const [visibleFrom, setVisibleFrom] = useState(0)
   const [visibleTo, setVisibleTo] = useState(1)
+  // Actual timestamps of the visible range (for indicator sync)
+  const [visibleTimeRange, setVisibleTimeRange] = useState(null)
   const chartRef = useRef(null)
 
   const handleIntervalChange = useCallback((newInterval) => {
@@ -55,13 +60,36 @@ export default function CoinTrendPage() {
     setVisibleTo(1)
   }, [])
 
-  const handleSendDanmaku = useCallback((text) => {
-    setDanmakuMessages((prev) => [...prev, { user: '我', text, id: Date.now() }])
+  /**
+   * 單一入口：新增一則社群訊息。
+   * 同時寫入聊天室清單與彈幕 overlay，確保兩邊內容一致。
+   */
+  const addCommunityMessage = useCallback((user, text, isMe = false) => {
+    const id = `${Date.now()}-${Math.random()}`
+    const msg = {
+      id,
+      user,
+      text,
+      time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+      isMe,
+    }
+    setCommunityMessages((prev) => [...prev.slice(-80), msg])
+    setDanmakuMessages((prev) => [...prev.slice(-40), { user: user.name, text, id }])
   }, [])
 
-  const handleCommunityDanmaku = useCallback((msg) => {
-    setDanmakuMessages((prev) => [...prev, { user: msg.user, text: msg.text, id: msg.id }])
-  }, [])
+  // K 線圖控制列的「發送彈幕」也走同一個入口
+  const handleSendDanmaku = useCallback((text) => {
+    addCommunityMessage(ME_USER, text, true)
+  }, [addCommunityMessage])
+
+  // 模擬其他使用者發言（唯一的假資料來源）
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const { user, text } = pickRandomMockMessage()
+      addCommunityMessage(user, text)
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [addCommunityMessage])
 
   const handleTimeRangeChange = useCallback((visibleRange, chartDataRange) => {
     const totalSpan = chartDataRange.to - chartDataRange.from
@@ -70,6 +98,7 @@ export default function CoinTrendPage() {
     const to = (visibleRange.to - chartDataRange.from) / totalSpan
     setVisibleFrom(Math.max(0, Math.min(1, from)))
     setVisibleTo(Math.max(0, Math.min(1, to)))
+    setVisibleTimeRange({ from: visibleRange.from, to: visibleRange.to })
   }, [])
 
   const handleRangeCommit = useCallback((fromFraction, toFraction) => {

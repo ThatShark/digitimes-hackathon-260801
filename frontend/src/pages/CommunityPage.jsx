@@ -7,6 +7,7 @@ import BountyQuestion from '../components/community/BountyQuestion'
 import WhaleAlertCard from '../components/community/WhaleAlertCard'
 import StrategyCard from '../components/community/StrategyCard'
 import NotificationBanner from '../components/shared/NotificationBanner'
+import { MOCK_POSTS, MOCK_BOUNTIES, CURRENT_USER } from '../utils/mockCommunity'
 import './CommunityPage.css'
 
 // 模擬當前使用者
@@ -262,6 +263,7 @@ export default function CommunityPage() {
       author: CURRENT_USER.name,
       personality: CURRENT_USER.personality,
       content: newPost.content,
+      images: [],
       coin: newPost.coin,
       time: '剛剛',
       likes: 0,
@@ -269,6 +271,7 @@ export default function CommunityPage() {
       verified: true,
       winRate: 58.2,
       tips: 0,
+      commentList: [],
     }
     setPosts((prev) => [post, ...prev])
   }, [])

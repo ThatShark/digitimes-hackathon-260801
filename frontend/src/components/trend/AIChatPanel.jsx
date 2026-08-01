@@ -36,97 +36,92 @@ const INITIAL_MESSAGES = [
   { role: 'ai', content: '你好！我是你的 AI 投資助理。你可以問我任何關於投資的問題，或者跟我說「我想買」/「我想賣」來取得建議。' },
 ]
 
-// Mock community chat users
-const MOCK_COMMUNITY_USERS = [
-  { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
-  { name: '陳Ｊ哥', personality: { code: 'AESI', name: '探險家', axes: { R: 82, E: 78, F: 85, S: 70 } } },
-  { name: '李小雨', personality: { code: 'DELI', name: '造夢者', axes: { R: 25, E: 65, F: 20, S: 72 } } },
-  { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
-]
-
-const MOCK_CHAT_TEXTS = [
-  '支撐位在 282 萬附近',
-  '看多🚀',
-  '剛加倉了一些',
-  '量能不太夠啊',
-  '等突破再說',
-  '穩穩抱住就好',
-  '有人知道為什麼突然漲了嗎',
-  '恐懼指數還很低 可以衝',
-  '小心追高',
-  '底部確認了嗎',
-  '我覺得還會再跌',
-]
-
 /**
- * 判斷是否應該自動捲動：
- * - 內容尚未填滿容器（scrollHeight <= clientHeight）時：始終捲動
- * - 內容已填滿時：只有用戶在底部附近才捲動
+ * 判斷容器目前是否停在底部附近（100px 容差）。
+ * 內容尚未填滿容器時視為在底部。
  */
-function shouldAutoScroll(container) {
+function isNearBottom(container) {
   if (!container) return true
-  // 內容尚未填滿
   if (container.scrollHeight <= container.clientHeight + 10) return true
-  // 已在底部附近（60px 容差）
-  return container.scrollHeight - container.scrollTop - container.clientHeight < 60
+  return container.scrollHeight - container.scrollTop - container.clientHeight < 100
 }
 
 /**
  * @param {object} props
  * @param {string} props.symbol - 幣種
- * @param {function} [props.onDanmaku] - 彈幕同步回調 (msg: {user, text, id}) => void
+ * @param {Array} props.communityMessages - 聊天室訊息（由父層統一管理，與彈幕同源）
+ * @param {function} props.onSendCommunity - 發送聊天室訊息 (text: string) => void
  */
-export default function AIChatPanel({ symbol, onDanmaku }) {
+export default function AIChatPanel({ symbol, communityMessages = [], onSendCommunity }) {
   const [activeTab, setActiveTab] = useState('ai')
   const [messages, setMessages] = useState(INITIAL_MESSAGES)
-  const [communityMessages, setCommunityMessages] = useState([])
   const [input, setInput] = useState('')
   const [pendingSuggestion, setPendingSuggestion] = useState(null)
+  // 是否顯示「跳到最新訊息」按鈕
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
+
   const aiScrollRef = useRef(null)
   const communityScrollRef = useRef(null)
-  const messagesEndRef = useRef(null)
-  const communityEndRef = useRef(null)
+  // 追蹤使用者「在新訊息加入之前」是否停在底部
+  const aiAtBottomRef = useRef(true)
+  const communityAtBottomRef = useRef(true)
 
-  // Auto-scroll AI chat
+  // 使用者手動捲動時更新「是否在底部」的狀態
+  const handleAiScroll = () => {
+    aiAtBottomRef.current = isNearBottom(aiScrollRef.current)
+  }
+  const handleCommunityScroll = () => {
+    const atBottom = isNearBottom(communityScrollRef.current)
+    communityAtBottomRef.current = atBottom
+    // 回到底部時隱藏按鈕
+    if (atBottom) setShowJumpToLatest(false)
+  }
+
+  // 捲到最新訊息
+  const scrollToLatest = useCallback(() => {
+    const container = communityScrollRef.current
+    if (!container) return
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+    communityAtBottomRef.current = true
+    setShowJumpToLatest(false)
+  }, [])
+
+  // Auto-scroll AI chat（只捲動聊天容器本身）
   useEffect(() => {
     const container = aiScrollRef.current
-    if (activeTab === 'ai' && shouldAutoScroll(container)) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (activeTab === 'ai' && container && aiAtBottomRef.current) {
+      container.scrollTop = container.scrollHeight
     }
   }, [messages, pendingSuggestion, activeTab])
 
-  // Auto-scroll community chat
+  // Auto-scroll community chat（只捲動聊天容器本身）
   useEffect(() => {
+    if (activeTab !== 'community') return
     const container = communityScrollRef.current
-    if (activeTab === 'community' && shouldAutoScroll(container)) {
-      communityEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!container) return
+
+    if (communityAtBottomRef.current) {
+      container.scrollTop = container.scrollHeight
+      setShowJumpToLatest(false)
+    } else {
+      // 使用者在上面看歷史訊息，顯示「跳到最新」提示
+      setShowJumpToLatest(true)
     }
   }, [communityMessages, activeTab])
 
-  // 新增社群訊息並同步到彈幕
-  const addCommunityMessage = useCallback((user, text, isMe = false) => {
-    const msg = {
-      id: Date.now() + Math.random(),
-      user,
-      text,
-      time: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-      isMe,
-    }
-    setCommunityMessages((prev) => [...prev.slice(-50), msg])
-
-    // 同步到彈幕 overlay（用名字而非人格代碼）
-    onDanmaku?.({ user: user.name, text, id: msg.id })
-  }, [onDanmaku])
-
-  // Mock community chat auto-generation
+  // 切換 tab 時捲到底部
   useEffect(() => {
-    const timer = setInterval(() => {
-      const user = MOCK_COMMUNITY_USERS[Math.floor(Math.random() * MOCK_COMMUNITY_USERS.length)]
-      const text = MOCK_CHAT_TEXTS[Math.floor(Math.random() * MOCK_CHAT_TEXTS.length)]
-      addCommunityMessage(user, text)
-    }, 3000)
-    return () => clearInterval(timer)
-  }, [addCommunityMessage])
+    if (activeTab === 'ai') {
+      aiAtBottomRef.current = true
+      const c = aiScrollRef.current
+      if (c) c.scrollTop = c.scrollHeight
+    } else {
+      communityAtBottomRef.current = true
+      setShowJumpToLatest(false)
+      const c = communityScrollRef.current
+      if (c) c.scrollTop = c.scrollHeight
+    }
+  }, [activeTab])
 
   const handleSend = () => {
     if (!input.trim()) return
@@ -141,8 +136,9 @@ export default function AIChatPanel({ symbol, onDanmaku }) {
         if (response.suggestion) setPendingSuggestion(response.suggestion)
       }, 600)
     } else {
-      const me = { name: '我', personality: { code: 'ACSI', name: '弄潮兒', axes: { R: 68, E: 30, F: 75, S: 62 } } }
-      addCommunityMessage(me, userMsg, true)
+      onSendCommunity?.(userMsg)
+      // 自己發言時強制捲到底部
+      communityAtBottomRef.current = true
     }
   }
 
@@ -188,7 +184,7 @@ export default function AIChatPanel({ symbol, onDanmaku }) {
 
       {/* AI Chat tab */}
       {activeTab === 'ai' && (
-        <div className="chat-messages" ref={aiScrollRef}>
+        <div className="chat-messages" ref={aiScrollRef} onScroll={handleAiScroll}>
           {messages.map((msg, i) => (
             <div key={i} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">{msg.content}</div>
@@ -222,27 +218,35 @@ export default function AIChatPanel({ symbol, onDanmaku }) {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
       )}
 
       {/* Community Chat tab */}
       {activeTab === 'community' && (
-        <div className="chat-messages community-chat" ref={communityScrollRef}>
-          {communityMessages.length === 0 && (
-            <div className="community-empty"><span>等待群友加入聊天...</span></div>
-          )}
-          {communityMessages.map((msg) => (
-            <div key={msg.id} className={`community-msg ${msg.isMe ? 'me' : ''}`}>
-              <div className="community-msg-header">
-                <span className="community-msg-name">{msg.user.name}</span>
-                <PersonalityBadge personality={msg.user.personality} compact />
-                <span className="community-msg-time">{msg.time}</span>
+        <div className="community-chat-wrapper">
+          <div className="chat-messages community-chat" ref={communityScrollRef} onScroll={handleCommunityScroll}>
+            {communityMessages.length === 0 && (
+              <div className="community-empty"><span>等待群友加入聊天...</span></div>
+            )}
+            {communityMessages.map((msg) => (
+              <div key={msg.id} className={`community-msg ${msg.isMe ? 'me' : ''}`}>
+                <div className="community-msg-header">
+                  <span className="community-msg-name">{msg.user.name}</span>
+                  <PersonalityBadge personality={msg.user.personality} compact />
+                  <span className="community-msg-time">{msg.time}</span>
+                </div>
+                <div className="community-msg-text">{msg.text}</div>
               </div>
-              <div className="community-msg-text">{msg.text}</div>
-            </div>
-          ))}
-          <div ref={communityEndRef} />
+            ))}
+          </div>
+
+          {/* 跳到最新訊息按鈕（Discord 風格） */}
+          {showJumpToLatest && (
+            <button className="jump-to-latest" onClick={scrollToLatest}>
+              <span className="jump-arrow">↓</span>
+              有新訊息
+            </button>
+          )}
         </div>
       )}
 

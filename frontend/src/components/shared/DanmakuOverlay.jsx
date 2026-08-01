@@ -2,18 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import './DanmakuOverlay.css'
 
 const TRACK_COUNT = 6
-const MOCK_MESSAGES = [
-  { user: '王大壯', text: 'BTC 要起飛了吧' },
-  { user: '陳Ｊ哥', text: '剛剛進場 SOL' },
-  { user: '李小雨', text: '恐懼指數 35，可以買？' },
-  { user: '趙柏翰', text: '我覺得再等等比較好' },
-  { user: '吳芸安', text: '這波多頭不會那麼快結束' },
-  { user: '黃偉哲', text: '停損設好就不怕' },
-  { user: '王大壯', text: 'ETH 看起來要突破了' },
-  { user: '陳Ｊ哥', text: '大家小心槓桿' },
-  { user: '趙柏翰', text: '剛獲利了結一半' },
-  { user: '李小雨', text: '穩定幣先放著觀望' },
-]
 
 // Position presets: what percentage range of the chart height to use
 const POSITION_MAP = {
@@ -47,8 +35,8 @@ export default function DanmakuOverlay({
 }) {
   const [bullets, setBullets] = useState([])
   const trackRef = useRef(Array(TRACK_COUNT).fill(null).map(() => ({ assignedAt: 0, estimatedClearTime: 0, textLength: 0 })))
-  const mockTimerRef = useRef(null)
-  const recentTextsRef = useRef([])
+  // 已經渲染過的訊息 ID，避免同一則訊息重複產生彈幕
+  const processedIdsRef = useRef(new Set())
 
   const posConfig = POSITION_MAP[position] || POSITION_MAP.top
   const speedMult = SPEED_MAP[speed] || SPEED_MAP.normal
@@ -105,19 +93,6 @@ export default function DanmakuOverlay({
 
   // Add a bullet
   const addBullet = useCallback((user, text, isUserMessage = false) => {
-    // Content deduplication — skip duplicate mock messages
-    if (!isUserMessage) {
-      if (recentTextsRef.current.includes(text)) {
-        return // Skip duplicate mock message
-      }
-    }
-
-    // Add text to recent window (for both user and mock, to track what's been shown)
-    recentTextsRef.current.push(text)
-    if (recentTextsRef.current.length > 5) {
-      recentTextsRef.current.shift() // Keep only last 5
-    }
-
     const track = getTrack(text.length, isUserMessage)
     if (track === null) return // Skip if no clear track available (mock messages are dropped silently)
 
@@ -131,37 +106,22 @@ export default function DanmakuOverlay({
     ])
   }, [getTrack, speedMult])
 
-  // Handle external messages (from send button)
+  // 渲染尚未處理過的外部訊息（唯一的彈幕來源）
   useEffect(() => {
-    if (externalMessages && externalMessages.length > 0) {
-      const latest = externalMessages[externalMessages.length - 1]
-      addBullet(latest.user, latest.text, true)
-    }
-  }, [externalMessages, addBullet])
+    if (!enabled || !externalMessages || externalMessages.length === 0) return
 
-  // Mock message simulator
-  useEffect(() => {
-    if (!enabled) return
-
-    const sendMock = () => {
-      const msg = MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)]
-      addBullet(msg.user, msg.text)
+    for (const msg of externalMessages) {
+      if (processedIdsRef.current.has(msg.id)) continue
+      processedIdsRef.current.add(msg.id)
+      addBullet(msg.user, msg.text, true)
     }
 
-    sendMock()
-    setTimeout(sendMock, 600)
-    setTimeout(sendMock, 1400)
-
-    mockTimerRef.current = window.setInterval(() => {
-      sendMock()
-    }, 2500 + Math.random() * 2000)
-
-    return () => {
-      if (mockTimerRef.current) {
-        clearInterval(mockTimerRef.current)
-      }
+    // 限制已處理 ID 集合大小，避免無限成長
+    if (processedIdsRef.current.size > 200) {
+      const ids = Array.from(processedIdsRef.current)
+      processedIdsRef.current = new Set(ids.slice(-100))
     }
-  }, [enabled, addBullet])
+  }, [externalMessages, addBullet, enabled])
 
   // Remove bullet after animation ends
   const handleAnimationEnd = (id) => {

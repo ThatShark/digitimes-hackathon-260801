@@ -1,0 +1,32 @@
+/**
+ * POST /ai_chat — 對應 backend/api.yaml operationId aiChat
+ * POST /allow_trade — 對應 backend/api.yaml operationId allowTrade
+ */
+import { apiFetch } from './api'
+
+/**
+ * 傳送訊息給 AI 投資助理
+ * @param {string} message
+ * @param {string} [currency] - 目前所在幣種頁面（提供上下文）
+ * @returns {Promise<{status, message, investment_suggestion: {currency, action, amount} | null}>}
+ */
+export function sendAiChat(message, currency) {
+  return apiFetch('/ai_chat', {
+    method: 'POST',
+    body: { message, ...(currency ? { currency } : {}) },
+  })
+}
+
+/**
+ * 使用者確認執行 AI 建議的交易
+ * @param {string} currency
+ * @param {'buy'|'sell'} action
+ * @param {number} amount - TWD 金額
+ * @returns {Promise<{status, message, trade_id}>}
+ */
+export function allowTrade(currency, action, amount) {
+  return apiFetch('/allow_trade', {
+    method: 'POST',
+    body: { currency, action, amount },
+  })
+}
