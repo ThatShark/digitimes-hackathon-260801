@@ -118,3 +118,15 @@ export function getRecentTrades(currency, limit = 20) {
   const params = new URLSearchParams({ currency, limit: String(limit) })
   return apiFetch(`/market/trades?${params}`)
 }
+
+/**
+ * 取得資金流向分析（特大單/大單/中單/小單分類 + 近 7 日淨資金流向）
+ * 資料來自 MAX 真實成交紀錄與 K 線，不是假數據。
+ * @param {string} currency - 例如 'BTC'
+ * @param {'5m'|'1h'|'4h'|'1d'} [period] - 分類成交紀錄時往回抓多久，預設 '1h'
+ * @returns {Promise<{status, period, buckets, net_inflow, trade_count, daily_net_flow}>}
+ */
+export function getFundFlow(currency, period = '1h') {
+  const params = new URLSearchParams({ currency, period })
+  return apiFetch(`/market/fund_flow?${params}`)
+}

@@ -1041,6 +1041,173 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /market/depth:
+    get:
+      tags: [Core]
+      summary: Get order book depth for a coin (proxy MAX API)
+      description: |
+        Thin proxy over MAX's public order book endpoint. Powers
+        DepthChart.jsx's bid/ask depth visualization on CoinTrendPage.
+      operationId: getOrderBook
+      parameters:
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+            example: BTC
+        - name: quote
+          in: query
+          required: false
+          schema:
+            type: string
+            default: TWD
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 300
+            default: 20
+          description: Price levels per side (MAX's own cap is 300)
+      responses:
+        "200":
+          description: Order book snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderBookResponse"
+        "400":
+          description: Missing currency, or limit out of range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: MAX API unavailable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /market/trades:
+    get:
+      tags: [Core]
+      summary: Get recent trades for a coin (proxy MAX API)
+      description: |
+        Thin proxy over MAX's public trades endpoint — the raw recent-fills
+        stream. Powers RecentTrades.jsx's "最新成交" list on CoinTrendPage.
+        For aggregated buy/sell-size analysis, see GET /market/fund_flow
+        instead — this endpoint only returns the raw list, no aggregation.
+      operationId: getRecentTrades
+      parameters:
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+            example: BTC
+        - name: quote
+          in: query
+          required: false
+          schema:
+            type: string
+            default: TWD
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 20
+          description: Number of trades to return (MAX's own cap is 1000)
+      responses:
+        "200":
+          description: Recent trades, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecentTradesResponse"
+        "400":
+          description: Missing currency, or limit out of range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: MAX API unavailable after retries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /market/fund_flow:
+    get:
+      tags: [Core]
+      summary: Get fund-flow analysis for a coin (資金流向分析)
+      description: |
+        Powers FundFlowChart.jsx on CoinTrendPage. Two parts, computed
+        differently:
+
+        - **buckets**: real MAX trades within the requested `period`,
+          classified by TWD trade value into 特大單/大單/中單/小單 (see
+          `backend/src/utils/constants.py`'s FUND_FLOW_*_THRESHOLD_TWD for
+          the exact cutoffs and rationale — there is no industry-standard
+          definition of "large/small order", these thresholds are a
+          documented, tunable convention based on real trade data).
+        - **daily_net_flow**: an *approximate* net flow for each of the
+          last 7 days, derived from daily K-line candles
+          (direction × volume × close_price) rather than aggregating a
+          full week of individual trades — a deliberate simplification to
+          avoid many MAX API calls per request (see
+          `backend/src/utils/fund_flow.py`'s `compute_daily_net_flow()`).
+
+        Both parts source from real MAX market data — there is no mock
+        data in this endpoint.
+      operationId: getFundFlow
+      parameters:
+        - name: currency
+          in: query
+          required: true
+          schema:
+            type: string
+            example: BTC
+        - name: quote
+          in: query
+          required: false
+          schema:
+            type: string
+            default: TWD
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [5m, 1h, 4h, 1d]
+            default: 1h
+          description: How far back to look when classifying trades into buckets
+      responses:
+        "200":
+          description: Fund flow analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundFlowResponse"
+        "400":
+          description: Missing currency, or invalid period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: MAX API unavailable after retries (only when the first page of trades fails)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # ─────────────────────────────────────────────
   # Notification Endpoints
   # ─────────────────────────────────────────────
@@ -1325,6 +1492,121 @@ components:
           type: number
           description: 24h price change percentage
           example: 15.2
+
+    OrderBookResponse:
+      type: object
+      required: [status, bids, asks]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        bids:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 2
+            maxItems: 2
+          description: "[price, volume] pairs, best bid first"
+        asks:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+            minItems: 2
+            maxItems: 2
+          description: "[price, volume] pairs, best ask first"
+
+    RecentTradesResponse:
+      type: object
+      required: [status, trades]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        trades:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentTradeItem"
+
+    RecentTradeItem:
+      type: object
+      required: [price, volume, side, timestamp]
+      properties:
+        price:
+          type: number
+        volume:
+          type: number
+        side:
+          type: string
+          enum: [buy, sell]
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix seconds
+
+    FundFlowResponse:
+      type: object
+      required: [status, period, buckets, net_inflow, trade_count, daily_net_flow]
+      properties:
+        status:
+          type: string
+          enum: [ready]
+        period:
+          type: string
+          enum: [5m, 1h, 4h, 1d]
+        buckets:
+          type: object
+          required: [extra_large, large, medium, small]
+          description: |
+            Real trades within `period`, classified by TWD value (see
+            operation description for threshold rationale). Each bucket's
+            buy/sell are TWD sums, both non-negative.
+          properties:
+            extra_large: { $ref: "#/components/schemas/FundFlowBucket" }
+            large: { $ref: "#/components/schemas/FundFlowBucket" }
+            medium: { $ref: "#/components/schemas/FundFlowBucket" }
+            small: { $ref: "#/components/schemas/FundFlowBucket" }
+        net_inflow:
+          type: number
+          description: Sum of (buy - sell) across all buckets, in TWD
+        trade_count:
+          type: integer
+          description: Number of trades successfully classified within `period`
+        daily_net_flow:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyNetFlowItem"
+          description: |
+            Approximate net flow for each of the last 7 days, derived from
+            daily K-line candles — see operation description. Empty array
+            if MAX's K-line endpoint failed (best-effort, doesn't fail the
+            whole request).
+
+    FundFlowBucket:
+      type: object
+      required: [buy, sell]
+      properties:
+        buy:
+          type: number
+          description: Sum of buy-side (bid) trade value in this bucket, TWD
+        sell:
+          type: number
+          description: Sum of sell-side (ask) trade value in this bucket, TWD
+
+    DailyNetFlowItem:
+      type: object
+      required: [time, net_flow]
+      properties:
+        time:
+          type: integer
+          format: int64
+          description: Unix seconds (candle open time)
+        net_flow:
+          type: number
+          description: "direction (+1/-1 by daily close vs open) x volume x close_price, TWD"
 
     NotificationsResponse:
       type: object

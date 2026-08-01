@@ -30,12 +30,12 @@ digitimes-hackathon-260801/
 │       │   │   ├── ChartSettings.jsx    # Danmaku toggle, size, time scale (日/月/年)
 │       │   │   ├── IndicatorPanel.jsx   # Technical indicators (default off)
 │       │   │   ├── TradePanel.jsx       # Order execution panel (市價/限價/止盈止損)
-│       │   │   ├── DepthChart.jsx       # Order book depth (SVG cumulative area chart)
-│       │   │   ├── RecentTrades.jsx     # Real-time trade stream (MAX API)
+│       │   │   ├── DepthChart.jsx       # Order book depth (SVG cumulative area chart) — fetches GET /market/depth, falls back to generated mock levels
+│       │   │   ├── RecentTrades.jsx     # Real-time trade stream — fetches GET /market/trades once, then simulates additional ticks every 2s (no WebSocket)
 │       │   │   ├── AIChatPanel.jsx      # AI conversation + 彈幕聊天 (dual tab)
 │       │   │   ├── DanmakuPanel.jsx     # Barrage/chat room tab (Bilibili-style)
 │       │   │   ├── CoinOverview.jsx     # 概況 tab (市值/流通量/ATH/ATL/簡介)
-│       │   │   ├── FundFlowChart.jsx    # 數據 tab (資金流向圓餅圖 + 淨流向柱狀圖)
+│       │   │   ├── FundFlowChart.jsx    # 數據 tab (資金流向圓餅圖 + 淨流向柱狀圖) — 5分/1小時/4小時/1日 period buttons fetch GET /market/fund_flow (real MAX trade data, not mock)
 │       │   │   ├── StrategyHub.jsx      # 策略 tab (建立入口 + AI模板 + 實盤動態)
 │       │   │   ├── KeyEvents.jsx        # 關鍵事件面板 (鏈上大額轉帳 log)
 │       │   │   └── ShareButton.jsx      # 分享按鈕 (複製連結/長圖/社交分享)
@@ -92,26 +92,35 @@ digitimes-hackathon-260801/
 │   │   │   ├── fear_greed.py         # GET /market/fear-greed — CoinMarketCap latest/historical index
 │   │   │   ├── market_overview.py    # GET /market/overview — Fear&Greed + BTC dominance + market cap/volume + gainers/losers (each field best-effort, only 502s if ALL CMC sources fail)
 │   │   │   ├── candlestick_chart.py  # GET /candlestick_chart — MAX K-line + user's S3 CSV buy/sell markers merged (trade_markers is best-effort, never fails the chart)
-│   │   │   └── notifications.py      # GET /notifications — dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data (reuses market_overview.py's ranking-pool + quote-list-parsing approach), whale_alert + social_buzz mock-generated (hour-seeded, no real data source yet) — always 200, never 502
+│   │   │   ├── notifications.py      # GET /notifications — dynamic NotificationBanner alerts: price_mover + fear_greed from live CMC data (reuses market_overview.py's ranking-pool + quote-list-parsing approach), whale_alert + social_buzz mock-generated (hour-seeded, no real data source yet) — always 200, never 502
+│   │   │   ├── market_depth.py       # GET /market/depth — thin proxy over MAX order book (bids/asks), powers DepthChart.jsx
+│   │   │   ├── market_trades.py      # GET /market/trades — thin proxy over MAX recent fills (raw list, no aggregation), powers RecentTrades.jsx
+│   │   │   └── market_fund_flow.py   # GET /market/fund_flow — 資金流向分析: real MAX trades paged backward over the requested period, classified into 特大單/大單/中單/小單 by TWD value + buy/sell direction (see utils/fund_flow.py + utils/constants.py for threshold rationale); daily_net_flow is an approximation from daily K-line candles, not per-trade aggregation. Powers FundFlowChart.jsx
 │   │   ├── services/
-│   │   │   ├── max_api.py           # MAX Exchange API client (ticker, tickers, klines, markets)
+│   │   │   ├── max_api.py           # MAX Exchange API client (ticker, tickers, klines, markets, trades, depth)
 │   │   │   ├── coinmarketcap.py     # CoinMarketCap keyless public API client (fear&greed, global-metrics, listings) — no API key needed unless CMC_API_KEY env var is set
 │   │   │   └── s3_storage.py        # S3 read/write with retry (3 attempts, 2s delay)
 │   │   └── utils/
 │   │       ├── metrics.py           # CSV → FIFO trade matching → personality scores (r/e/f/s) AND portfolio helpers (compute_open_positions/compute_trade_summary/build_trade_history), no I/O
+│   │       ├── fund_flow.py         # classify_trades() buckets real MAX trades by TWD value (特大單/大單/中單/小單); compute_daily_net_flow() derives approximate 7-day net flow from K-line candles, no I/O
+│   │       ├── constants.py         # SUPPORTED_CURRENCIES/RANKABLE_CURRENCIES (the 6 coins this product supports, minus stablecoins for ranking) + FUND_FLOW_*_THRESHOLD_TWD — single source of truth shared across handlers
 │   │       └── http.py              # json_response()/cors_headers() — every handler must use this, see tech.md "CORS gotcha"
 │   └── tests/
 │       ├── handlers/
 │       │   ├── test_candlestick_chart.py  # Mocked MAX API + S3; validation, range filtering, malformed rows, marker merge
-│       │   ├── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk
-│       │   ├── test_notifications.py      # Mocked CMC calls; threshold/limit validation, price_mover sorting, fear_greed hints, always-200-with-mocks even if all CMC sources fail
+│       │   ├── test_market_overview.py    # Mocked CMC calls; per-field partial-failure degradation, quote-list parsing quirk, 6-currency restriction
+│       │   ├── test_notifications.py      # Mocked CMC calls; threshold/limit validation, price_mover sorting, fear_greed hints, always-200-with-mocks even if all CMC sources fail, demo-marker labeling
 │       │   ├── test_init.py               # Mocked S3; need_csv vs ready+currencies, TWD excluded, corrupt CSV treated as need_csv
 │       │   ├── test_portfolio.py          # Mocked S3 + MAX API; holdings priced/totaled, failed price lookup omits just that holding, empty positions
 │       │   ├── test_get_personality.py    # Mocked S3; read-only trade_metrics.json lookup, 404 need_csv if missing/corrupt
-│       │   └── test_trade_history.py      # Mocked S3; summary + history shape, limit validation, 404 need_csv
+│       │   ├── test_trade_history.py      # Mocked S3; summary + history shape, limit validation, 404 need_csv
+│       │   ├── test_market_depth.py       # Mocked MAX API; string-to-float coercion, malformed level skipping, limit validation
+│       │   ├── test_market_trades.py      # Mocked MAX API; bid/ask -> buy/sell mapping, malformed entry skipping
+│       │   └── test_market_fund_flow.py   # Mocked MAX API; window filtering (time.time()-relative timestamps, not hardcoded epoch), pagination early-stop, best-effort daily_net_flow on K-line failure
 │       └── utils/
 │           ├── test_metrics_unit.py       # Includes compute_open_positions/compute_trade_summary/build_trade_history unit tests
-│           └── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
+│           ├── test_metrics_property_calculate.py  # Hypothesis property-based tests, independently re-derive each formula
+│           └── test_fund_flow.py          # Bucket threshold boundaries (inclusive), buy/sell aggregation, malformed-entry skipping, daily_net_flow direction logic
 │
 ├── CustomerSupport/             # AgentCore AI agent project
 │   ├── AGENTS.md                # AI assistant context for AgentCore schema
@@ -257,6 +266,8 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
 - **api.yaml is the single source of truth for the API contract.** Before adding a new endpoint, grep `backend/api.yaml` first — duplicate/conflicting path or schema definitions have happened before (e.g. `/coin/price` was defined twice with different response shapes) when steering docs and actual handler code drifted apart. When a handler already exists in `backend/src/handlers/`, the spec must match that implementation, not a hypothetical one.
 - **CoinMarketCap keyless `listings/latest` returns `quote` as a LIST, not a dict.** Unlike the authenticated Pro API (`quote.USD.percent_change_24h`), the keyless public endpoint's `quote` field is `[{"symbol": "USD", "percent_change_24h": ..., ...}]` — find the entry by `symbol == "USD"` rather than indexing `quote["USD"]` directly. Also, never sort the full CMC universe directly by `percent_change_24h` for "top movers" — near-zero-market-cap tokens post meaningless four-digit % swings; rank within a market-cap-ranked pool instead (see `market_overview.py`'s `_RANKING_POOL_SIZE`).
 - **New Lambda handlers must be registered in `backend/template.yaml`** (SAM function + API Gateway route) in addition to matching `api.yaml` — the spec alone does not deploy anything.
+- **Only 6 currencies are supported end-to-end: BTC/ETH/SOL/DOGE/USDT/USDC** (`backend/src/utils/constants.py`'s `SUPPORTED_CURRENCIES`, mirrored by `frontend/src/pages/MainPage.jsx`'s fixed coin card list). Any handler that ranks/surfaces coins by market data (gainers/losers, price-mover notifications) must filter to this set — CMC's full universe or MAX's full market list will otherwise leak in coins the product doesn't actually support (this happened before with PEPE/ADA/WIF showing up in `market_overview.py`/`notifications.py`). `RANKABLE_CURRENCIES` (supported minus `STABLECOIN_CURRENCIES`) is the further-narrowed set for anything ranking by 24h % change, since USDT/USDC's change is always ~0% and carries no signal.
+- **Mock data with no real data source must be visibly labeled, not silently presented as real.** `notifications.py`'s `whale_alert`/`social_buzz` types and `frontend/src/components/community/WhaleAlertCard.jsx` both append "（展示用）" to their text — this is a deliberate, planned-but-not-implemented feature (Whale Alert's official API has no free tier; a multi-chain address-attribution DB is out of scope for this hackathon), not something to hide from judges. When adding new mock-backed UI, follow the same "（展示用）" convention rather than presenting placeholder numbers as if they were live data.
 - **CSV upload / re-check flow (no login, single fixed `user_id`)**: `frontend/src/utils/currentUser.js`'s `CURRENT_USER_ID` (`'demo-user'`) is sent as the `user_id` query param on every one of these calls — there's no auth, so this is what ties all S3 reads/writes to "the" user in this MVP. `ProfilePage.jsx` calls `GET /init` on mount to check whether `users/{userId}/trades.csv` already exists; if so it skips straight to fetching personality/portfolio/trade_history instead of asking the user to upload again. Only shows the upload CTA when `/init` returns `need_csv` (or the backend isn't configured).
 - **API contract**: Frontend/backend communicate via REST endpoints. Core endpoints:
   - `GET /init` — lightweight check: has this user already uploaded a CSV? (`need_csv` | `ready`+currencies). Does NOT trigger analysis.
@@ -267,6 +278,9 @@ This hackathon MVP has no login/auth — there is exactly one "current user" acr
   - `GET /market/fear-greed` — Fear & Greed Index, latest or historical (CoinMarketCap)
   - `GET /market/overview` — 行情看板: Fear & Greed + BTC dominance + market cap/volume + top gainers/losers (CoinMarketCap, keyless)
   - `GET /candlestick_chart` — K-line + trade markers
+  - `GET /market/depth` — order book depth for a coin (proxy MAX API)
+  - `GET /market/trades` — recent fills for a coin (proxy MAX API, raw list)
+  - `GET /market/fund_flow` — 資金流向分析: real trades classified into 特大單/大單/中單/小單 + approximate 7-day net flow
   - `GET /notifications` — dynamic NotificationBanner alerts: price_mover + fear_greed (real CMC data), whale_alert + social_buzz (mock, hour-seeded, no real data source yet)
   - `POST /ai_chat` — AI conversation
   - `POST /allow_trade` — confirm trade execution

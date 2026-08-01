@@ -220,8 +220,8 @@ CoinTrendPage 改為六大分頁架構，每個幣種頁面包含：
 |------|------|----------|
 | K 線圖 + 時間週期切換 | ✅ 已有 | `KLineChart.jsx` |
 | 技術指標（VOL/MA/EMA/BOLL/SAR） | ✅ 已有 | `IndicatorPanel.jsx` |
-| 深度圖 (累積面積圖 + hover + ratio bar) | ✅ 已有 | `DepthChart.jsx` |
-| 最新成交明細 | ✅ 已有 | `RecentTrades.jsx` |
+| 深度圖 (累積面積圖 + hover + ratio bar) | ✅ 已有（真實 MAX 資料） | `DepthChart.jsx` + `backend/src/handlers/market_depth.py` |
+| 最新成交明細 | ✅ 已有（真實 MAX 資料） | `RecentTrades.jsx` + `backend/src/handlers/market_trades.py` |
 | 關鍵事件（鏈上大額轉帳 log） | ✅ 已有 | `KeyEvents.jsx` |
 | 彈幕聊天 + AI 對話 | ✅ 已有 | `AIChatPanel.jsx` |
 | 交易面板（市價/限價/TP-SL） | ✅ 已有 | `TradePanel.jsx` |
@@ -241,9 +241,9 @@ CoinTrendPage 改為六大分頁架構，每個幣種頁面包含：
 
 | 功能 | 狀態 | 安置位置 |
 |------|------|----------|
-| 資金流向圓餅圖（特大/大/中/小單） | ✅ 已有 | `FundFlowChart.jsx` |
-| 淨資金流向柱狀圖（近 7 日） | ✅ 已有 | `FundFlowChart.jsx` |
-| 時間週期切換（5分/1H/4H/1日） | ✅ 已有 | `FundFlowChart.jsx` |
+| 資金流向圓餅圖（特大/大/中/小單） | ✅ 已有（真實 MAX 成交資料，門檻分類見 `constants.py`） | `FundFlowChart.jsx` + `backend/src/handlers/market_fund_flow.py` |
+| 淨資金流向柱狀圖（近 7 日） | ✅ 已有（K 線推算的近似值，非逐筆彙總，見 `fund_flow.py` docstring） | `FundFlowChart.jsx` + `backend/src/handlers/market_fund_flow.py` |
+| 時間週期切換（5分/1H/4H/1日） | ✅ 已有（實際決定往回抓多久的成交紀錄） | `FundFlowChart.jsx` |
 | 槓桿多空比曲線 | ❌ 未來 | — |
 | 多空借幣量走勢 | ❌ 未來 | — |
 

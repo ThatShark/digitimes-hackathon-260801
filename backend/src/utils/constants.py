@@ -23,3 +23,29 @@ STABLECOIN_CURRENCIES = {"USDT", "USDC"}
 # Currencies eligible for movement-based ranking (gainers/losers/price
 # movers): supported minus stablecoins.
 RANKABLE_CURRENCIES = SUPPORTED_CURRENCIES - STABLECOIN_CURRENCIES
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fund-flow analysis (資金流向分析) — size classification thresholds
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# There is no industry-standard definition of "large/medium/small order" —
+# every data vendor (CoinGlass, various A-share tools, etc.) uses its own
+# threshold. We classify by TWD trade value (not coin quantity or % of
+# volume) so a threshold means the same "amount of money" regardless of
+# which of the 6 supported coins the trade is in — a 0.01 BTC trade and a
+# 10,000 DOGE trade are comparable if they're both worth ~NT$20,000.
+#
+# Chosen thresholds (single trade value, TWD):
+#   特大單 (extra-large): >= 1,000,000
+#   大單   (large):        200,000 – 999,999
+#   中單   (medium):        30,000 – 199,999
+#   小單   (small):         < 30,000
+#
+# Rationale: NT$1,000,000 (~US$30k) is a size an ordinary retail trader
+# rarely places in one order, a reasonable "whale-ish" cutoff. NT$30,000
+# (~US$1k) is roughly a typical single retail trade size, below which is
+# clearly "small". These are deliberately kept as named constants (not
+# hardcoded numbers) so they can be tuned without touching handler logic.
+FUND_FLOW_EXTRA_LARGE_THRESHOLD_TWD = 1_000_000
+FUND_FLOW_LARGE_THRESHOLD_TWD = 200_000
+FUND_FLOW_MEDIUM_THRESHOLD_TWD = 30_000

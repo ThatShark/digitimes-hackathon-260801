@@ -85,6 +85,49 @@ Resources:
             Path: /market/overview
             Method: GET
 
+  MarketDepthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-market-depth"
+      Handler: src.handlers.market_depth.lambda_handler
+      CodeUri: .
+      Events:
+        GetOrderBook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /market/depth
+            Method: GET
+
+  MarketTradesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-market-trades"
+      Handler: src.handlers.market_trades.lambda_handler
+      CodeUri: .
+      Events:
+        GetRecentTrades:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /market/trades
+            Method: GET
+
+  MarketFundFlowFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-market-fund-flow"
+      Handler: src.handlers.market_fund_flow.lambda_handler
+      CodeUri: .
+      Timeout: 30
+      Events:
+        GetFundFlow:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /market/fund_flow
+            Method: GET
+
   NotificationsFunction:
     Type: AWS::Serverless::Function
     Properties:

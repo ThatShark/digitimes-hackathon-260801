@@ -90,6 +90,49 @@ class MaxApiClient:
         """Return all available markets from MAX."""
         return self._get("/api/v3/markets", {})
 
+    def get_trades(
+        self,
+        market: str,
+        limit: int = 1000,
+        timestamp_ms: "int | None" = None,
+    ) -> list[dict]:
+        """Return recent executed trades for a market, newest first.
+
+        Args:
+            market:       MAX market ID, e.g. ``"btctwd"``.
+            limit:        Number of trades to return (1–1000, MAX's max per call).
+            timestamp_ms: Optional Unix timestamp in MILLISECONDS. When
+                          provided, only trades strictly older than this
+                          timestamp are returned — pass the oldest trade's
+                          `created_at` from the previous page to page
+                          further back in time (the boundary trade itself
+                          is not repeated).
+
+        Each trade dict has: id, price, volume, funds (TWD value of the
+        trade), market, side ("bid"=buyer-initiated/"ask"=seller-initiated),
+        created_at (Unix milliseconds).
+
+        Raises MaxApiError on non-200 or after RETRY_ATTEMPTS failures.
+        """
+        params: dict = {"market": market.lower(), "limit": limit}
+        if timestamp_ms is not None:
+            params["timestamp"] = timestamp_ms
+        return self._get("/api/v3/trades", params)
+
+    def get_depth(self, market: str, limit: int = 100) -> dict:
+        """Return the current order book (bids/asks) for a market.
+
+        Args:
+            market: MAX market ID, e.g. ``"btctwd"``.
+            limit:  Number of price levels per side (1–300).
+
+        Returns a dict with `asks`/`bids`, each a list of
+        ``[price_str, volume_str]`` pairs, best price first.
+
+        Raises MaxApiError on non-200 or after RETRY_ATTEMPTS failures.
+        """
+        return self._get("/api/v3/depth", {"market": market.lower(), "limit": limit})
+
     # ─────────────────────────────────────────────────────────────────────────
     # Internal helpers
     # ─────────────────────────────────────────────────────────────────────────
