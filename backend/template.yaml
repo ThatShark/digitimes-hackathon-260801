@@ -118,7 +118,10 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
               Resource: "*"
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
       Events:
         PostAiChat:
           Type: Api

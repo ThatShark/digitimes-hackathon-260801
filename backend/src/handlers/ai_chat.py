@@ -90,7 +90,9 @@ def lambda_handler(event, context):
             ai_reply = client.chat(messages, system_prompt=full_prompt)
         else:
             ai_reply = client.chat(messages)
-    except BedrockError:
+    except BedrockError as exc:
+        # Log the actual error for debugging
+        print(f"[AI_CHAT] Bedrock error: {exc}")
         return _error(503, "AI 服務暫時無法使用，請稍後再試")
 
     # ── Parse investment suggestion from AI reply ─────────────────────────────

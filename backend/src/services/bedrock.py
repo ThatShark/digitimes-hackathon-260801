@@ -125,11 +125,12 @@ class BedrockChatClient:
                 return self._extract_text(response)
             except (ClientError, Exception) as exc:
                 last_error = exc
+                print(f"[BEDROCK] Attempt {attempt}/{RETRY_ATTEMPTS} failed: {exc}")
                 if attempt < RETRY_ATTEMPTS:
                     time.sleep(RETRY_DELAY_SECONDS)
 
         raise BedrockError(
-            f"Bedrock converse failed after {RETRY_ATTEMPTS} attempts"
+            f"Bedrock converse failed after {RETRY_ATTEMPTS} attempts: {last_error}"
         ) from last_error
 
     # ─────────────────────────────────────────────────────────────────────────
