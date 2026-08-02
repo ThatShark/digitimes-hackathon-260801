@@ -90,6 +90,7 @@ def lambda_handler(event, context):
     user_id = _extract_user_id(event)
     personality_context = _load_personality_analysis(user_id)
     avg_trade_amount = _load_avg_trade_amount(user_id)
+    quiz_context = _load_quiz_results(user_id)
 
     # ── Build Bedrock messages (with conversation history) ───────────────────
     before_messages = (body.get("before_messages") or [])[-20:]  # cap history length
@@ -107,7 +108,7 @@ def lambda_handler(event, context):
     messages.append({"role": "user", "content": [{"text": user_content}]})
 
     # ── Build system prompt ───────────────────────────────────────────────────
-    system_prompt = _build_system_prompt(personality_context, avg_trade_amount)
+    system_prompt = _build_system_prompt(personality_context, avg_trade_amount, quiz_context)
 
     # ── Run the tool-use loop ─────────────────────────────────────────────────
     client = BedrockChatClient()
@@ -208,7 +209,7 @@ def _run_tool_use_loop(
 # System prompt
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _build_system_prompt(personality_context: str, avg_trade_amount: "float | None") -> str:
+def _build_system_prompt(personality_context: str, avg_trade_amount: "float | None", quiz_context: str = "") -> str:
     base_prompt = _load_system_prompt()
 
     if personality_context:
@@ -241,7 +242,11 @@ def _build_system_prompt(personality_context: str, avg_trade_amount: "float | No
             "並在 reason 中提醒用戶這只是保守建議，實際金額應依自身財務狀況調整。"
         )
 
-    return f"{base_prompt}\n\n{personality_section}\n\n{amount_section}"
+    quiz_section = ""
+    if quiz_context:
+        quiz_section = f"\n\n## 用戶補充問卷分析結果\n{quiz_context}\n\n請參考以上資料，讓你的建議更貼合這位用戶的實際狀況。"
+
+    return f"{base_prompt}\n\n{personality_section}\n\n{amount_section}{quiz_section}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -283,6 +288,47 @@ def _load_avg_trade_amount(user_id: "str | None") -> "float | None":
         return avg if avg > 0 else None
     except (S3StorageError, TradeDataError):
         return None
+
+
+def _load_quiz_results(user_id: "str | None") -> str:
+    """Load all supplementary quiz results from S3 and format them as a
+    human-readable context string for the system prompt.
+
+    Returns '' if no quiz results are found or on any failure.
+    """
+    if not user_id:
+        return ""
+    bucket = os.environ.get(_BUCKET_NAME_ENV_VAR, "")
+    if not bucket:
+        return ""
+
+    quiz_ids = ["investment-habits", "investment-experience", "investment-budget"]
+    quiz_titles = {
+        "investment-habits": "投資習慣",
+        "investment-experience": "投資經驗",
+        "investment-budget": "投資預算與目標",
+    }
+
+    sections = []
+    storage = S3StorageService(bucket_name=bucket)
+    for quiz_id in quiz_ids:
+        try:
+            result_bytes = storage.get_quiz_result(user_id, quiz_id)
+            result = json.loads(result_bytes.decode("utf-8"))
+            dims = result.get("dimensions", {})
+            if not dims:
+                continue
+            title = quiz_titles.get(quiz_id, quiz_id)
+            lines = [f"### {title}（整體平均: {result.get('overall_avg', 0)}/7）"]
+            for dim_id, dim_data in dims.items():
+                name = dim_data.get("name", dim_id)
+                avg = dim_data.get("avg_score", 0)
+                lines.append(f"- {name}: {avg}/7")
+            sections.append("\n".join(lines))
+        except (S3StorageError, json.JSONDecodeError, UnicodeDecodeError):
+            continue
+
+    return "\n\n".join(sections)
 
 
 def _extract_user_id(event) -> "str | None":

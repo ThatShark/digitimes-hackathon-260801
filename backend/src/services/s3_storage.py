@@ -54,6 +54,18 @@ class S3StorageService:
         key = f"users/{user_id}/questionnaire/{questionnaire_id}.json"
         self._put_with_retry(key, response_json)
 
+    def put_quiz_result(self, user_id: str, quiz_id: str, result_json: str) -> None:
+        """Writes users/{userId}/quiz_results/{quiz_id}.json. Retries up to
+        RETRY_ATTEMPTS times with RETRY_DELAY_SECONDS between attempts."""
+        key = f"users/{user_id}/quiz_results/{quiz_id}.json"
+        self._put_with_retry(key, result_json)
+
+    def get_quiz_result(self, user_id: str, quiz_id: str) -> bytes:
+        """Reads users/{userId}/quiz_results/{quiz_id}.json. Raises S3StorageError
+        if not found or after retries exhausted."""
+        key = f"users/{user_id}/quiz_results/{quiz_id}.json"
+        return self._get_with_retry(key)
+
     def get_questionnaire_response(self, user_id: str, questionnaire_id: str) -> bytes:
         """Reads users/{userId}/questionnaire/{questionnaire_id}.json. Retries up to
         RETRY_ATTEMPTS times with RETRY_DELAY_SECONDS between attempts. Raises
