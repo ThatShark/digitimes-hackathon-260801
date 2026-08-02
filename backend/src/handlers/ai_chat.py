@@ -97,12 +97,13 @@ def _handle(event, context):
     """Inner handler — separated so the outer lambda_handler can catch all."""
     start_time = _time.time()
 
-    # Time budget: use Lambda's own remaining time minus a 5s buffer.
-    # If API Gateway cuts at 29s, the GatewayResponses DEFAULT_5XX will
-    # return a CORS-safe error. But if the request gets through (some
-    # configurations allow longer), we want to use all available time.
+    # API Gateway has a HARD 29-second integration timeout that cannot be
+    # changed. Lambda must return within 29s or the gateway cuts it.
+    # Use 25s as our deadline (4s buffer for serialization + network).
     timeout_ms = getattr(context, "get_remaining_time_in_millis", lambda: 120000)()
-    deadline = start_time + (timeout_ms / 1000) - 5
+    lambda_deadline = start_time + (timeout_ms / 1000) - 5
+    gateway_deadline = start_time + 25
+    deadline = min(lambda_deadline, gateway_deadline)
     # ── Parse request body ────────────────────────────────────────────────────
     try:
         body = json.loads(event.get("body") or "{}")
@@ -196,7 +197,13 @@ def _run_tool_use_loop(
             print(f"[AI_CHAT] Approaching timeout at round {_round}, returning partial answer")
             return "分析時間較長，目前尚無法完成完整回覆，請稍後再試或簡化問題。", suggestion_input
 
-        response = client.converse_raw(messages, system_prompt=system_prompt, tool_config=tool_config)
+        # If we're running low on time (less than 12s left), do a final
+        # call WITHOUT tools to force the model to produce a text answer
+        # from whatever data it already has.
+        time_left = deadline - _time.time()
+        current_tool_config = tool_config if time_left > 12 else None
+
+        response = client.converse_raw(messages, system_prompt=system_prompt, tool_config=current_tool_config)
         stop_reason = response.get("stopReason")
         assistant_content = response.get("output", {}).get("message", {}).get("content", [])
 
