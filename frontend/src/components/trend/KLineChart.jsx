@@ -119,7 +119,7 @@ function generateRealtimeTick(lastCandle, intervalSeconds) {
   }
 }
 
-const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency = 'TWD', onTimeRangeChange }, ref) {
+const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency = 'TWD', onTimeRangeChange, onDataLoaded }, ref) {
   const containerRef = useRef(null)
   const chartInstanceRef = useRef(null)
   const seriesRef = useRef(null)
@@ -217,6 +217,8 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency =
       chartData = chartData || mockData
       series.setData(chartData)
       dataRef.current = [...chartData]
+      // Notify parent that candle data is ready (for IndicatorPanel sync)
+      onDataLoaded?.(dataRef.current)
       // 預設顯示最近的部分
       chart.timeScale().scrollToRealTime()
     }

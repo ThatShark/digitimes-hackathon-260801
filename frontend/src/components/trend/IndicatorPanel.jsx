@@ -27,7 +27,7 @@ const COLORS = {
   histogram: 'rgba(192, 132, 252, 0.4)',
 }
 
-export default function IndicatorPanel({ symbol, currency = 'TWD', chartRef, visibleTimeRange }) {
+export default function IndicatorPanel({ symbol, currency = 'TWD', visibleTimeRange, interval, candles = [] }) {
   const [active, setActive] = useState('MACD')
   const containerRef = useRef(null)
   const chartInstanceRef = useRef(null)
@@ -35,62 +35,49 @@ export default function IndicatorPanel({ symbol, currency = 'TWD', chartRef, vis
 
   useEffect(() => {
     if (!containerRef.current) return
+    // Don't render until we have candle data
+    if (!candles || candles.length === 0) return
 
     let chart = null
     let observer = null
-    let cancelled = false
 
-    // 輪詢等待 KLineChart 資料就緒（最多 3 秒）
-    function tryBuild() {
-      if (cancelled) return
-      const candles = chartRef?.current?.getData?.() || []
-      if (candles.length === 0) {
-        setTimeout(tryBuild, 200)
-        return
-      }
-      build(candles)
-    }
+    const TWD_USD_RATE = 32.5
+    chart = createChart(containerRef.current, {
+      layout: {
+        background: { type: 'solid', color: 'transparent' },
+        textColor: '#9ca3af',
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: '#2e303a' },
+        horzLines: { color: '#2e303a' },
+      },
+      rightPriceScale: {
+        borderColor: '#2e303a',
+      },
+      localization: {
+        priceFormatter: (price) => {
+          const p = currency === 'USD' ? price / TWD_USD_RATE : price
+          return p.toLocaleString(undefined, { maximumFractionDigits: 2 })
+        },
+      },
+      timeScale: {
+        borderColor: '#2e303a',
+        timeVisible: true,
+      },
+      handleScroll: false,
+      handleScale: false,
+      crosshair: {
+        vertLine: { visible: true },
+        horzLine: { visible: true },
+      },
+      height: containerRef.current.clientHeight,
+      width: containerRef.current.clientWidth,
+    })
 
-    function build(candles) {
-      if (cancelled || !containerRef.current) return
+    chartInstanceRef.current = chart
 
-      const TWD_USD_RATE = 32.5
-      chart = createChart(containerRef.current, {
-        layout: {
-          background: { type: 'solid', color: 'transparent' },
-          textColor: '#9ca3af',
-          fontSize: 11,
-        },
-        grid: {
-          vertLines: { color: '#2e303a' },
-          horzLines: { color: '#2e303a' },
-        },
-        rightPriceScale: {
-          borderColor: '#2e303a',
-        },
-        localization: {
-          priceFormatter: (price) => {
-            const p = currency === 'USD' ? price / TWD_USD_RATE : price
-            return p.toLocaleString(undefined, { maximumFractionDigits: 2 })
-          },
-        },
-        timeScale: {
-          borderColor: '#2e303a',
-          timeVisible: true,
-        },
-        handleScroll: false,
-        handleScale: false,
-        crosshair: {
-          vertLine: { visible: true },
-          horzLine: { visible: true },
-        },
-        height: containerRef.current.clientHeight,
-        width: containerRef.current.clientWidth,
-      })
-
-      chartInstanceRef.current = chart
-
-    // Render indicator based on active selection
+    // Render indicator with the fresh candle data
     renderIndicator(chart, candles, active)
 
     // Set initial visible range if available
@@ -111,19 +98,15 @@ export default function IndicatorPanel({ symbol, currency = 'TWD', chartRef, vis
         })
       }
     }
-      observer = new ResizeObserver(handleResize)
-      observer.observe(containerRef.current)
-    } // end build()
-
-    tryBuild()
+    observer = new ResizeObserver(handleResize)
+    observer.observe(containerRef.current)
 
     return () => {
-      cancelled = true
       if (observer) observer.disconnect()
       if (chart) chart.remove()
       chartInstanceRef.current = null
     }
-  }, [active, chartRef, symbol, currency])
+  }, [active, candles, symbol, currency, interval])
 
   // Sync indicator chart visible range with main chart whenever it changes
   useEffect(() => {
