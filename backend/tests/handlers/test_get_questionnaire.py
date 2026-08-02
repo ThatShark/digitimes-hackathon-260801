@@ -23,7 +23,7 @@ def test_questions_only_expose_id_text_options():
     body = json.loads(resp["body"])
     for q in body["questions"]:
         assert set(q.keys()) == {"id", "text", "options"}
-        assert len(q["options"]) == 5
+        assert len(q["options"]) == 7
 
 
 def test_repeated_calls_can_return_different_order():

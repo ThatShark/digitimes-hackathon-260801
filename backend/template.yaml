@@ -361,6 +361,20 @@ Resources:
             Path: /questionnaire/submit
             Method: POST
 
+  GetQuizFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-quiz"
+      Handler: src.handlers.get_quiz.lambda_handler
+      CodeUri: .
+      Events:
+        GetQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /quiz
+            Method: GET
+
   SubmitQuizFunction:
     Type: AWS::Serverless::Function
     Properties:
