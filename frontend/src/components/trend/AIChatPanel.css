@@ -44,6 +44,7 @@
 .chat-message {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .chat-message.ai {
@@ -403,8 +404,8 @@
   border: 1px solid var(--border-color, #334155);
   border-radius: 8px;
   padding: 10px 12px;
-  margin-top: 6px;
-  max-width: 260px;
+  max-width: 280px;
+  width: 100%;
 }
 
 .chat-message.user .chat-post-card-attach {
@@ -414,8 +415,9 @@
 .attach-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .attach-tag {
@@ -424,11 +426,22 @@
   color: var(--text-secondary, #94a3b8);
 }
 
+.attach-coin {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  width: fit-content;
+}
+
 .attach-action {
   font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
   border-radius: 3px;
+  width: fit-content;
 }
 
 .attach-action.buy {
@@ -444,7 +457,6 @@
 .attach-author {
   font-size: 11px;
   color: var(--text-muted, #64748b);
-  margin-bottom: 4px;
 }
 
 .attach-content {

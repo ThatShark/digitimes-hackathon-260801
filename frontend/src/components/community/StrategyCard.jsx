@@ -73,6 +73,11 @@ export default function StrategyCard({ strategy }) {
             <span className="strategy-time">{strategy.time}</span>
           </div>
 
+          {/* 作者的話 */}
+          {strategy.content && (
+            <p className="strategy-content-text">{strategy.content}</p>
+          )}
+
           {/* Strategy params */}
           <div className="strategy-params">
             {renderParams(strategy)}

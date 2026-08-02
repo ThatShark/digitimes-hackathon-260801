@@ -24,6 +24,21 @@ const MOCK_POST_RESULTS = [
   { id: 3, author: '李小雨', snippet: '大家覺得 $ETH 現在可以分批買嗎？' },
 ]
 
+// 懸賞提問（mock 搜尋用）
+const MOCK_BOUNTY_RESULTS = [
+  { id: 101, author: '周新手', snippet: '請問現在 $ETH 適合進場嗎？看了很多分析都說法不一...', coin: 'ETH' },
+]
+
+// 策略卡片（mock 搜尋用）
+const MOCK_STRATEGY_RESULTS = [
+  { id: 's1', author: '趙柏翰', snippet: '現貨網格 BTC/TWD 區間 2,700,000 - 3,000,000', type: 'grid', coin: 'BTC' },
+  { id: 's2', author: '王大壯', snippet: '定投策略 BTC 每日定投，累積收益 +42%', type: 'dca', coin: 'BTC' },
+  { id: 's3', author: '陳Ｊ哥', snippet: '馬丁格爾 ETH 每跌 2% 加碼 1.5x', type: 'martingale', coin: 'ETH' },
+  { id: 's4', author: '王大壯', snippet: '套利策略 ETH 現貨+永續空單 年化 18.5%', type: 'arbitrage', coin: 'ETH' },
+  { id: 's5', author: '趙柏翰', snippet: '組合包 SOL/DOT/ADA 再平衡策略', type: 'basket', coin: 'Multi' },
+  { id: 's6', author: '李小雨', snippet: '技術訊號 BTC 4H RSI < 30 抄底 勝率 72%', type: 'signal', coin: 'BTC' },
+]
+
 // 問卷（mock）
 const MOCK_QUESTIONNAIRES = [
   { id: 'personality-basic', title: '投資人格基礎測驗' },
@@ -71,6 +86,10 @@ export default function SearchBar() {
       navigate(`/coin/${result.symbol}`)
     } else if (result.type === 'post') {
       navigate(`/community#post-${result.id}`)
+    } else if (result.type === 'bounty') {
+      navigate(`/community#bounty-${result.id}`)
+    } else if (result.type === 'strategy') {
+      navigate(`/community#strategy-${result.id}`)
     } else if (result.type === 'questionnaire') {
       navigate('/questionnaire')
     }
@@ -134,10 +153,35 @@ function getResults(query, { isCommunity, isQuestionnaire }) {
   }
 
   if (isCommunity) {
-    return MOCK_POST_RESULTS
-      .filter((p) => p.snippet.toLowerCase().includes(q) || p.author.toLowerCase().includes(q))
-      .slice(0, 5)
-      .map((p) => ({ type: 'post', id: p.id, title: p.author, subtitle: p.snippet, icon: '💬' }))
+    const results = []
+
+    // 搜尋貼文（優先使用動態資料，fallback 到硬編碼 mock）
+    const livePosts = window.__communityPosts
+    if (livePosts && livePosts.length > 0) {
+      livePosts
+        .filter((p) => (p.content || '').toLowerCase().includes(q) || (p.author || '').toLowerCase().includes(q))
+        .slice(0, 5)
+        .forEach((p) => results.push({ type: 'post', id: p.id, title: p.author, subtitle: p.content, icon: '💬' }))
+    } else {
+      MOCK_POST_RESULTS
+        .filter((p) => p.snippet.toLowerCase().includes(q) || p.author.toLowerCase().includes(q))
+        .slice(0, 3)
+        .forEach((p) => results.push({ type: 'post', id: p.id, title: p.author, subtitle: p.snippet, icon: '💬' }))
+    }
+
+    // 搜尋懸賞提問
+    MOCK_BOUNTY_RESULTS
+      .filter((b) => b.snippet.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.coin.toLowerCase().includes(q))
+      .slice(0, 3)
+      .forEach((b) => results.push({ type: 'bounty', id: b.id, title: `懸賞 · ${b.author}`, subtitle: b.snippet, icon: '🏆' }))
+
+    // 搜尋策略
+    MOCK_STRATEGY_RESULTS
+      .filter((s) => s.snippet.toLowerCase().includes(q) || s.author.toLowerCase().includes(q) || s.coin.toLowerCase().includes(q) || s.type.toLowerCase().includes(q))
+      .slice(0, 3)
+      .forEach((s) => results.push({ type: 'strategy', id: s.id, title: `策略 · ${s.author}`, subtitle: s.snippet, icon: '📊' }))
+
+    return results.slice(0, 8)
   }
 
   // 幣種搜尋（主頁 + 幣種頁面）
