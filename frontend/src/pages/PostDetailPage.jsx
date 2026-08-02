@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
 import VerifiedBadge from '../components/community/VerifiedBadge'
@@ -9,6 +9,7 @@ import Avatar from '../components/shared/Avatar'
 import ImageLightbox from '../components/shared/ImageLightbox'
 import { parseTickerTags } from '../components/community/TickerCard'
 import { MOCK_POSTS, CURRENT_USER } from '../utils/mockCommunity'
+import { getPostComments, addComment } from '../services/communityApi'
 import './PostDetailPage.css'
 
 export default function PostDetailPage() {
@@ -29,29 +30,52 @@ export default function PostDetailPage() {
   const [likeCount, setLikeCount] = useState(post?.likes || 0)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   // 留言清單 — 樓層依留言時間決定，越早樓層越低（陣列順序 = 樓層順序）
+  // 先用 mock 資料顯示，掛載後改抓後端真實留言（若後端沒資料則維持空陣列，
+  // 不會一直顯示假留言）。
   const [comments, setComments] = useState(post?.commentList || [])
+  const [commentError, setCommentError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    if (!post) return undefined
+    getPostComments(post.id)
+      .then((data) => {
+        if (!cancelled) setComments(data?.items || [])
+      })
+      .catch(() => {
+        // 後端尚未設定/暫時無法連線時，保留原本的 mock 留言，不打斷畫面
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [post])
 
   const handleLike = () => {
     setLiked((prev) => !prev)
     setLikeCount((prev) => (liked ? prev - 1 : prev + 1))
   }
 
-  const handleAddComment = useCallback((content, images) => {
-    setComments((prev) => [
-      ...prev,
-      {
-        id: `c-${Date.now()}`,
-        floor: prev.length + 1,
-        author: CURRENT_USER.name,
-        personality: CURRENT_USER.personality,
-        content,
-        images,
-        time: '剛剛',
-        likes: 0,
-        tips: 0,
-      },
-    ])
-  }, [])
+  const handleAddComment = useCallback(async (content, images) => {
+    setCommentError('')
+    const optimistic = {
+      id: `c-${Date.now()}`,
+      floor: comments.length + 1,
+      author: CURRENT_USER.name,
+      personality: CURRENT_USER.personality,
+      content,
+      images,
+      time: '剛剛',
+      likes: 0,
+      tips: 0,
+    }
+    setComments((prev) => [...prev, optimistic])
+
+    try {
+      await addComment(post.id, content, images, CURRENT_USER.name, CURRENT_USER.personality)
+    } catch (err) {
+      setCommentError(err?.message || '留言送出失敗，重新整理後可能會消失')
+    }
+  }, [comments.length, post])
 
   if (!post) {
     return (
@@ -156,6 +180,7 @@ export default function PostDetailPage() {
         <h2 className="comment-section-title">留言 {comments.length}</h2>
 
         <CommentComposer currentUser={CURRENT_USER} onSubmit={handleAddComment} />
+        {commentError && <p className="comment-error">{commentError}</p>}
 
         <div className="comment-list">
           {comments.length === 0 && (

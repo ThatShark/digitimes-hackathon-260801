@@ -267,6 +267,8 @@ Resources:
       CodeUri: .
       Timeout: 120
       MemorySize: 512
+      FunctionUrlConfig:
+        AuthType: NONE
       Environment:
         Variables:
           BEDROCK_MODEL_ID: !Ref BedrockModelId
@@ -453,6 +455,40 @@ Resources:
             Path: /quiz/submit
             Method: POST
 
+  GetCommentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-comments"
+      Handler: src.handlers.comments.get_comments_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetComments:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /community/post/{postId}/comments
+            Method: GET
+
+  AddCommentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-add-comment"
+      Handler: src.handlers.comments.add_comment_handler
+      CodeUri: .
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostComment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /community/post/{postId}/comments
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────
@@ -468,6 +504,9 @@ Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL (prod stage)
     Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  AiChatFunctionUrl:
+    Description: Lambda Function URL for AI Chat (no API Gateway 29s timeout)
+    Value: !GetAtt AiChatFunctionUrl.FunctionUrl
   TradesBucketName:
     Description: S3 bucket for user trade CSVs and metrics
     Value: !Ref TradesBucket

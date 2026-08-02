@@ -36,9 +36,9 @@ export function getPostComments(postId, { cursor, limit = 20 } = {}) {
 }
 
 /** 新增留言 */
-export function addComment(postId, content, images = []) {
+export function addComment(postId, content, images = [], author, personality) {
   return apiFetch(`/community/post/${postId}/comments`, {
     method: 'POST',
-    body: { content, images },
+    body: { content, images, author, personality },
   })
 }
