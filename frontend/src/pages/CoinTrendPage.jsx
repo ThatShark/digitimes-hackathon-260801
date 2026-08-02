@@ -25,6 +25,8 @@ const FALLBACK_PRICES = {
   ETH: { price: 98500, change: -1.2 },
   SOL: { price: 5420, change: 5.7 },
   DOGE: { price: 8.2, change: 0.4 },
+  USDT: { price: 32.5, change: 0.01 },
+  USDC: { price: 32.5, change: -0.01 },
   ADA: { price: 21.5, change: -0.8 },
   DOT: { price: 245, change: 3.1 },
   PEPE: { price: 0.032, change: 15.2 },

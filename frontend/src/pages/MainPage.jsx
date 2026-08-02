@@ -17,13 +17,15 @@ const MOCK_COINS = [
 // 熱門 = 其他幣種
 const TRENDING = [
   { symbol: 'DOGE', name: 'Dogecoin', price: null, change: null },
+  { symbol: 'USDT', name: 'Tether', price: null, change: null },
+  { symbol: 'USDC', name: 'USD Coin', price: null, change: null },
   { symbol: 'ADA', name: 'Cardano', price: null, change: null },
   { symbol: 'DOT', name: 'Polkadot', price: null, change: null },
 ]
 
 const COIN_NAMES = {
   BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', DOGE: 'Dogecoin',
-  ADA: 'Cardano', DOT: 'Polkadot',
+  USDT: 'Tether', USDC: 'USD Coin', ADA: 'Cardano', DOT: 'Polkadot',
 }
 
 /**
