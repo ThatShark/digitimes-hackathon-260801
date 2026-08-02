@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import './WhaleAlertCard.css'
 
@@ -46,14 +46,26 @@ const WHALE_ALERTS = [
  */
 export default function WhaleAlertCard() {
   const [currentAlert, setCurrentAlert] = useState(0)
+  const timerRef = useRef(null)
+
+  const startAutoRotate = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setCurrentAlert((prev) => (prev + 1) % WHALE_ALERTS.length)
+    }, 8000)
+  }, [])
 
   // 每 8 秒切換一則警報
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentAlert((prev) => (prev + 1) % WHALE_ALERTS.length)
-    }, 8000)
-    return () => clearInterval(timer)
-  }, [])
+    startAutoRotate()
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [startAutoRotate])
+
+  const handleDotClick = (index) => {
+    setCurrentAlert(index)
+    // 重置計時器，避免剛點完又被自動切走
+    startAutoRotate()
+  }
 
   const alert = WHALE_ALERTS[currentAlert]
 
@@ -97,12 +109,15 @@ export default function WhaleAlertCard() {
         </Link>
       </div>
 
-      {/* 進度指示器 */}
+      {/* 進度指示器（可點擊切換） */}
       <div className="whale-indicators">
         {WHALE_ALERTS.map((_, i) => (
-          <span
+          <button
             key={i}
+            type="button"
             className={`whale-dot ${i === currentAlert ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); handleDotClick(i) }}
+            aria-label={`切換至第 ${i + 1} 則警報`}
           />
         ))}
       </div>

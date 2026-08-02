@@ -119,21 +119,21 @@ export default function MarketOverview({ currency = 'TWD', coins = [] }) {
         <div className="mover-section">
           <span className="mover-title">📈 漲幅榜</span>
           <div className="mover-list">
-            {gainers.map((coin) => (
+            {gainers.length > 0 ? gainers.map((coin) => (
               <span key={coin.symbol} className="mover-chip up">
                 {coin.symbol} +{coin.change}%
               </span>
-            ))}
+            )) : <span className="mover-empty">無</span>}
           </div>
         </div>
         <div className="mover-section">
           <span className="mover-title">📉 跌幅榜</span>
           <div className="mover-list">
-            {losers.map((coin) => (
+            {losers.length > 0 ? losers.map((coin) => (
               <span key={coin.symbol} className="mover-chip down">
                 {coin.symbol} {coin.change}%
               </span>
-            ))}
+            )) : <span className="mover-empty">無</span>}
           </div>
         </div>
       </div>
