@@ -21,7 +21,7 @@ const AXIS_CONFIG = [
   { key: 'R', labelLow: 'D', labelHigh: 'A', colorLow: '#34d399', colorHigh: '#f87171', nameLow: '防守', nameHigh: '進攻' },
   { key: 'E', labelLow: 'C', labelHigh: 'E', colorLow: '#60a5fa', colorHigh: '#fbbf24', nameLow: '冷靜', nameHigh: '熱情' },
   { key: 'F', labelLow: 'L', labelHigh: 'S', colorLow: '#a78bfa', colorHigh: '#fb923c', nameLow: '長期', nameHigh: '短期' },
-  { key: 'S', labelLow: 'Q', labelHigh: 'I', colorLow: '#2dd4bf', colorHigh: '#f472b6', nameLow: '量化', nameHigh: '直覺' },
+  { key: 'S', labelLow: 'I', labelHigh: 'Q', colorLow: '#f472b6', colorHigh: '#2dd4bf', nameLow: '直覺', nameHigh: '量化' },
 ]
 
 export default function PersonalityBadge({ personality, compact = false, showName = false }) {
@@ -58,21 +58,21 @@ export default function PersonalityBadge({ personality, compact = false, showNam
           const value = axes?.[axis.key] ?? 50
           return (
             <div className="pb-axis" key={axis.key}>
-              <span className="pb-axis-label pb-axis-label--low" style={{ color: axis.colorLow }}>
-                {axis.labelLow} {axis.nameLow}
+              <span className="pb-axis-label pb-axis-label--high" style={{ color: axis.colorHigh }}>
+                {axis.labelHigh} {axis.nameHigh}
               </span>
               <div className="pb-bar">
-                <div
-                  className="pb-bar-fill pb-bar-fill--low"
-                  style={{ width: `${100 - value}%`, background: axis.colorLow }}
-                />
                 <div
                   className="pb-bar-fill pb-bar-fill--high"
                   style={{ width: `${value}%`, background: axis.colorHigh }}
                 />
+                <div
+                  className="pb-bar-fill pb-bar-fill--low"
+                  style={{ width: `${100 - value}%`, background: axis.colorLow }}
+                />
               </div>
-              <span className="pb-axis-label pb-axis-label--high" style={{ color: axis.colorHigh }}>
-                {axis.nameHigh} {axis.labelHigh}
+              <span className="pb-axis-label pb-axis-label--low" style={{ color: axis.colorLow }}>
+                {axis.nameLow} {axis.labelLow}
               </span>
             </div>
           )

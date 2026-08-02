@@ -92,10 +92,10 @@
   transition: width 0.3s ease;
 }
 
-.pb-bar-fill--low {
+.pb-bar-fill--high {
   border-radius: 3px 0 0 3px;
 }
 
-.pb-bar-fill--high {
+.pb-bar-fill--low {
   border-radius: 0 3px 3px 0;
 }
