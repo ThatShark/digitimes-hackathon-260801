@@ -86,7 +86,11 @@ const TABS = [
 
 export default function CoinTrendPage() {
   const { symbol } = useParams()
-  const [activeTab, setActiveTab] = useState('chart')
+  const [activeTab, setActiveTab] = useState(() => {
+    // 從社群「一鍵複製策略」跳轉過來時，自動切到策略 tab
+    if (sessionStorage.getItem('strategy_prefill')) return 'strategy'
+    return 'chart'
+  })
   const [interval, setInterval] = useState('15m')
   // price/change 為 null 時代表尚未取得資料，畫面顯示「載入中」（跟主頁幣種卡片一致）
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })

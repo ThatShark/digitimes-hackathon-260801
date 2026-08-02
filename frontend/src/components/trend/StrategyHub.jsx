@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { formatPrice } from '../../utils/currency'
 import {
   SpotGridForm,
@@ -54,9 +54,24 @@ const LIVE_PROFITS_TWD = [
 
 export default function StrategyHub({ symbol, currency = 'TWD' }) {
   const [activeStrategy, setActiveStrategy] = useState(null)
+  const [prefillParams, setPrefillParams] = useState(null)
+
+  // 從社群「一鍵複製」跳轉過來時，自動打開對應策略表單並填入參數
+  useEffect(() => {
+    const raw = sessionStorage.getItem('strategy_prefill')
+    if (raw) {
+      sessionStorage.removeItem('strategy_prefill')
+      try {
+        const data = JSON.parse(raw)
+        setActiveStrategy(data.type)
+        setPrefillParams(data.params)
+      } catch { /* ignore */ }
+    }
+  }, [])
 
   const handleStrategyClick = (key) => {
     setActiveStrategy(activeStrategy === key ? null : key)
+    setPrefillParams(null)
   }
 
   const ActiveForm = activeStrategy ? STRATEGY_FORM_MAP[activeStrategy] : null
@@ -86,12 +101,12 @@ export default function StrategyHub({ symbol, currency = 'TWD' }) {
         <section className="hub-section strategy-form-panel">
           <button
             className="sf-close-btn"
-            onClick={() => setActiveStrategy(null)}
+            onClick={() => { setActiveStrategy(null); setPrefillParams(null) }}
             aria-label="關閉"
           >
             ✕
           </button>
-          <ActiveForm symbol={symbol} currency={currency} />
+          <ActiveForm symbol={symbol} currency={currency} prefill={prefillParams} />
         </section>
       )}
 
