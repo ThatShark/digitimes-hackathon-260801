@@ -73,6 +73,19 @@ class S3StorageService:
         key = f"users/{user_id}/questionnaire/{questionnaire_id}.json"
         return self._get_with_retry(key)
 
+    def get_post_comments(self, post_id: str) -> bytes:
+        """Reads community/posts/{postId}/comments.json. Raises S3StorageError
+        if not found or after retries exhausted (callers should treat a 404
+        as "no comments yet" rather than a hard failure)."""
+        key = f"community/posts/{post_id}/comments.json"
+        return self._get_with_retry(key)
+
+    def put_post_comments(self, post_id: str, comments_json: str) -> None:
+        """Writes community/posts/{postId}/comments.json. Retries up to
+        RETRY_ATTEMPTS times with RETRY_DELAY_SECONDS between attempts."""
+        key = f"community/posts/{post_id}/comments.json"
+        self._put_with_retry(key, comments_json)
+
     def put_trades_csv(self, user_id: str, csv_bytes: bytes) -> None:
         """Writes users/{userId}/trades.csv. Retries up to RETRY_ATTEMPTS times."""
         key = f"users/{user_id}/trades.csv"
@@ -101,6 +114,10 @@ class S3StorageService:
                 response = self._client.get_object(Bucket=self._bucket, Key=key)
                 return response["Body"].read()
             except ClientError as exc:
+                # "Not found" isn't transient — retrying it just burns time
+                # (callers generally treat this as "doesn't exist yet").
+                if exc.response.get("Error", {}).get("Code") in ("NoSuchKey", "404"):
+                    raise S3StorageError(f"s3://{self._bucket}/{key} not found") from exc
                 last_error = exc
                 if attempt < RETRY_ATTEMPTS:
                     time.sleep(RETRY_DELAY_SECONDS)
