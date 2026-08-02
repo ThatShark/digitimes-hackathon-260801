@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Markdown from 'react-markdown'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import { sendAiChat, saveChatHistory, allowTrade } from '../../services/aiApi'
-import { isBackendConfigured } from '../../services/api'
 import './AIChatPanel.css'
 
 const INITIAL_MESSAGES = [
@@ -140,25 +139,17 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
     setIsTrading(true)
 
     try {
-      if (!isBackendConfigured()) {
-        // 後端未配置時模擬成功（Demo 用）
+      const result = await allowTrade(currency, action, amount)
+      if (result.status === 'success') {
         setMessages((prev) => [
           ...prev,
-          { role: 'system', content: `✅ [Demo] 已模擬${action === 'buy' ? '買入' : '賣出'} NT$${amount.toLocaleString()} 的 ${currency}` },
+          { role: 'system', content: `✅ ${result.message}（訂單 #${result.trade_id}）` },
         ])
       } else {
-        const result = await allowTrade(currency, action, amount)
-        if (result.status === 'success') {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'system', content: `✅ ${result.message}（訂單 #${result.trade_id}）` },
-          ])
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'system', content: `⚠️ 交易失敗：${result.message}` },
-          ])
-        }
+        setMessages((prev) => [
+          ...prev,
+          { role: 'system', content: `⚠️ 交易失敗：${result.message}` },
+        ])
       }
     } catch (err) {
       const errMsg = err?.message || '交易請求失敗，請稍後再試'
