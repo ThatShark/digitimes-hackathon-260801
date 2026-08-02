@@ -22,13 +22,14 @@ def test_no_currency_only_offers_fear_greed_tool():
     assert names == [ai_tools.TOOL_GET_FEAR_GREED_INDEX]
 
 
-def test_with_currency_offers_all_four_tools():
+def test_with_currency_offers_all_five_tools():
     config = ai_tools.build_tool_config("BTC")
     names = {t["toolSpec"]["name"] for t in config["tools"]}
     assert names == {
         ai_tools.TOOL_GET_FEAR_GREED_INDEX,
         ai_tools.TOOL_GET_CURRENT_PRICE,
         ai_tools.TOOL_GET_FUND_FLOW_ANALYSIS,
+        ai_tools.TOOL_GET_TECHNICAL_INDICATORS,
         ai_tools.TOOL_PROPOSE_TRADE,
     }
 

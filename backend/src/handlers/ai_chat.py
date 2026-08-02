@@ -3,22 +3,25 @@
 Implements POST /ai_chat per backend/api.yaml operationId aiChat.
 
 Uses Bedrock Converse **Tool Use**: the model itself decides whether it
-needs live data (price / Fear&Greed index / fund-flow analysis) before
-answering, and — separately — whether it has enough basis to propose a
-structured trade suggestion (see src/services/ai_tools.py for the 4 tool
-definitions). This replaces the previous design where the backend
-unconditionally fetched price + Fear&Greed data on every request and tried
-to regex/keyword-match a trade suggestion out of the AI's free-form text
-(which could only ever produce a hardcoded default amount, since the old
-system prompt told the model not to mention amounts at all).
+needs live data (price / Fear&Greed index / fund-flow analysis / technical
+indicators) before answering, and — separately — whether it has enough
+basis to propose a structured trade suggestion (see src/services/ai_tools.py
+for the 5 tool definitions). This replaces the previous design where the
+backend unconditionally fetched price + Fear&Greed data on every request
+and tried to regex/keyword-match a trade suggestion out of the AI's
+free-form text (which could only ever produce a hardcoded default amount,
+since the old system prompt told the model not to mention amounts at all).
 
 Flow per request (see _run_tool_use_loop()):
-    1. Call Bedrock with the 4 tools offered (fewer if no `currency` in the
+    1. Call Bedrock with the tools offered (fewer if no `currency` in the
        request — see ai_tools.build_tool_config()).
     2. If stopReason == "tool_use": execute the requested tool(s), feed the
        results back, and call Bedrock again. Repeated up to
        _MAX_TOOL_ROUNDS times to bound Lambda execution time / token spend
-       in case the model keeps chaining tool calls.
+       in case the model keeps chaining tool calls — a thorough analysis
+       can legitimately call all 4 data tools once each before proposing a
+       trade, so the cap must leave headroom beyond that (see
+       _MAX_TOOL_ROUNDS's comment).
     3. Once stopReason != "tool_use" (or the round cap is hit), return the
        assistant's text as `message`. If `propose_trade` was called at any
        point in the loop, its (last) input becomes `investment_suggestion`.
@@ -69,7 +72,15 @@ _BUCKET_NAME_ENV_VAR = "TRADES_BUCKET_NAME"
 # execution time / token budget. If exceeded without a finished answer,
 # the user gets a generic "couldn't complete" message rather than an
 # indefinitely hanging request.
-_MAX_TOOL_ROUNDS = 5
+#
+# There are currently 5 tools offered (get_current_price, get_fear_greed_index,
+# get_fund_flow_analysis, get_technical_indicators, propose_trade — see
+# ai_tools.py). A thorough analysis (e.g. "我要賣出比特幣") can legitimately
+# call all 4 data tools once each before proposing a trade — that's 5 rounds
+# on its own, leaving zero rounds left for the model to produce its final
+# text answer. 7 leaves 2 rounds of headroom for that case plus an
+# occasional repeated/retried tool call.
+_MAX_TOOL_ROUNDS = 7
 
 
 def lambda_handler(event, context):

@@ -65,7 +65,7 @@ class BedrockChatClient:
         self,
         model_id: Optional[str] = None,
         region: Optional[str] = None,
-        max_tokens: int = 512,
+        max_tokens: int = 2048,
         temperature: float = 1.0,
         top_p: float = 0.5,
     ):
