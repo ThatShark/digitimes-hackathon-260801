@@ -457,3 +457,31 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.ai-markdown table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 0.9em;
+}
+
+.ai-markdown th,
+.ai-markdown td {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ai-markdown th {
+  background: rgba(255, 255, 255, 0.06);
+  font-weight: 600;
+}
+
+.ai-markdown a {
+  color: var(--accent, #60a5fa);
+  text-decoration: underline;
+}
