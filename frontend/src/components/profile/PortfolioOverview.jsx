@@ -110,7 +110,9 @@ export default function PortfolioOverview({ portfolio }) {
                 <div className="holding-card-body">
                   <div className="holding-detail">
                     <span className="holding-detail-label">持有量</span>
-                    <span className="holding-detail-value">{item.quantity}</span>
+                    <span className="holding-detail-value">
+                      {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                    </span>
                   </div>
                   <div className="holding-detail">
                     <span className="holding-detail-label">現值</span>

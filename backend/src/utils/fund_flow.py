@@ -69,7 +69,16 @@ def classify_trades(trades: list[dict]) -> FundFlowResult:
 
     net_inflow = sum(b["buy"] - b["sell"] for b in buckets.values())
 
-    return FundFlowResult(buckets=buckets, net_inflow=round(net_inflow, 2), trade_count=counted)
+    # Round every value to 2 decimal places before returning — summing many
+    # floats (TWD trade values) accumulates binary floating-point error
+    # (e.g. 336.4 can come out as 336.40000000000003), which would otherwise
+    # leak straight through to the API response and the UI.
+    rounded_buckets = {
+        b: {"buy": round(v["buy"], 2), "sell": round(v["sell"], 2)}
+        for b, v in buckets.items()
+    }
+
+    return FundFlowResult(buckets=rounded_buckets, net_inflow=round(net_inflow, 2), trade_count=counted)
 
 
 def compute_daily_net_flow(klines: list) -> list[dict]:

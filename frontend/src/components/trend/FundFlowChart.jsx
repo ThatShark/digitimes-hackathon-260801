@@ -36,14 +36,22 @@ const MOCK_NET_FLOW = [
   { day: '7/31', value: -60 },
 ]
 
-// 後端回傳的金額單位是 TWD，畫面統一顯示成「萬」，跟 mock 資料的單位一致
+// 後端回傳的金額單位是 TWD，畫面統一顯示成「萬」，跟 mock 資料的單位一致。
+// 四捨五入到小數點後 2 位，避免後續加減運算時把 JS 浮點數誤差
+// （例如 336.4 - 0 算出 336.40000000000003）顯示到畫面上。
 function twdToWan(value) {
-  return Math.round((value / 10000) * 10) / 10
+  return Math.round((value / 10000) * 100) / 100
 }
 
 function formatDay(unixSeconds) {
   const d = new Date(unixSeconds * 1000)
   return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+// 四捨五入到小數點後 2 位，並清除 JS 浮點數運算殘留的誤差
+// （例如 336.4 - 0 可能得到 336.40000000000003）
+function round2(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
 export default function FundFlowChart({ symbol }) {
@@ -96,7 +104,8 @@ export default function FundFlowChart({ symbol }) {
 
   const totalInflow = isLoading ? 0 : Object.values(flow).reduce((s, v) => s + v.buy, 0)
   const totalOutflow = isLoading ? 0 : Object.values(flow).reduce((s, v) => s + v.sell, 0)
-  const netFlow = totalInflow - totalOutflow
+  // 四捨五入到小數點後 2 位，避免加總/減法產生的浮點數誤差顯示到畫面上
+  const netFlow = round2(totalInflow - totalOutflow)
   const inflowPct = isLoading || totalInflow + totalOutflow === 0
     ? 50
     : Math.round((totalInflow / (totalInflow + totalOutflow)) * 100)
@@ -182,7 +191,7 @@ export default function FundFlowChart({ symbol }) {
 }
 
 function FlowRow({ label, data }) {
-  const net = data.buy - data.sell
+  const net = round2(data.buy - data.sell)
   return (
     <div className="flow-row">
       <span className="flow-row-label">{label}</span>

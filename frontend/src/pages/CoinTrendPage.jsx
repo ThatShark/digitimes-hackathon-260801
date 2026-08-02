@@ -106,6 +106,8 @@ export default function CoinTrendPage() {
   const [visibleTimeRange, setVisibleTimeRange] = useState(null)
   const chartRef = useRef(null)
   const danmakuRef = useRef(null)
+  // K 線圖 candle data（供 IndicatorPanel 直接使用，避免 stale polling）
+  const [candleData, setCandleData] = useState([])
   // 彈幕是否就緒（切 tab 或開關彈幕後延遲 0.5s）
   const danmakuReadyRef = useRef(true)
 
@@ -132,6 +134,7 @@ export default function CoinTrendPage() {
     setInterval(newInterval)
     setVisibleFrom(0)
     setVisibleTo(1)
+    setCandleData([]) // clear stale data while new data loads
   }, [])
 
   // 進入頁面 / 切換幣種時，向後端要求該幣種的即時價格。
@@ -198,6 +201,10 @@ export default function CoinTrendPage() {
     return () => clearInterval(timer)
   }, [addCommunityMessage])
 
+  const handleDataLoaded = useCallback((candles) => {
+    setCandleData(candles)
+  }, [])
+
   const handleTimeRangeChange = useCallback((visibleRange, chartDataRange) => {
     const totalSpan = chartDataRange.to - chartDataRange.from
     if (totalSpan <= 0) return
@@ -240,7 +247,7 @@ export default function CoinTrendPage() {
                 <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
                   {prefix} {displayPrice.toLocaleString(undefined, { maximumFractionDigits: currency === 'USD' ? 2 : 0 })}
                   <span className="coin-page-change">
-                    {isUp ? '+' : ''}{priceInfo.change}%
+                    {isUp ? '+' : ''}{priceInfo.change.toFixed(2)}%
                   </span>
                 </span>
               )
@@ -283,6 +290,7 @@ export default function CoinTrendPage() {
                   interval={interval}
                   currency={currency}
                   onTimeRangeChange={handleTimeRangeChange}
+                  onDataLoaded={handleDataLoaded}
                 />
                 {danmakuVisible && (
                   <DanmakuOverlay
@@ -324,7 +332,7 @@ export default function CoinTrendPage() {
           </div>
           <div className="trend-bottom">
             <div className="trend-indicators">
-              <IndicatorPanel symbol={symbol} currency={currency} chartRef={chartRef} visibleTimeRange={visibleTimeRange} />
+              <IndicatorPanel symbol={symbol} currency={currency} visibleTimeRange={visibleTimeRange} interval={interval} candles={candleData} />
             </div>
             <div className="trend-trade">
               <TradePanel symbol={symbol} currency={currency} />
