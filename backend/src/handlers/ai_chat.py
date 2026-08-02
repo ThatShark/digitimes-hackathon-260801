@@ -54,6 +54,7 @@ Error responses:
 
 import json
 import os
+import time as _time
 
 from src.services.ai_tools import (
     TOOL_PROPOSE_TRADE,
@@ -85,6 +86,11 @@ _MAX_TOOL_ROUNDS = 7
 
 def lambda_handler(event, context):
     """POST /ai_chat"""
+    start_time = _time.time()
+
+    # Reserve 10 seconds before Lambda timeout for a graceful response
+    timeout_ms = getattr(context, "get_remaining_time_in_millis", lambda: 120000)()
+    deadline = start_time + (timeout_ms / 1000) - 10  # 10s safety buffer
     # ── Parse request body ────────────────────────────────────────────────────
     try:
         body = json.loads(event.get("body") or "{}")
@@ -127,7 +133,7 @@ def lambda_handler(event, context):
 
     try:
         final_text, suggestion_input = _run_tool_use_loop(
-            client, messages, system_prompt, tool_config, currency
+            client, messages, system_prompt, tool_config, currency, deadline
         )
     except BedrockError as exc:
         print(f"[AI_CHAT] Bedrock error: {exc}")
@@ -158,6 +164,7 @@ def _run_tool_use_loop(
     system_prompt: str,
     tool_config: dict,
     currency: "str | None",
+    deadline: float,
 ) -> "tuple[str, dict | None]":
     """Drive the multi-round Bedrock Tool Use conversation.
 
@@ -172,6 +179,11 @@ def _run_tool_use_loop(
     suggestion_input = None
 
     for _round in range(_MAX_TOOL_ROUNDS):
+        # Check time budget before each Bedrock call
+        if _time.time() >= deadline:
+            print(f"[AI_CHAT] Approaching timeout at round {_round}, returning partial answer")
+            return "分析時間較長，目前尚無法完成完整回覆，請稍後再試或簡化問題。", suggestion_input
+
         response = client.converse_raw(messages, system_prompt=system_prompt, tool_config=tool_config)
         stop_reason = response.get("stopReason")
         assistant_content = response.get("output", {}).get("message", {}).get("content", [])
@@ -193,7 +205,11 @@ def _run_tool_use_loop(
             name = tool_use.get("name")
             tool_input = tool_use.get("input", {}) or {}
 
-            if name == TOOL_PROPOSE_TRADE:
+            # Check time budget before each tool execution
+            if _time.time() >= deadline and name != TOOL_PROPOSE_TRADE:
+                print(f"[AI_CHAT] Approaching timeout during tool execution, skipping {name}")
+                result = {"error": "時間不足，跳過此工具查詢"}
+            elif name == TOOL_PROPOSE_TRADE:
                 # Not an external API call — the model's own structured
                 # decision. Keep the LAST call if it's invoked more than
                 # once across rounds (most up-to-date reasoning wins).

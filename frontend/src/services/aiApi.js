@@ -51,7 +51,7 @@ export function sendAiChat(message, currency) {
       ...(personality && personality.code !== '????' ? { personality } : {}),
       ...(history.length > 0 ? { before_messages: history } : {}),
     },
-    timeoutMs: 30000,
+    timeoutMs: 120000,
   })
 }
 
