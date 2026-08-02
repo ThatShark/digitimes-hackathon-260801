@@ -5,7 +5,6 @@
   padding: 14px 16px;
   margin-bottom: 10px;
   position: relative;
-  overflow: hidden;
 }
 
 .whale-alert-card::before {
@@ -17,6 +16,7 @@
   height: 2px;
   background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
   animation: whaleShimmer 3s infinite;
+  pointer-events: none;
 }
 
 @keyframes whaleShimmer {
@@ -128,18 +128,36 @@
 .whale-indicators {
   display: flex;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   margin-top: 10px;
+  padding: 4px 0;
 }
 
 .whale-dot {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
+  min-width: 10px;
+  min-height: 10px;
   border-radius: 50%;
   background: var(--border-color, #334155);
-  transition: background 0.3s;
+  transition: background 0.2s, transform 0.2s;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  position: relative;
+  z-index: 1;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.whale-dot:hover {
+  background: rgba(96, 165, 250, 0.5);
+  transform: scale(1.4);
 }
 
 .whale-dot.active {
   background: #60a5fa;
+  transform: scale(1.2);
 }
