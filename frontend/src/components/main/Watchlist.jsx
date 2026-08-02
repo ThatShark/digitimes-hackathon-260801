@@ -21,16 +21,31 @@ const ALL_COINS = [
  * 用戶可新增/移除幣種
  */
 export default function Watchlist() {
-  const [watched, setWatched] = useState(['BTC', 'ETH', 'SOL', 'DOGE', 'ADA'])
+  const [watched, setWatched] = useState(() => {
+    try {
+      const stored = localStorage.getItem('watchlist_coins')
+      if (stored) return JSON.parse(stored)
+    } catch { /* ignore */ }
+    return ['BTC', 'ETH', 'SOL', 'DOGE', 'ADA']
+  })
   const [showAdd, setShowAdd] = useState(false)
 
+  // 持久化到 localStorage，供 CommunityPage 讀取
+  const updateWatched = (updater) => {
+    setWatched((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      localStorage.setItem('watchlist_coins', JSON.stringify(next))
+      return next
+    })
+  }
+
   const handleRemove = (symbol) => {
-    setWatched((prev) => prev.filter((s) => s !== symbol))
+    updateWatched((prev) => prev.filter((s) => s !== symbol))
   }
 
   const handleAdd = (symbol) => {
     if (!watched.includes(symbol)) {
-      setWatched((prev) => [...prev, symbol])
+      updateWatched((prev) => [...prev, symbol])
     }
     setShowAdd(false)
   }

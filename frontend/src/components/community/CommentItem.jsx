@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import Avatar from '../shared/Avatar'
-import TipButton from './TipButton'
 import { parseTickerTags } from './TickerCard'
 import './CommentItem.css'
 
@@ -54,7 +53,7 @@ export default function CommentItem({ comment }) {
             <span className="action-icon">{liked ? '❤️' : '🤍'}</span>
             <span className="action-count">{likeCount}</span>
           </button>
-          <TipButton postId={comment.id} initialTips={comment.tips || 0} />
+
         </div>
       </div>
     </article>

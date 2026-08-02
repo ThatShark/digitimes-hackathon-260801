@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import VerifiedBadge from './VerifiedBadge'
-import TipButton from './TipButton'
 import CopyTradeButton from './CopyTradeButton'
 import { parseTickerTags } from './TickerCard'
 import ShareButton from './ShareButton'
@@ -91,9 +90,7 @@ export default function PostCard({ post }) {
           <span className="action-icon">💬</span>
           <span className="action-count">{post.comments || 0}</span>
         </button>
-        <span onClick={stop}>
-          <TipButton postId={post.id} initialTips={post.tips || 0} />
-        </span>
+
         <ShareButton postId={post.id} />
       </div>
     </article>

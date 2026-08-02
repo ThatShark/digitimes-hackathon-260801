@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
 import VerifiedBadge from '../components/community/VerifiedBadge'
-import TipButton from '../components/community/TipButton'
 import CopyTradeButton from '../components/community/CopyTradeButton'
 import CommentItem from '../components/community/CommentItem'
 import CommentComposer from '../components/community/CommentComposer'
@@ -113,7 +112,6 @@ export default function PostDetailPage() {
             <span className="action-icon">💬</span>
             <span className="action-count">{comments.length}</span>
           </span>
-          <TipButton postId={post.id} initialTips={post.tips || 0} />
           <ShareButton postId={post.id} />
         </div>
       </article>

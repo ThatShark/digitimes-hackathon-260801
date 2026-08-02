@@ -1,28 +1,70 @@
 import { useState } from 'react'
 import PersonalityBadge from '../shared/PersonalityBadge'
+import { CURRENT_USER_NAME } from '../../utils/currentUser'
 import './BountyQuestion.css'
 
 /**
- * 付費懸賞提問卡片
- * 顯示在社群 feed 中，新手可附積分賞金提問
- * 
+ * 懸賞提問卡片
+ * 顯示在社群 feed 中，使用者可以提問並收到社群回答
+ * 回答按愛心數由高到低排列，自己的回答也會顯示在列表中
+ *
  * @param {object} props
- * @param {object} props.bounty - { id, author, personality, question, reward, coin, answers, time }
+ * @param {object} props.bounty - { id, author, personality, question, coin, answers, time }
  */
 export default function BountyQuestion({ bounty }) {
-  const [showAnswer, setShowAnswer] = useState(false)
-  const [answered, setAnswered] = useState(false)
+  const [showAnswers, setShowAnswers] = useState(false)
+  const [showAnswerInput, setShowAnswerInput] = useState(false)
+  const [answerText, setAnswerText] = useState('')
+  const [answerList, setAnswerList] = useState([
+    { id: 1, author: '趙柏翰', content: '目前 ETH 處於盤整期，建議等突破 2,800 再考慮進場，或者分批小額買入降低成本。', time: '3 小時前', likes: 8 },
+    { id: 2, author: '王大壯', content: '從資金流向來看大單偏買，但恐懼貪婪指數偏中性，我個人會小倉位試探。', time: '2 小時前', likes: 5 },
+    { id: 3, author: '陳Ｊ哥', content: '看日線 RSI 已經超賣回彈，技術面支撐在 2,650 附近，可以設好停損進場。', time: '1 小時前', likes: 12 },
+  ])
+  const [likedIds, setLikedIds] = useState(new Set())
 
-  const handleAnswer = () => {
-    setAnswered(true)
-    // 實際會呼叫 POST /bounty API
+  const handleSubmitAnswer = () => {
+    if (!answerText.trim()) return
+    const newAnswer = {
+      id: Date.now(),
+      author: CURRENT_USER_NAME,
+      content: answerText.trim(),
+      time: '剛剛',
+      likes: 0,
+    }
+    setAnswerList((prev) => [...prev, newAnswer])
+    setShowAnswerInput(false)
+    setAnswerText('')
+    setShowAnswers(true)
   }
+
+  const handleLikeAnswer = (answerId) => {
+    setLikedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(answerId)) {
+        next.delete(answerId)
+      } else {
+        next.add(answerId)
+      }
+      return next
+    })
+    setAnswerList((prev) =>
+      prev.map((a) =>
+        a.id === answerId
+          ? { ...a, likes: likedIds.has(answerId) ? a.likes - 1 : a.likes + 1 }
+          : a
+      )
+    )
+  }
+
+  // 按愛心數由高到低排序
+  const sortedAnswers = [...answerList].sort((a, b) => b.likes - a.likes)
+
+  const hasSubmitted = answerList.some((a) => a.author === CURRENT_USER_NAME)
 
   return (
     <div className="bounty-card">
       <div className="bounty-header">
-        <span className="bounty-tag">💎 懸賞提問</span>
-        <span className="bounty-reward">+{bounty.reward} 積分</span>
+        <span className="bounty-tag">❓ 懸賞提問</span>
       </div>
 
       <div className="bounty-author-row">
@@ -39,31 +81,66 @@ export default function BountyQuestion({ bounty }) {
       )}
 
       <div className="bounty-footer">
-        <span className="bounty-answers-count">
-          {bounty.answers || 0} 個回答
-        </span>
+        <button
+          className="bounty-view-answers-btn"
+          onClick={() => setShowAnswers(!showAnswers)}
+        >
+          {showAnswers ? '收起回答' : `查看 ${answerList.length} 個回答`}
+        </button>
 
-        {!answered ? (
+        {!hasSubmitted ? (
           <button
             className="bounty-answer-btn"
-            onClick={() => setShowAnswer(!showAnswer)}
+            onClick={() => setShowAnswerInput(!showAnswerInput)}
           >
             我來回答
           </button>
         ) : (
-          <span className="bounty-answered">✓ 已提交回答</span>
+          <span className="bounty-answered">✓ 已回答</span>
         )}
       </div>
 
-      {showAnswer && !answered && (
+      {/* 回答列表（按愛心排序） */}
+      {showAnswers && (
+        <div className="bounty-answers-list">
+          {sortedAnswers.map((answer) => {
+            const isOwn = answer.author === CURRENT_USER_NAME
+            const isLiked = likedIds.has(answer.id)
+            return (
+              <div key={answer.id} className={`bounty-answer-item ${isOwn ? 'own' : ''}`}>
+                <div className="bounty-answer-header">
+                  <span className="bounty-answer-author">
+                    {answer.author}
+                    {isOwn && <span className="bounty-own-tag">（你）</span>}
+                  </span>
+                  <span className="bounty-answer-time">{answer.time}</span>
+                </div>
+                <p className="bounty-answer-content">{answer.content}</p>
+                <button
+                  className={`bounty-answer-like-btn ${isLiked ? 'liked' : ''}`}
+                  onClick={() => handleLikeAnswer(answer.id)}
+                >
+                  <span>{isLiked ? '❤️' : '🤍'}</span>
+                  <span className="bounty-answer-like-count">{answer.likes}</span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* 回答輸入區 */}
+      {showAnswerInput && !hasSubmitted && (
         <div className="bounty-answer-area">
           <textarea
             className="bounty-answer-input"
             placeholder="分享你的見解..."
             rows={3}
+            value={answerText}
+            onChange={(e) => setAnswerText(e.target.value)}
           />
-          <button className="bounty-submit-btn" onClick={handleAnswer}>
-            提交回答（領取 {bounty.reward} 積分）
+          <button className="bounty-submit-btn" onClick={handleSubmitAnswer}>
+            提交回答
           </button>
         </div>
       )}

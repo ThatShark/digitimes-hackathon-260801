@@ -122,8 +122,6 @@ function getRecommendScore(post, user) {
   score += Math.min((post.comments || 0) * 0.5, 10)
   // 實盤驗證加權
   if (post.verified) score += 10
-  // 打賞多的加權
-  score += Math.min((post.tips || 0) * 0.2, 8)
   return score
 }
 
@@ -133,8 +131,8 @@ function sortByLatest(posts) {
 
 function sortByTrending(posts) {
   return [...posts].sort((a, b) => {
-    const engagementA = (a.likes || 0) + (a.comments || 0) * 2 + (a.tips || 0) * 3
-    const engagementB = (b.likes || 0) + (b.comments || 0) * 2 + (b.tips || 0) * 3
+    const engagementA = (a.likes || 0) + (a.comments || 0) * 2
+    const engagementB = (b.likes || 0) + (b.comments || 0) * 2
     return engagementB - engagementA
   })
 }
@@ -146,6 +144,15 @@ const BOUNTY_POSITION = 5
 export default function CommunityPage() {
   const [posts, setPosts] = useState(MOCK_POSTS)
   const [activeTab, setActiveTab] = useState('recommended')
+
+  // 讀取重點關注幣種（與 Watchlist 元件共用 localStorage key）
+  const [watchedCoins] = useState(() => {
+    try {
+      const stored = localStorage.getItem('watchlist_coins')
+      if (stored) return JSON.parse(stored)
+    } catch { /* ignore */ }
+    return ['BTC', 'ETH', 'SOL', 'DOGE']
+  })
   const location = useLocation()
 
   // 從搜尋結果跳轉過來時，滾動到指定貼文
@@ -173,7 +180,6 @@ export default function CommunityPage() {
       comments: 0,
       verified: true,
       winRate: 58.2,
-      tips: 0,
       commentList: [],
     }
     setPosts((prev) => [post, ...prev])
@@ -251,10 +257,10 @@ export default function CommunityPage() {
         </div>
       </div>
 
-      {/* 情緒儀表盤（按幣種分類） */}
+      {/* 情緒儀表盤（僅顯示重點關注幣種，點擊可跳轉） */}
       <div className="sentiment-multi">
-        {['BTC', 'ETH', 'SOL', 'DOGE'].map((coin) => (
-          <SentimentGauge key={coin} posts={posts} coin={coin} />
+        {watchedCoins.map((coin) => (
+          <SentimentGauge key={coin} posts={posts} coin={coin} linkTo={`/coin/${coin}`} />
         ))}
       </div>
 

@@ -30,7 +30,7 @@ export const MOCK_POSTS = [
     comments: 3,
     verified: true,
     winRate: 62.1,
-    tips: 5,
+    tips: 0,
     commentList: [
       {
         id: 'c1-1', floor: 1, author: '陳Ｊ哥',
@@ -62,7 +62,7 @@ export const MOCK_POSTS = [
     verified: true,
     winRate: 48.5,
     tradeSignal: { action: 'buy', coin: 'SOL', price: 5420 },
-    tips: 12,
+    tips: 0,
     commentList: [
       {
         id: 'c2-1', floor: 1, author: '趙柏翰',
@@ -167,7 +167,6 @@ export const MOCK_BOUNTIES = [
     author: '周新手',
     personality: { code: 'DELQ', name: '守夜人', axes: { R: 15, E: 55, F: 10, S: 25 } },
     question: '請問現在 $ETH 適合進場嗎？看了很多分析都說法不一，不知道該相信誰...',
-    reward: 10,
     coin: 'ETH',
     answers: 3,
     time: '4 小時前',
