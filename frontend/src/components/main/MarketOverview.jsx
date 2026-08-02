@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getMarketOverview } from '../../services/coinApi'
-import { isBackendConfigured } from '../../services/api'
 import './MarketOverview.css'
-
-const FALLBACK_STATS = {
-  fearGreed: { value: 38, label: '恐慌' },
-  btcDominance: 58.247,
-  totalMarketCapUSD: 3120000000000,
-  volume24hUSD: 98500000000,
-}
 
 const FEAR_GREED_LABELS = {
   'Extreme Fear': '極度恐慌',
@@ -38,29 +30,35 @@ function formatLargeTWD(value) {
  * @param {Array} props.coins - 幣種資料 [{symbol, change}]，用於漲跌幅榜
  */
 export default function MarketOverview({ currency = 'TWD', coins = [] }) {
-  const [stats, setStats] = useState(FALLBACK_STATS)
+  const [stats, setStats] = useState(null)
+  const [error, setError] = useState(null)
 
   const refresh = useCallback(async () => {
-    if (!isBackendConfigured()) return
     try {
       const data = await getMarketOverview(3)
       if (data) {
         setStats({
           fearGreed: data.fear_greed
             ? { value: data.fear_greed.value, label: FEAR_GREED_LABELS[data.fear_greed.label] || data.fear_greed.label }
-            : FALLBACK_STATS.fearGreed,
-          btcDominance: data.btc_dominance ?? FALLBACK_STATS.btcDominance,
-          totalMarketCapUSD: data.total_market_cap ?? FALLBACK_STATS.totalMarketCapUSD,
-          volume24hUSD: data.volume_24h ?? FALLBACK_STATS.volume24hUSD,
+            : null,
+          btcDominance: data.btc_dominance ?? null,
+          totalMarketCapUSD: data.total_market_cap ?? null,
+          volume24hUSD: data.volume_24h ?? null,
         })
+        setError(null)
+      } else {
+        setError('後端回傳資料為空')
       }
-    } catch { /* keep fallback */ }
+    } catch (err) {
+      setError(err.message || '無法取得行情數據')
+    }
   }, [])
 
   useEffect(() => { refresh() }, [refresh])
 
-  const fg = stats.fearGreed
-  const fgColor = fg.value <= 25 ? '#ef4444'
+  const fg = stats?.fearGreed
+  const fgColor = !fg ? '#94a3b8'
+    : fg.value <= 25 ? '#ef4444'
     : fg.value <= 45 ? '#f59e0b'
     : fg.value <= 55 ? '#94a3b8'
     : '#10b981'
@@ -70,29 +68,49 @@ export default function MarketOverview({ currency = 'TWD', coins = [] }) {
   const gainers = [...validCoins].filter((c) => c.change > 0).sort((a, b) => b.change - a.change)
   const losers = [...validCoins].filter((c) => c.change < 0).sort((a, b) => a.change - b.change)
 
+  if (error) {
+    return (
+      <div className="market-overview">
+        <div className="market-overview-error">⚠️ {error}</div>
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="market-overview">
+        <div className="market-overview-loading">行情數據載入中...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="market-overview">
       <div className="market-stats-row">
         <div className="market-stat-item">
           <span className="stat-label-sm">恐懼貪婪指數</span>
           <span className="stat-value-sm" style={{ color: fgColor }}>
-            {fg.value} — {fg.label}
+            {fg ? `${fg.value} — ${fg.label}` : '--'}
           </span>
         </div>
         <div className="market-stat-item">
           <span className="stat-label-sm">BTC 佔比</span>
-          <span className="stat-value-sm">{stats.btcDominance.toFixed(3)}%</span>
+          <span className="stat-value-sm">{stats.btcDominance != null ? `${stats.btcDominance.toFixed(3)}%` : '--'}</span>
         </div>
         <div className="market-stat-item">
           <span className="stat-label-sm">全球市值</span>
           <span className="stat-value-sm">
-            {currency === 'USD' ? formatLargeUSD(stats.totalMarketCapUSD) : formatLargeTWD(stats.totalMarketCapUSD)}
+            {stats.totalMarketCapUSD != null
+              ? (currency === 'USD' ? formatLargeUSD(stats.totalMarketCapUSD) : formatLargeTWD(stats.totalMarketCapUSD))
+              : '--'}
           </span>
         </div>
         <div className="market-stat-item">
           <span className="stat-label-sm">24H 成交量</span>
           <span className="stat-value-sm">
-            {currency === 'USD' ? formatLargeUSD(stats.volume24hUSD) : formatLargeTWD(stats.volume24hUSD)}
+            {stats.volume24hUSD != null
+              ? (currency === 'USD' ? formatLargeUSD(stats.volume24hUSD) : formatLargeTWD(stats.volume24hUSD))
+              : '--'}
           </span>
         </div>
       </div>

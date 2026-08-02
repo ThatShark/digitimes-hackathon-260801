@@ -37,6 +37,7 @@ TOOL_GET_CURRENT_PRICE = "get_current_price"
 TOOL_GET_FEAR_GREED_INDEX = "get_fear_greed_index"
 TOOL_GET_FUND_FLOW_ANALYSIS = "get_fund_flow_analysis"
 TOOL_GET_TECHNICAL_INDICATORS = "get_technical_indicators"
+TOOL_GET_HISTORICAL_MARKET_DATA = "get_historical_market_data"
 TOOL_PROPOSE_TRADE = "propose_trade"
 
 _TRADE_TOOL_NAMES = {TOOL_GET_CURRENT_PRICE, TOOL_GET_FUND_FLOW_ANALYSIS}
@@ -61,7 +62,62 @@ def build_tool_config(current_currency: "str | None") -> dict:
                 ),
                 "inputSchema": {"json": {"type": "object", "properties": {}}},
             }
-        }
+        },
+        {
+            "toolSpec": {
+                "name": TOOL_GET_HISTORICAL_MARKET_DATA,
+                "description": (
+                    "取得某個幣種在指定歷史時間範圍內的 K 線數據和技術指標。"
+                    "適合在使用者詢問過去某段時間的市場表現、為什麼某段時間漲跌、"
+                    "回顧歷史走勢、或分析某個特定日期前後的行情時呼叫。"
+                    "例如：「BTC 上個月為什麼暴跌」「ETH 三月份的走勢如何」"
+                    "「SOL 一週前的技術指標」。"
+                    "返回該時間範圍內的 OHLCV 摘要（開/高/低/收/量）、漲跌幅、"
+                    "以及該時段結束時的技術指標（MA/MACD/RSI/Bollinger/KDJ）。"
+                ),
+                "inputSchema": {
+                    "json": {
+                        "type": "object",
+                        "properties": {
+                            "currency": {
+                                "type": "string",
+                                "description": (
+                                    "幣種代碼，大寫。例如 BTC、ETH、SOL、DOGE。"
+                                    "如果使用者沒有明確提到幣種，使用他目前正在查看的幣種。"
+                                ),
+                            },
+                            "start_date": {
+                                "type": "string",
+                                "description": (
+                                    "查詢起始日期，格式 YYYY-MM-DD。"
+                                    "例如使用者說「上個月」，就用上個月第一天的日期。"
+                                    "說「一週前」就用 7 天前的日期。"
+                                ),
+                            },
+                            "end_date": {
+                                "type": "string",
+                                "description": (
+                                    "查詢結束日期，格式 YYYY-MM-DD。"
+                                    "例如使用者說「上個月」，就用上個月最後一天。"
+                                    "說「一週前」就用今天的日期。"
+                                    "如果未指定，預設為今天。"
+                                ),
+                            },
+                            "timeframe": {
+                                "type": "string",
+                                "enum": ["1h", "4h", "1d"],
+                                "description": (
+                                    "K 線時間週期。短期（幾天內）用 1h，"
+                                    "中期（1-2 週）用 4h，長期（超過 2 週）用 1d。"
+                                    "預設根據查詢範圍自動選擇。"
+                                ),
+                            },
+                        },
+                        "required": ["currency", "start_date"],
+                    }
+                },
+            }
+        },
     ]
 
     if current_currency:
@@ -194,6 +250,8 @@ def execute_tool(tool_name: str, tool_input: dict, current_currency: "str | None
         if tool_name == TOOL_GET_TECHNICAL_INDICATORS:
             timeframe = tool_input.get("timeframe") or "4h"
             return _get_technical_indicators(current_currency, timeframe)
+        if tool_name == TOOL_GET_HISTORICAL_MARKET_DATA:
+            return _get_historical_market_data(tool_input, current_currency)
         if tool_name == TOOL_PROPOSE_TRADE:
             return dict(tool_input)
         return {"error": f"未知的工具名稱: {tool_name}"}
@@ -294,3 +352,170 @@ def _get_technical_indicators(currency: "str | None", timeframe: str) -> dict:
     indicators["candles_used"] = len(candles)
 
     return indicators
+
+
+def _get_historical_market_data(tool_input: dict, current_currency: "str | None") -> dict:
+    """Fetch historical K-line data for a specified date range and compute
+    technical indicators at the end of that range.
+
+    This gives the AI the ability to answer questions like:
+      - "BTC 上個月為什麼暴跌？"
+      - "ETH 三月份的走勢如何？"
+      - "SOL 一週前的技術面怎麼樣？"
+
+    Returns OHLCV summary for the range, price change, and indicators
+    computed from the candles ending at end_date.
+    """
+    import time as _time
+    from datetime import datetime, timedelta, timezone
+
+    currency = (tool_input.get("currency") or current_currency or "").strip().upper()
+    if not currency:
+        return {"error": "沒有指定幣種"}
+
+    start_date_str = (tool_input.get("start_date") or "").strip()
+    end_date_str = (tool_input.get("end_date") or "").strip()
+
+    if not start_date_str:
+        return {"error": "必須指定 start_date（格式 YYYY-MM-DD）"}
+
+    # Parse dates
+    try:
+        start_dt = datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return {"error": f"start_date 格式錯誤：{start_date_str}，請使用 YYYY-MM-DD"}
+
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            return {"error": f"end_date 格式錯誤：{end_date_str}，請使用 YYYY-MM-DD"}
+    else:
+        end_dt = datetime.now(timezone.utc)
+
+    # Validate range
+    if end_dt < start_dt:
+        return {"error": "end_date 不能早於 start_date"}
+
+    range_days = (end_dt - start_dt).days
+    if range_days > 365:
+        return {"error": "查詢範圍最多 365 天"}
+
+    # Auto-select timeframe based on range if not specified
+    timeframe = (tool_input.get("timeframe") or "").strip()
+    if not timeframe:
+        if range_days <= 3:
+            timeframe = "1h"
+        elif range_days <= 14:
+            timeframe = "4h"
+        else:
+            timeframe = "1d"
+
+    # Map timeframe to MAX API period (minutes)
+    period_map = {"1h": 60, "4h": 240, "1d": 1440}
+    period_minutes = period_map.get(timeframe, 1440)
+
+    # Calculate how many candles we need
+    range_minutes = range_days * 24 * 60
+    candles_needed = min(range_minutes // period_minutes + 1, 1000)  # MAX API cap ~10000 but keep reasonable
+    # Request extra candles before start_date for indicator warm-up (MA99 needs 99 candles)
+    warmup_candles = 100
+    total_limit = min(candles_needed + warmup_candles, 2000)
+
+    # Convert start_date to unix timestamp for MAX API
+    # We start earlier to allow indicator warm-up
+    warmup_offset = timedelta(minutes=period_minutes * warmup_candles)
+    fetch_start_ts = int((start_dt - warmup_offset).timestamp())
+
+    client = MaxApiClient()
+    market = f"{currency.lower()}twd"
+
+    try:
+        candles = client.get_klines(
+            market=market,
+            period=period_minutes,
+            limit=total_limit,
+            timestamp=fetch_start_ts,
+        )
+    except MaxApiError:
+        return {"error": f"無法取得 {currency} 的歷史 K 線資料"}
+
+    if not candles or not isinstance(candles, list) or len(candles) < 2:
+        return {"error": f"找不到 {currency}TWD 在該時間範圍的 K 線數據"}
+
+    # Filter candles to the requested date range for OHLCV summary
+    start_ts = int(start_dt.timestamp())
+    end_ts = int((end_dt + timedelta(days=1)).timestamp())  # inclusive end date
+
+    range_candles = [c for c in candles if start_ts <= c[0] < end_ts]
+
+    if not range_candles:
+        return {"error": f"在 {start_date_str} ~ {end_date_str or '今天'} 範圍內找不到 K 線數據"}
+
+    # Compute OHLCV summary for the range
+    opens = [float(c[1]) for c in range_candles]
+    highs = [float(c[2]) for c in range_candles]
+    lows = [float(c[3]) for c in range_candles]
+    closes = [float(c[4]) for c in range_candles]
+    volumes = [float(c[5]) for c in range_candles]
+
+    range_open = opens[0]
+    range_close = closes[-1]
+    range_high = max(highs)
+    range_low = min(lows)
+    total_volume = sum(volumes)
+    change_pct = ((range_close - range_open) / range_open * 100) if range_open else 0.0
+
+    # Find max drawdown and max rally within the range
+    peak = opens[0]
+    max_drawdown_pct = 0.0
+    for close in closes:
+        if close > peak:
+            peak = close
+        drawdown = ((peak - close) / peak * 100) if peak else 0.0
+        if drawdown > max_drawdown_pct:
+            max_drawdown_pct = drawdown
+
+    trough = opens[0]
+    max_rally_pct = 0.0
+    for close in closes:
+        if close < trough:
+            trough = close
+        rally = ((close - trough) / trough * 100) if trough else 0.0
+        if rally > max_rally_pct:
+            max_rally_pct = rally
+
+    # Compute technical indicators using ALL candles up to end_date
+    # (includes warm-up candles before start_date for accurate calculation)
+    indicator_candles = [c for c in candles if c[0] < end_ts]
+    indicators = {}
+    if len(indicator_candles) >= 30:
+        indicators = compute_indicators(indicator_candles)
+        if "error" in indicators:
+            indicators = {}
+
+    # Build result
+    result = {
+        "currency": currency,
+        "period": f"{start_date_str} ~ {end_date_str or '今天'}",
+        "timeframe": timeframe,
+        "candles_in_range": len(range_candles),
+        "price_summary": {
+            "open_twd": round(range_open, 2),
+            "close_twd": round(range_close, 2),
+            "high_twd": round(range_high, 2),
+            "low_twd": round(range_low, 2),
+            "change_pct": round(change_pct, 2),
+            "total_volume": round(total_volume, 4),
+        },
+        "volatility": {
+            "max_drawdown_pct": round(max_drawdown_pct, 2),
+            "max_rally_pct": round(max_rally_pct, 2),
+            "price_range_pct": round(((range_high - range_low) / range_low * 100) if range_low else 0, 2),
+        },
+    }
+
+    if indicators:
+        result["indicators_at_end"] = indicators
+
+    return result

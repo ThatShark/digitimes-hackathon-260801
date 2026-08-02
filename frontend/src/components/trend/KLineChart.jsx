@@ -26,7 +26,7 @@ const INTERVAL_SECONDS = {
   '4h': 14400,
   '1D': 86400,
   '1W': 604800,
-  '1M': 2592000,   // 30 天
+  '1M': 259200,    // 3 天 K 棒（月視圖每根 = 3 天，對應後端 period=4320）
 }
 
 // 基準價格
@@ -198,12 +198,15 @@ const KLineChart = forwardRef(function KLineChart({ symbol, interval, currency =
           // Calculate a sensible lookback window based on interval
           // to avoid requesting too many candles
           const INTERVAL_LOOKBACK = {
+            '1m': 1 * 86400,        // 1 day of 1m candles
+            '5m': 2 * 86400,        // 2 days of 5m candles
             '15m': 3 * 86400,       // 3 days of 15m candles
+            '30m': 7 * 86400,       // 7 days of 30m candles
             '1h': 14 * 86400,       // 14 days of hourly candles
             '4h': 30 * 86400,       // 30 days of 4h candles
             '1D': 365 * 86400,      // 1 year of daily candles
             '1W': 2 * 365 * 86400,  // 2 years of weekly candles
-            '1M': 30 * 86400,       // 30 days of daily candles
+            '1M': 150 * 86400,      // 150 days — each candle is 3 days, gives ~50 candles for indicators
           }
           const lookback = INTERVAL_LOOKBACK[interval] || 30 * 86400
           const start = now - lookback
