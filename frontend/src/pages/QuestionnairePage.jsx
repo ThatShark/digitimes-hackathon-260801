@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
-import { getQuestionnaire, submitQuestionnaire, getQuiz, submitQuiz } from '../services/questionnaireApi'
+import { getQuestionnaire, submitQuestionnaire, submitQuiz } from '../services/questionnaireApi'
 import { setUserPersonality } from '../utils/userPersonality'
 import './QuestionnairePage.css'
 
@@ -15,6 +15,56 @@ const LIKERT_LABELS = [
   { id: '6', text: '同意', short: '6' },
   { id: '7', text: '非常同意', short: '7' },
 ]
+
+// 補充問卷題庫（固定題目，不需從後端取，只有提交時才呼叫後端計分）
+const SUPPLEMENTARY_QUESTIONS = {
+  'investment-habits': [
+    { id: 'h1', text: '我做投資決策前，會花大量時間閱讀專業分析報告或研究文章。' },
+    { id: 'h2', text: '我主要依靠社群媒體（Twitter/X、Threads、Discord）獲取投資資訊。' },
+    { id: 'h3', text: '我會定期追蹤鏈上數據（如活躍地址數、TVL、Gas 費用）來輔助判斷。' },
+    { id: 'h4', text: '朋友或投資社群的推薦，對我的買賣決定有很大的影響力。' },
+    { id: 'h5', text: '我通常在看到機會後會立即行動，不太會等待或猶豫。' },
+    { id: 'h6', text: '在下單之前，我習慣設定好明確的停利與停損價位。' },
+    { id: 'h7', text: '我有一套固定的投資檢核流程（例如確認多個指標才進場）。' },
+    { id: 'h8', text: '我經常在深夜或情緒激動的時候做出買賣決定。' },
+    { id: 'h9', text: '我會定期（每週或每月）重新檢視並調整我的投資組合配置。' },
+    { id: 'h10', text: '我傾向將資金分散在 5 種以上不同的幣種或資產類型。' },
+    { id: 'h11', text: '當某個持倉超過總資產的 30%，我會主動減倉以降低集中風險。' },
+    { id: 'h12', text: '我很少主動調整投資組合，買入後通常就放著不管。' },
+  ],
+  'investment-experience': [
+    { id: 'e1', text: '我有超過 3 年的投資經驗（包含股票、基金、加密貨幣等任何形式）。' },
+    { id: 'e2', text: '我曾經歷過至少一次完整的牛熊市場週期。' },
+    { id: 'e3', text: '我在加密貨幣領域的交易經驗超過 1 年。' },
+    { id: 'e4', text: '我使用過 3 個以上不同的交易所或投資平台。' },
+    { id: 'e5', text: '我能清楚解釋什麼是移動平均線、RSI、MACD 等技術指標。' },
+    { id: 'e6', text: '我了解止盈止損單、限價單、OCO 單等進階下單類型的運作方式。' },
+    { id: 'e7', text: '我能看懂並分析一家公司或項目的財務報表/代幣經濟模型。' },
+    { id: 'e8', text: '我了解資產配置、夏普比率、最大回撤等投資組合管理概念。' },
+    { id: 'e9', text: '我了解 DeFi 協議（如 AMM、借貸平台、流動性挖礦）的運作原理。' },
+    { id: 'e10', text: '我曾使用過去中心化錢包（如 MetaMask）進行鏈上操作。' },
+    { id: 'e11', text: '我會查看鏈上數據（如 Glassnode、Dune Analytics）來輔助投資決策。' },
+    { id: 'e12', text: '我了解不同共識機制（PoW、PoS）和 Layer 1/Layer 2 的技術差異。' },
+    { id: 'e13', text: '我曾經歷過單筆投資虧損超過 50% 的經驗。' },
+    { id: 'e14', text: '過去的虧損經歷讓我建立了更嚴格的風控紀律。' },
+    { id: 'e15', text: '我曾因為 FOMO（害怕錯過）而追高買入，事後感到後悔。' },
+  ],
+  'investment-budget': [
+    { id: 'b1', text: '我每月可以固定撥出一筆金額投入加密貨幣市場。' },
+    { id: 'b2', text: '我目前投入加密貨幣的總金額，佔我個人總資產的比例很高。' },
+    { id: 'b3', text: '即使投入加密貨幣的資金全部歸零，也不會影響我的日常生活。' },
+    { id: 'b4', text: '我單次下單的金額通常超過新台幣 10,000 元。' },
+    { id: 'b5', text: '我有足夠的緊急預備金（至少 3-6 個月生活費），才會將閒錢投入市場。' },
+    { id: 'b6', text: '我有穩定的月薪或固定收入來源。' },
+    { id: 'b7', text: '我的投資本金來自長期儲蓄，不是借貸或短期周轉金。' },
+    { id: 'b8', text: '如果一筆投資被套牢，我不需要急著用這筆錢，可以耐心等待。' },
+    { id: 'b9', text: '我有其他被動收入來源（如房租、股息、利息），不完全依賴薪水。' },
+    { id: 'b10', text: '我投資加密貨幣的主要目的是長期財富累積，而非短期獲利。' },
+    { id: 'b11', text: '我希望透過投資在 3-5 年內達成一個具體的財務目標（如買房、退休）。' },
+    { id: 'b12', text: '我期望的年化報酬率超過 30%。' },
+    { id: 'b13', text: '比起追求高報酬，我更在意資產穩定增長、打敗通膨。' },
+  ],
+}
 
 // 問卷列表
 const QUESTIONNAIRES = [
@@ -35,7 +85,7 @@ const QUESTIONNAIRES = [
     duration: '4 分鐘',
     icon: '📋',
     questionCount: 12,
-    remote: true,
+    remote: false,
     type: 'supplementary',
   },
   {
@@ -45,7 +95,7 @@ const QUESTIONNAIRES = [
     duration: '5 分鐘',
     icon: '🎓',
     questionCount: 15,
-    remote: true,
+    remote: false,
     type: 'supplementary',
   },
   {
@@ -55,7 +105,7 @@ const QUESTIONNAIRES = [
     duration: '4 分鐘',
     icon: '💰',
     questionCount: 13,
-    remote: true,
+    remote: false,
     type: 'supplementary',
   },
 ]
@@ -82,7 +132,21 @@ export default function QuestionnairePage() {
     setActiveQuizMeta(quiz)
 
     if (!quiz.remote) {
-      setActiveQuiz(quiz)
+      // 補充問卷：題目在前端，直接使用
+      const localQuestions = SUPPLEMENTARY_QUESTIONS[quiz.id]
+      if (localQuestions) {
+        setActiveQuiz({
+          id: quiz.id,
+          title: quiz.title,
+          type: quiz.type,
+          questions: localQuestions.map((q) => ({
+            id: q.id,
+            question: q.text,
+          })),
+        })
+      } else {
+        setActiveQuiz(quiz)
+      }
       setCurrentQ(0)
       setAnswers({})
       return
@@ -99,19 +163,6 @@ export default function QuestionnairePage() {
         setActiveQuiz({
           id: quiz.id,
           title: quiz.title,
-          type: quiz.type,
-          questions: data.questions.map((q) => ({
-            id: q.id,
-            question: q.text,
-          })),
-        })
-      } else {
-        // 補充問卷 — 用 GET /quiz/:id
-        data = await getQuiz(quiz.id)
-        setQuestionnaireId(data.id)
-        setActiveQuiz({
-          id: quiz.id,
-          title: data.title || quiz.title,
           type: quiz.type,
           questions: data.questions.map((q) => ({
             id: q.id,
@@ -166,7 +217,7 @@ export default function QuestionnairePage() {
         setResult({ type: 'personality', personality: data.personality })
         setResultDescription(data.personality_description || '')
       } else {
-        // 補充問卷 → POST /quiz/submit
+        // 補充問卷 → POST /quiz/submit（後端未部署時 fallback 本地計分）
         const payload = {
           quiz_id: activeQuiz.id,
           answers: Object.entries(answers).map(([question_id, option_id]) => ({
@@ -174,13 +225,25 @@ export default function QuestionnairePage() {
             option_id,
           })),
         }
-        const data = await submitQuiz(payload)
-        setResult({
-          type: 'supplementary',
-          dimensions: data.dimensions,
-          overall_avg: data.overall_avg,
-          message: data.message,
-        })
+        try {
+          const data = await submitQuiz(payload)
+          setResult({
+            type: 'supplementary',
+            dimensions: data.dimensions,
+            overall_avg: data.overall_avg,
+            message: data.message,
+          })
+        } catch {
+          // 後端未部署 fallback：本地計算平均分
+          const values = Object.values(answers).map(Number).filter((v) => v >= 1 && v <= 7)
+          const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : '4.0'
+          setResult({
+            type: 'supplementary',
+            dimensions: null,
+            overall_avg: parseFloat(avg),
+            message: '感謝你的作答！AI 將根據這些資料提供更精準的個人化建議。（後端尚未部署，結果暫存於本地）',
+          })
+        }
       }
       setCompletedIds((prev) => [...prev, activeQuiz.id])
     } catch (err) {
