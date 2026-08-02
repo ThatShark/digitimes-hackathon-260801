@@ -11,8 +11,6 @@ import { parseTickerTags } from '../components/community/TickerCard'
 import { MOCK_POSTS, CURRENT_USER } from '../utils/mockCommunity'
 import './PostDetailPage.css'
 
-const CURRENT_USER_PERSONALITY = CURRENT_USER.personality
-
 export default function PostDetailPage() {
   const { postId } = useParams()
   const navigate = useNavigate()
@@ -95,8 +93,7 @@ export default function PostDetailPage() {
           <CopyTradeButton
             tradeSignal={post.tradeSignal}
             authorName={post.author}
-            authorPersonality={post.personality}
-            userPersonality={CURRENT_USER_PERSONALITY}
+            postContent={post.content}
           />
         )}
 

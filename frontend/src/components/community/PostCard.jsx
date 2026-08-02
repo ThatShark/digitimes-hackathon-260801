@@ -8,11 +8,6 @@ import ShareButton from './ShareButton'
 import Avatar from '../shared/Avatar'
 import './PostCard.css'
 
-import { getUserPersonality } from '../../utils/userPersonality'
-
-// 動態讀取當前用戶人格（從 localStorage）
-const CURRENT_USER_PERSONALITY = getUserPersonality()
-
 /**
  * 單篇社群貼文卡片
  * post: { id, author, personality, content, images, coin, time, likes, comments,
@@ -72,8 +67,7 @@ export default function PostCard({ post }) {
           <CopyTradeButton
             tradeSignal={post.tradeSignal}
             authorName={post.author}
-            authorPersonality={post.personality}
-            userPersonality={CURRENT_USER_PERSONALITY}
+            postContent={post.content}
           />
         </div>
       )}

@@ -229,7 +229,9 @@ export default function ProfilePage() {
         <img src={CURRENT_USER_AVATAR} alt={CURRENT_USER_NAME} className="profile-avatar-large" />
         <div className="profile-header-info">
           <h1 className="profile-display-name">{CURRENT_USER_NAME}</h1>
-          <PersonalityBadge personality={personality} compact showName />
+          {personality && personality.code && (
+            <span className="personality-tag">{personality.code} {personality.name}</span>
+          )}
           <p className="profile-bio">{BIO_TEXT}</p>
         </div>
       </section>

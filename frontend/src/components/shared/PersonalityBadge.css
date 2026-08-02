@@ -2,14 +2,25 @@
 .personality-badge--compact {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 1px;
   background: var(--accent-dim);
   color: var(--accent);
   white-space: nowrap;
+  width: fit-content;
+  max-width: fit-content;
+}
+
+.pb-compact-code {
+  letter-spacing: 0.5px;
+}
+
+.pb-compact-name {
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 /* Full mode (含占比條) */

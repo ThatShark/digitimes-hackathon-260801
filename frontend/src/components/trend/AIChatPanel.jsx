@@ -96,6 +96,49 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
     }
   }, [activeTab])
 
+  // 從社群「詢問 AI 建議」跳轉過來時，自動帶入訊息並送出
+  useEffect(() => {
+    const prefill = sessionStorage.getItem('ai_chat_prefill')
+    const autoSend = sessionStorage.getItem('ai_chat_auto_send')
+    const attachmentRaw = sessionStorage.getItem('ai_chat_attachment')
+    const prompt = sessionStorage.getItem('ai_chat_prompt')
+    if (prefill && autoSend) {
+      sessionStorage.removeItem('ai_chat_prefill')
+      sessionStorage.removeItem('ai_chat_auto_send')
+      sessionStorage.removeItem('ai_chat_attachment')
+      sessionStorage.removeItem('ai_chat_prompt')
+      setActiveTab('ai')
+
+      // 解析附件（貼文縮圖卡片）
+      let attachment = null
+      try { attachment = attachmentRaw ? JSON.parse(attachmentRaw) : null } catch { /* ignore */ }
+
+      // 實際送給 AI 的文字（含完整貼文上下文）
+      const apiMessage = prompt || prefill
+
+      // 延遲確保 UI 已渲染
+      setTimeout(() => {
+        // 加入使用者訊息（顯示簡短文字 + 附件卡片）
+        setMessages((prev) => [...prev, { role: 'user', content: prefill, attachment }])
+        setIsLoading(true)
+        sendAiChat(apiMessage, symbol).then((data) => {
+          setMessages((prev) => [...prev, { role: 'ai', content: data.message }])
+          saveChatHistory(apiMessage, data.message)
+          if (data.investment_suggestion) {
+            setPendingSuggestion({
+              ...data.investment_suggestion,
+              originalMessage: apiMessage,
+            })
+          }
+        }).catch(() => {
+          setMessages((prev) => [...prev, { role: 'ai', content: '抱歉，目前 AI 無法回應，請稍後再試。' }])
+        }).finally(() => {
+          setIsLoading(false)
+        })
+      }, 300)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
     const userMsg = input.trim()
@@ -203,6 +246,18 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
                   ? <Markdown className="ai-markdown">{msg.content}</Markdown>
                   : msg.content}
               </div>
+              {msg.attachment && msg.attachment.type === 'post_card' && (
+                <div className="chat-post-card-attach">
+                  <div className="attach-header">
+                    <span className="attach-tag">📋 社群貼文</span>
+                    <span className={`attach-action ${msg.attachment.action}`}>
+                      {msg.attachment.action === 'buy' ? '📈 買入' : '📉 賣出'} {msg.attachment.coin}
+                    </span>
+                  </div>
+                  <div className="attach-author">— {msg.attachment.author}</div>
+                  <p className="attach-content">「{msg.attachment.content}」</p>
+                </div>
+              )}
             </div>
           ))}
 
