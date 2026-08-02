@@ -57,20 +57,21 @@ export default function ArbitrageForm({ symbol, currency }) {
 
       {/* 合約槓桿 */}
       <div className="sf-group">
-        <label className="sf-label">合約槓桿倍數：{form.leverage}x</label>
+        <label className="sf-label">合約槓桿倍數：{form.leverage.toFixed(1)}x</label>
         <input
           type="range"
-          className="sf-slider"
+          className="sf-slider sf-slider-flush"
           min="1"
-          max="3"
-          step="1"
+          max="5"
+          step="0.1"
           value={form.leverage}
           onChange={(e) => update('leverage', Number(e.target.value))}
+          style={{ '--slider-pct': `${((form.leverage - 1) / (5 - 1)) * 100}%` }}
         />
         <div className="sf-slider-labels">
-          <span>1x</span>
-          <span>2x</span>
-          <span>3x</span>
+          <span>1.0x</span>
+          <span>3.0x</span>
+          <span>5.0x</span>
         </div>
       </div>
 
@@ -126,7 +127,7 @@ export default function ArbitrageForm({ symbol, currency }) {
         </div>
         <div className="sf-preview-row">
           <span>槓桿</span>
-          <span>{form.leverage}x</span>
+          <span>{form.leverage.toFixed(1)}x</span>
         </div>
         <div className="sf-preview-row">
           <span>預估日收益（資金費率）</span>

@@ -136,7 +136,7 @@ export function getFundFlow(currency, period = '1h') {
  * @param {string} [userId] - 使用者 ID
  * @returns {Promise<{status: string, twd_balance: number}>}
  */
-export function getBalance(userId = 'default_user') {
+export function getBalance(userId = 'demo-user') {
   const params = new URLSearchParams({ user_id: userId })
   return apiFetch(`/balance?${params}`)
 }
@@ -148,10 +148,26 @@ export function getBalance(userId = 'default_user') {
  * @param {string} [userId] - 使用者 ID
  * @returns {Promise<{status: string, params: object}>}
  */
-export function getAiStrategyParams(strategyType, symbol, userId = 'default_user') {
+export function getAiStrategyParams(strategyType, symbol, userId = 'demo-user') {
   return apiFetch('/ai_strategy', {
     method: 'POST',
     body: { strategy_type: strategyType, symbol, user_id: userId },
+    skipCache: true,
+    timeoutMs: 60000,
+  })
+}
+
+
+/**
+ * AI 智慧推薦網格模板（短/中/長期三組）
+ * @param {string} symbol - 幣種如 'BTC'
+ * @param {string} [userId] - 使用者 ID
+ * @returns {Promise<{status: string, params: {short, mid, long}}>}
+ */
+export function getAiGridTemplates(symbol, userId = 'demo-user') {
+  return apiFetch('/ai_strategy', {
+    method: 'POST',
+    body: { strategy_type: 'grid', symbol, user_id: userId, period: 'all' },
     skipCache: true,
     timeoutMs: 60000,
   })
