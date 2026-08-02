@@ -210,13 +210,28 @@
 }
 
 /* Fullscreen mode overrides */
-.trend-chart-area:fullscreen {
+.trend-top:fullscreen {
   background: var(--bg-primary, #0f172a);
   border-radius: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px;
 }
 
-.trend-chart-area:fullscreen .chart-container {
-  height: 100vh;
+.trend-top:fullscreen .trend-chart-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.trend-top:fullscreen .chart-container {
+  height: calc(100vh - 80px);
+}
+
+.trend-top:fullscreen .trend-chat-area {
+  width: 340px;
+  flex-shrink: 0;
+  height: calc(100vh - 24px);
+  display: flex;
 }
 
 /* Market data sub-tab panel */
@@ -299,4 +314,42 @@
 .currency-toggle:hover {
   border-color: var(--accent, #3b82f6);
   color: var(--text-primary, #f1f5f9);
+}
+
+/* 全螢幕側邊欄切換按鈕 */
+.fullscreen-chat-toggle {
+  display: none;
+}
+
+.trend-top:fullscreen .fullscreen-chat-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 48px;
+  border-radius: 6px 0 0 6px;
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border, #334155);
+  border-right: none;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.trend-top:fullscreen .fullscreen-chat-toggle:hover {
+  background: var(--bg-tertiary, #334155);
+  color: var(--text-primary, #f1f5f9);
+}
+
+/* 全螢幕時隱藏側邊欄 */
+.trend-top:fullscreen.chat-hidden .trend-chat-area {
+  display: none;
+}
+
+.trend-top:fullscreen.chat-hidden .fullscreen-chat-toggle {
+  border-radius: 6px;
+  border-right: 1px solid var(--border, #334155);
 }

@@ -96,6 +96,7 @@ export default function CoinTrendPage() {
   const [priceInfo, setPriceInfo] = useState({ price: null, change: null })
   const [currency, setCurrency] = useState('TWD') // 'TWD' | 'USD'
   const [danmakuEnabled, setDanmakuEnabled] = useState(true)
+  const [fullscreenChatVisible, setFullscreenChatVisible] = useState(true)
   const [danmakuSettings, setDanmakuSettings] = useState({
     speed: 'normal',
     size: 'medium',
@@ -189,7 +190,7 @@ export default function CoinTrendPage() {
   }, [])
 
   const handleFullscreen = useCallback(() => {
-    const el = document.querySelector('.trend-chart-area')
+    const el = document.querySelector('.trend-top')
     if (!el) return
     if (document.fullscreenElement) {
       document.exitFullscreen()
@@ -287,7 +288,7 @@ export default function CoinTrendPage() {
       {/* 行情 tab */}
       {activeTab === 'chart' && (
         <>
-          <div className="trend-top">
+          <div className={`trend-top ${fullscreenChatVisible ? '' : 'chat-hidden'}`}>
             <div className="trend-chart-area">
               <div className="chart-container">
                 <KLineChart
@@ -328,6 +329,14 @@ export default function CoinTrendPage() {
                 onRangeCommit={handleRangeCommit}
               />
             </div>
+            {/* 全螢幕側邊欄切換按鈕 */}
+            <button
+              className="fullscreen-chat-toggle"
+              onClick={() => setFullscreenChatVisible((v) => !v)}
+              title={fullscreenChatVisible ? '隱藏聊天室' : '顯示聊天室'}
+            >
+              {fullscreenChatVisible ? '▶' : '◀'}
+            </button>
             <div className="trend-chat-area">
               <AIChatPanel
                 symbol={symbol}
