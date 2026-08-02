@@ -1,9 +1,11 @@
 """問卷抽樣與計分：從 32 題題庫抽 20 題（每軸各 5 題）、打亂順序，
 以及把使用者作答換算成 R/E/F/S 四軸分數與 4 字人格代碼。
 
-計分公式：每軸把答到的低分極題目取平均、高分極題目取平均（皆為 1-5 分），
-score = 50 + (mean_high - mean_low) / 4 * 50，clamp 到 [0, 100]。
-分數 >= 50 落在該軸的高分極字母，否則落在低分極字母。
+7 點李克特量表計分公式：
+  每軸把答到的低分極題目取平均、高分極題目取平均（皆為 1-7 分），
+  score = 50 + (mean_high - mean_low) / 6 * 50，clamp 到 [0, 100]。
+  （除數 6 = 量表最大極差 7-1）
+  分數 >= 50 落在該軸的高分極字母，否則落在低分極字母。
 """
 
 import random
@@ -22,6 +24,9 @@ QUESTIONS_PER_AXIS = 5
 # 每軸高分極對應的字母、低分極對應的字母（順序固定為 R,E,F,S 組代碼）。
 _HIGH_LETTER = {"R": "A", "E": "E", "F": "S", "S": "I"}
 _LOW_LETTER = {"R": "D", "E": "C", "F": "L", "S": "Q"}
+
+# 7 點量表的最大極差（用於正規化）
+_SCALE_RANGE = 6  # 7 - 1
 
 
 def sample_questionnaire():
@@ -43,6 +48,8 @@ def sample_questionnaire():
 def score_answers(answers):
     """answers: list of {"question_id": str, "option_id": str}.
 
+    option_id 範圍為 "1"~"7"（7 點李克特量表）。
+
     回傳 {"code": str, "name": str, "axes": {"R": int, "E": int, "F": int, "S": int}}。
     無法辨識的 question_id 會被忽略；某軸完全沒有作答時該軸分數維持 50（中性）。
     """
@@ -56,7 +63,7 @@ def score_answers(answers):
             value = int(answer.get("option_id"))
         except (TypeError, ValueError):
             continue
-        if not 1 <= value <= 5:
+        if not 1 <= value <= 7:
             continue
         pole_values[question["axis"]][question["pole"]].append(value)
 
@@ -67,7 +74,7 @@ def score_answers(answers):
         if low_values and high_values:
             mean_low = sum(low_values) / len(low_values)
             mean_high = sum(high_values) / len(high_values)
-            score = 50 + (mean_high - mean_low) / 4 * 50
+            score = 50 + (mean_high - mean_low) / _SCALE_RANGE * 50
         else:
             score = 50
         axes_scores[axis] = round(max(0, min(100, score)))

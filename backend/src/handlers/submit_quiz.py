@@ -1,18 +1,31 @@
 """Submit Supplementary Quiz Lambda handler.
 
-Implements POST /quiz/submit for the two smaller supplementary
-questionnaires (風險承受度評估 / 市場情緒敏感度) — see
-src/data/supplementary_quizzes.py for why these are scored separately
-from the main EFS personality bank.
+Implements POST /quiz/submit for the supplementary questionnaires:
+  - investment-habits (投資習慣)
+  - investment-experience (投資經驗)
+  - investment-budget (投資預算與目標)
+
+All use 7-point Likert scale (option_id "1"~"7"). Each quiz has multiple
+dimensions; this handler computes per-dimension average scores and saves
+the full result to S3 for AI chat to read as context.
 
 Request body:
 {
-  "quiz_id": "risk-tolerance",
-  "answers": [{"question_id": 1, "option_id": "A"}, ...]
+  "quiz_id": "investment-habits",
+  "answers": [{"question_id": "h1", "option_id": "5"}, ...]
 }
 
 Success response 200:
-{ "status": "ready", "score": 72, "label": "積極型", "message": "..." }
+{
+  "status": "ready",
+  "quiz_id": "investment-habits",
+  "dimensions": {
+    "info_source": {"name": "資訊來源偏好", "avg_score": 4.5, "answers_count": 4},
+    ...
+  },
+  "overall_avg": 4.2,
+  "message": "感謝你的作答！AI 將根據這些資料提供更精準的個人化建議。"
+}
 
 Error responses:
   400 — missing user id, unknown quiz_id, or missing answers
@@ -21,7 +34,10 @@ Error responses:
 import json
 import os
 
-from src.data.supplementary_quizzes import SUPPLEMENTARY_QUIZZES, resolve_label
+from src.data.supplementary_quizzes import (
+    SUPPLEMENTARY_QUIZZES,
+    score_supplementary_quiz,
+)
 from src.services.s3_storage import S3StorageError, S3StorageService
 from src.utils.http import json_response
 
@@ -40,48 +56,35 @@ def lambda_handler(event, context):
         return _error(400, "缺少使用者身份資訊")
 
     quiz_id = body.get("quiz_id")
-    quiz = SUPPLEMENTARY_QUIZZES.get(quiz_id)
-    if not quiz:
+    if quiz_id not in SUPPLEMENTARY_QUIZZES:
         return _error(400, "未知的問卷 ID")
 
     answers = body.get("answers")
     if not answers or not isinstance(answers, list):
         return _error(400, "缺少作答內容")
 
-    score = _score_answers(quiz, answers)
-    label, message = resolve_label(quiz_id, score)
+    # 計算各維度分數
+    result = score_supplementary_quiz(quiz_id, answers)
 
+    # 存入 S3: users/{userId}/quiz_results/{quiz_id}.json
     bucket = os.environ.get(_BUCKET_NAME_ENV_VAR, "")
     if bucket:
         try:
             storage = S3StorageService(bucket_name=bucket)
-            storage.put_questionnaire_response(
-                user_id,
-                quiz_id,
-                json.dumps(
-                    {"quiz_id": quiz_id, "answers": answers, "score": score, "label": label},
-                    ensure_ascii=False,
-                ),
-            )
-        except S3StorageError as exc:
-            print(f"[SUBMIT_QUIZ] failed to persist response: {exc}")
+            storage.put_quiz_result(user_id, quiz_id, json.dumps(result, ensure_ascii=False))
+        except (S3StorageError, Exception) as exc:
+            print(f"[SUBMIT_QUIZ] failed to persist result: {exc}")
 
-    return json_response(200, {"status": "ready", "score": score, "label": label, "message": message})
+    # 組裝回應訊息
+    message = "感謝你的作答！AI 將根據這些資料提供更精準的個人化建議。"
 
-
-def _score_answers(quiz, answers) -> int:
-    values = []
-    for answer in answers:
-        try:
-            question_id = int(answer.get("question_id"))
-        except (TypeError, ValueError):
-            continue
-        weight = quiz["questions"].get(question_id, {}).get(answer.get("option_id"))
-        if weight is not None:
-            values.append(weight)
-    if not values:
-        return 50
-    return round(sum(values) / len(values))
+    return json_response(200, {
+        "status": "ready",
+        "quiz_id": quiz_id,
+        "dimensions": result["dimensions"],
+        "overall_avg": result["overall_avg"],
+        "message": message,
+    })
 
 
 def _extract_user_id(event) -> "str | None":
