@@ -1,12 +1,13 @@
 """Get Supplementary Quiz Lambda handler.
 
-Implements GET /quiz/{quizId} — returns the full question list for a
-supplementary quiz (investment-habits / investment-experience / investment-budget).
+Implements GET /quiz/{quizId} — returns 20 randomly-sampled questions
+(dimension-balanced) for a supplementary quiz (investment-habits /
+investment-experience / investment-budget), mirroring how the main EFS
+personality questionnaire samples 20 of 32 questions per axis.
 
-All supplementary quizzes use the same 7-point Likert scale as the main
-EFS personality questionnaire. Unlike the personality bank (which randomly
-samples 20 out of 32), supplementary quizzes return all their questions
-in the defined order.
+Each quiz's question bank is 32 questions split across its dimensions;
+each dimension's sample_size (see src/data/supplementary_quizzes.py) sums
+to 20. Order is shuffled per request.
 
 Success response 200:
 {
@@ -25,8 +26,7 @@ Error response 404:
 }
 """
 
-from src.data.questionnaire_bank import LIKERT_OPTIONS
-from src.data.supplementary_quizzes import SUPPLEMENTARY_QUIZZES
+from src.data.supplementary_quizzes import SUPPLEMENTARY_QUIZZES, sample_quiz
 from src.utils.http import json_response
 
 
@@ -42,13 +42,9 @@ def lambda_handler(event, context):
         quiz_id = path_params.get("quizId") or path_params.get("quiz_id", "")
 
     quiz = SUPPLEMENTARY_QUIZZES.get(quiz_id)
-    if not quiz:
+    questions = sample_quiz(quiz_id)
+    if not quiz or questions is None:
         return json_response(404, {"status": "error", "message": "未知的問卷 ID"})
-
-    questions = [
-        {"id": q["id"], "text": q["text"], "options": LIKERT_OPTIONS}
-        for q in quiz["questions"]
-    ]
 
     return json_response(200, {
         "id": quiz_id,

@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import { sendAiChat, saveChatHistory, allowTrade } from '../../services/aiApi'
 import './AIChatPanel.css'
@@ -7,6 +10,13 @@ import './AIChatPanel.css'
 const INITIAL_MESSAGES = [
   { role: 'ai', content: '你好！我是你的 AI 投資助理。你可以問我任何關於投資的問題，或者跟我說「我想買」/「我想賣」來取得建議。' },
 ]
+
+// AI 回覆可能包含 Markdown（表格、粗體等）以及少量原始 HTML（如 <br>）。
+// rehypeRaw 讓 react-markdown 解析原始 HTML，但必須搭配 rehypeSanitize
+// 過濾掉危險標籤/屬性（例如 <script>、onerror=...），避免 AI 回覆內容
+// 被用來做 XSS 注入。remarkGfm 則讓表格語法（| --- |）能被正確解析。
+const MARKDOWN_REMARK_PLUGINS = [remarkGfm]
+const MARKDOWN_REHYPE_PLUGINS = [rehypeRaw, [rehypeSanitize, defaultSchema]]
 
 /**
  * 判斷容器目前是否停在底部附近（100px 容差）。
@@ -243,7 +253,15 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
             <div key={i} className={`chat-message ${msg.role}`}>
               <div className="message-bubble">
                 {msg.role === 'ai'
-                  ? <Markdown className="ai-markdown">{msg.content}</Markdown>
+                  ? (
+                    <Markdown
+                      className="ai-markdown"
+                      remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                      rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
+                    >
+                      {msg.content}
+                    </Markdown>
+                  )
                   : msg.content}
               </div>
               {msg.attachment && msg.attachment.type === 'post_card' && (
