@@ -10,7 +10,7 @@ import './PersonalityBadge.css'
  *     R: 72,  // 0-100, 高=Aggressive, 低=Defensive
  *     E: 35,  // 0-100, 高=Emotional, 低=Calm
  *     F: 80,  // 0-100, 高=Short-term, 低=Long-term
- *     S: 90,  // 0-100, 高=Intuitive, 低=Quantitative
+ *     S: 90,  // 0-100, 高=Intuitive(直覺), 低=Quantitative(量化)
  *   }
  * }
  *
@@ -21,7 +21,7 @@ const AXIS_CONFIG = [
   { key: 'R', labelLow: 'D', labelHigh: 'A', colorLow: '#34d399', colorHigh: '#f87171', nameLow: '防守', nameHigh: '進攻' },
   { key: 'E', labelLow: 'C', labelHigh: 'E', colorLow: '#60a5fa', colorHigh: '#fbbf24', nameLow: '冷靜', nameHigh: '熱情' },
   { key: 'F', labelLow: 'L', labelHigh: 'S', colorLow: '#a78bfa', colorHigh: '#fb923c', nameLow: '長期', nameHigh: '短期' },
-  { key: 'S', labelLow: 'I', labelHigh: 'Q', colorLow: '#f472b6', colorHigh: '#2dd4bf', nameLow: '直覺', nameHigh: '量化' },
+  { key: 'S', labelLow: 'Q', labelHigh: 'I', colorLow: '#2dd4bf', colorHigh: '#f472b6', nameLow: '量化', nameHigh: '直覺' },
 ]
 
 export default function PersonalityBadge({ personality, compact = false, showName = false }) {
