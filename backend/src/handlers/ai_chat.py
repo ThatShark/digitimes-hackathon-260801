@@ -97,12 +97,13 @@ def _handle(event, context):
     """Inner handler — separated so the outer lambda_handler can catch all."""
     start_time = _time.time()
 
-    # Time budget: use Lambda's own remaining time minus a 5s buffer.
-    # If API Gateway cuts at 29s, the GatewayResponses DEFAULT_5XX will
-    # return a CORS-safe error. But if the request gets through (some
-    # configurations allow longer), we want to use all available time.
+    # API Gateway has a HARD 29-second integration timeout that cannot be
+    # changed. Lambda must return within 29s or the gateway cuts it.
+    # Use 25s as our deadline (4s buffer for serialization + network).
     timeout_ms = getattr(context, "get_remaining_time_in_millis", lambda: 120000)()
-    deadline = start_time + (timeout_ms / 1000) - 5
+    lambda_deadline = start_time + (timeout_ms / 1000) - 5
+    gateway_deadline = start_time + 25
+    deadline = min(lambda_deadline, gateway_deadline)
     # ── Parse request body ────────────────────────────────────────────────────
     try:
         body = json.loads(event.get("body") or "{}")
@@ -159,6 +160,10 @@ def _handle(event, context):
             "amount": suggestion_input.get("amount_twd"),
         }
 
+    # Guard against empty response (model only produced tool calls, no text)
+    if not final_text:
+        final_text = "已完成分析，但無法產生文字回覆。請再試一次。"
+
     return json_response(200, {
         "status": "ready",
         "message": final_text,
@@ -195,6 +200,15 @@ def _run_tool_use_loop(
         if _time.time() >= deadline:
             print(f"[AI_CHAT] Approaching timeout at round {_round}, returning partial answer")
             return "分析時間較長，目前尚無法完成完整回覆，請稍後再試或簡化問題。", suggestion_input
+
+        # If we're running low on time (less than 12s left), inject a user
+        # message asking the model to answer NOW without calling more tools.
+        time_left = deadline - _time.time()
+        if time_left < 12 and _round > 0:
+            messages.append({
+                "role": "user",
+                "content": [{"text": "[系統提示：時間即將到期，請根據目前已取得的資料直接回覆使用者，不要再呼叫任何工具。]"}]
+            })
 
         response = client.converse_raw(messages, system_prompt=system_prompt, tool_config=tool_config)
         stop_reason = response.get("stopReason")
@@ -241,6 +255,20 @@ def _run_tool_use_loop(
 
     # Exceeded _MAX_TOOL_ROUNDS without a final text answer.
     print(f"[AI_CHAT] Exceeded {_MAX_TOOL_ROUNDS} tool-use rounds without a final answer")
+
+    # Try one last call with a forced instruction to answer
+    try:
+        messages.append({
+            "role": "user",
+            "content": [{"text": "[系統提示：已達工具呼叫上限，請根據目前已取得的所有資料，直接用文字回覆使用者的問題。]"}]
+        })
+        response = client.converse_raw(messages, system_prompt=system_prompt, tool_config=tool_config)
+        text = BedrockChatClient._extract_text(response)
+        if text:
+            return text, suggestion_input
+    except BedrockError:
+        pass
+
     return "這個問題需要查詢的資料較多，AI 暫時無法在時間內完成完整分析，請稍後再試或換個方式提問。", suggestion_input
 
 
