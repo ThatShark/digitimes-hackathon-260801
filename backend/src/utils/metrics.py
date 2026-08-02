@@ -306,6 +306,34 @@ def compute_open_positions(trades: list[RawTrade]) -> dict[str, dict]:
     return positions
 
 
+def compute_twd_balance(trades: list[RawTrade]) -> float:
+    """Compute the user's current TWD cash balance from trade history.
+
+    Logic: Start from 0. Deposits (充值) of TWD add to cash. Withdrawals of
+    TWD subtract. Buying crypto costs TWD (subtract amount_twd). Selling
+    crypto earns TWD (add amount_twd). Deposits/withdrawals of crypto have
+    no direct TWD impact (they move coins, not cash).
+
+    Returns the TWD cash balance (may be negative if data is incomplete, e.g.
+    the user deposited crypto from elsewhere and sold it — they'd have TWD
+    from the sale but no matching TWD deposit)."""
+    balance = 0.0
+    for t in trades:
+        if t.currency.lower() == "twd":
+            # Direct TWD deposit/withdrawal
+            if t.action in _DEPOSIT_ACTIONS:
+                balance += abs(t.change)
+            elif t.action in _WITHDRAW_ACTIONS:
+                balance -= abs(t.change)
+        else:
+            # Crypto buy = spend TWD, crypto sell = receive TWD
+            if t.action in _BUY_ACTIONS:
+                balance -= t.amount_twd
+            elif t.action in _SELL_ACTIONS:
+                balance += t.amount_twd
+    return round(balance, 2)
+
+
 def compute_avg_trade_amount(trades: list[RawTrade]) -> float:
     """Average TWD value per buy/sell transaction (deposit/withdrawal
     excluded) — used to give the AI chat assistant a sense of "how much

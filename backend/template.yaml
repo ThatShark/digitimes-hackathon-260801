@@ -316,6 +316,51 @@ Resources:
             Path: /personality
             Method: POST
 
+  BalanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-balance"
+      Handler: src.handlers.balance.lambda_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetBalance:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /balance
+            Method: GET
+
+  AiStrategyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ai-strategy"
+      Handler: src.handlers.ai_strategy.lambda_handler
+      CodeUri: .
+      Timeout: 60
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: "*"
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostAiStrategy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /ai_strategy
+            Method: POST
+
   AllowTradeFunction:
     Type: AWS::Serverless::Function
     Properties:

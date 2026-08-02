@@ -130,3 +130,29 @@ export function getFundFlow(currency, period = '1h') {
   const params = new URLSearchParams({ currency, period })
   return apiFetch(`/market/fund_flow?${params}`)
 }
+
+/**
+ * 取得使用者可用台幣餘額
+ * @param {string} [userId] - 使用者 ID
+ * @returns {Promise<{status: string, twd_balance: number}>}
+ */
+export function getBalance(userId = 'default_user') {
+  const params = new URLSearchParams({ user_id: userId })
+  return apiFetch(`/balance?${params}`)
+}
+
+/**
+ * AI 智慧推薦策略參數（呼叫 Bedrock）
+ * @param {string} strategyType - grid | dca | martingale | arbitrage | basket | signal
+ * @param {string} symbol - 幣種如 'BTC'
+ * @param {string} [userId] - 使用者 ID
+ * @returns {Promise<{status: string, params: object}>}
+ */
+export function getAiStrategyParams(strategyType, symbol, userId = 'default_user') {
+  return apiFetch('/ai_strategy', {
+    method: 'POST',
+    body: { strategy_type: strategyType, symbol, user_id: userId },
+    skipCache: true,
+    timeoutMs: 60000,
+  })
+}

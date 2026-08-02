@@ -1,4 +1,13 @@
+import { useState } from 'react'
 import { formatPrice } from '../../utils/currency'
+import {
+  SpotGridForm,
+  DCAForm,
+  MartingaleForm,
+  ArbitrageForm,
+  BasketForm,
+  SignalForm,
+} from './strategies'
 import './StrategyHub.css'
 
 const STRATEGY_TYPES = [
@@ -9,6 +18,15 @@ const STRATEGY_TYPES = [
   { key: 'basket', icon: '🧺', label: '幣幣組合', desc: '自動再平衡' },
   { key: 'signal', icon: '📡', label: '技術訊號', desc: '指標觸發下單' },
 ]
+
+const STRATEGY_FORM_MAP = {
+  grid: SpotGridForm,
+  dca: DCAForm,
+  martingale: MartingaleForm,
+  arbitrage: ArbitrageForm,
+  basket: BasketForm,
+  signal: SignalForm,
+}
 
 const AI_TEMPLATES = [
   {
@@ -35,6 +53,14 @@ const LIVE_PROFITS_TWD = [
 ]
 
 export default function StrategyHub({ symbol, currency = 'TWD' }) {
+  const [activeStrategy, setActiveStrategy] = useState(null)
+
+  const handleStrategyClick = (key) => {
+    setActiveStrategy(activeStrategy === key ? null : key)
+  }
+
+  const ActiveForm = activeStrategy ? STRATEGY_FORM_MAP[activeStrategy] : null
+
   return (
     <div className="strategy-hub">
       {/* 策略建立入口 */}
@@ -42,7 +68,11 @@ export default function StrategyHub({ symbol, currency = 'TWD' }) {
         <h3 className="hub-section-title">建立策略</h3>
         <div className="strategy-type-grid">
           {STRATEGY_TYPES.map((s) => (
-            <button key={s.key} className="strategy-type-card">
+            <button
+              key={s.key}
+              className={`strategy-type-card${activeStrategy === s.key ? ' active' : ''}`}
+              onClick={() => handleStrategyClick(s.key)}
+            >
               <span className="stc-icon">{s.icon}</span>
               <span className="stc-label">{s.label}</span>
               <span className="stc-desc">{s.desc}</span>
@@ -50,6 +80,20 @@ export default function StrategyHub({ symbol, currency = 'TWD' }) {
           ))}
         </div>
       </section>
+
+      {/* 策略表單面板 */}
+      {ActiveForm && (
+        <section className="hub-section strategy-form-panel">
+          <button
+            className="sf-close-btn"
+            onClick={() => setActiveStrategy(null)}
+            aria-label="關閉"
+          >
+            ✕
+          </button>
+          <ActiveForm symbol={symbol} currency={currency} />
+        </section>
+      )}
 
       {/* AI 模板推薦 */}
       <section className="hub-section">
