@@ -17,8 +17,8 @@ from typing import Optional
 import boto3
 from botocore.exceptions import ClientError
 
-RETRY_ATTEMPTS = 3
-RETRY_DELAY_SECONDS = 2
+RETRY_ATTEMPTS = 2
+RETRY_DELAY_SECONDS = 1
 
 _DEFAULT_MODEL_ID = "openai.gpt-oss-120b-1:0"
 _DEFAULT_REGION = "us-west-2"
@@ -138,7 +138,6 @@ class BedrockChatClient:
                 "temperature": self._temperature,
                 "topP": self._top_p,
             },
-            "performanceConfig": {"latency": "standard"},
         }
 
         effective_prompt = system_prompt if system_prompt is not None else self._system_prompt

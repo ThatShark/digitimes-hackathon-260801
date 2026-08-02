@@ -70,27 +70,39 @@ _BUCKET_NAME_ENV_VAR = "TRADES_BUCKET_NAME"
 
 # Upper bound on how many times the model may call tools before we force a
 # final answer — protects against runaway tool-chaining eating Lambda
-# execution time / token budget. If exceeded without a finished answer,
-# the user gets a generic "couldn't complete" message rather than an
-# indefinitely hanging request.
+# execution time / token budget.
 #
-# There are currently 5 tools offered (get_current_price, get_fear_greed_index,
-# get_fund_flow_analysis, get_technical_indicators, propose_trade — see
-# ai_tools.py). A thorough analysis (e.g. "我要賣出比特幣") can legitimately
-# call all 4 data tools once each before proposing a trade — that's 5 rounds
-# on its own, leaving zero rounds left for the model to produce its final
-# text answer. 7 leaves 2 rounds of headroom for that case plus an
-# occasional repeated/retried tool call.
-_MAX_TOOL_ROUNDS = 7
+# IMPORTANT: The real guard against API Gateway's 29s timeout is the
+# time-based deadline (25s) checked each round. This round cap is just a
+# safety net in case time checks somehow fail. Set it high enough that
+# normal multi-tool conversations (price + indicators + fear&greed +
+# fund_flow + propose_trade) can complete, but low enough to prevent
+# infinite loops.
+_MAX_TOOL_ROUNDS = 6
 
 
 def lambda_handler(event, context):
     """POST /ai_chat"""
+    try:
+        return _handle(event, context)
+    except Exception as exc:
+        # Catch-all so Lambda NEVER crashes without returning CORS headers.
+        # The GatewayResponses DEFAULT_5XX is a safety net, but this is better
+        # because it includes the actual error message for debugging.
+        print(f"[AI_CHAT] Unhandled exception: {type(exc).__name__}: {exc}")
+        return _error(500, f"內部錯誤：{type(exc).__name__}: {exc}")
+
+
+def _handle(event, context):
+    """Inner handler — separated so the outer lambda_handler can catch all."""
     start_time = _time.time()
 
-    # Reserve 10 seconds before Lambda timeout for a graceful response
+    # Time budget: use Lambda's own remaining time minus a 5s buffer.
+    # If API Gateway cuts at 29s, the GatewayResponses DEFAULT_5XX will
+    # return a CORS-safe error. But if the request gets through (some
+    # configurations allow longer), we want to use all available time.
     timeout_ms = getattr(context, "get_remaining_time_in_millis", lambda: 120000)()
-    deadline = start_time + (timeout_ms / 1000) - 10  # 10s safety buffer
+    deadline = start_time + (timeout_ms / 1000) - 5
     # ── Parse request body ────────────────────────────────────────────────────
     try:
         body = json.loads(event.get("body") or "{}")
@@ -137,7 +149,7 @@ def lambda_handler(event, context):
         )
     except BedrockError as exc:
         print(f"[AI_CHAT] Bedrock error: {exc}")
-        return _error(503, "AI 服務暫時無法使用，請稍後再試")
+        return _error(503, f"AI 服務暫時無法使用：{exc}")
 
     suggestion = None
     if suggestion_input is not None and currency:
