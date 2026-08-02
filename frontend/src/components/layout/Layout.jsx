@@ -17,7 +17,7 @@ export default function Layout() {
       <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       <div className="layout-main">
         <header className="layout-header">
-          {!isProfile && <SearchBar />}
+          {isProfile ? <div className="search-bar-placeholder" /> : <SearchBar />}
           <button
             className="avatar-btn"
             title="個人資料"

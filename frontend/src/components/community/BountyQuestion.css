@@ -231,3 +231,43 @@
 .bounty-submit-btn:hover {
   opacity: 0.9;
 }
+
+/* Bounty images */
+.bounty-images {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.bounty-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--border-color, #334155);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.bounty-image:hover {
+  opacity: 0.85;
+}
+
+/* 詢問 AI 按鈕（置右） */
+.bounty-ask-ai-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-left: auto;
+}
+
+.bounty-ask-ai-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+}

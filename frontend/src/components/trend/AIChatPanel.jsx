@@ -268,11 +268,15 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
                 <div className="chat-post-card-attach">
                   <div className="attach-header">
                     <span className="attach-tag">📋 社群貼文</span>
-                    <span className={`attach-action ${msg.attachment.action}`}>
-                      {msg.attachment.action === 'buy' ? '📈 買入' : '📉 賣出'} {msg.attachment.coin}
-                    </span>
+                    {msg.attachment.action ? (
+                      <span className={`attach-action ${msg.attachment.action}`}>
+                        {msg.attachment.action === 'buy' ? '📈 買入' : '📉 賣出'} {msg.attachment.coin}
+                      </span>
+                    ) : (
+                      <span className="attach-coin">{msg.attachment.coin}</span>
+                    )}
+                    <span className="attach-author">— {msg.attachment.author}</span>
                   </div>
-                  <div className="attach-author">— {msg.attachment.author}</div>
                   <p className="attach-content">「{msg.attachment.content}」</p>
                 </div>
               )}

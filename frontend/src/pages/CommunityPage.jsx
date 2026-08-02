@@ -19,6 +19,7 @@ const MOCK_STRATEGIES = [
     type: 'grid',
     author: { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
     coin: 'BTC',
+    content: '最近 BTC 在 270 萬到 300 萬之間震盪，很適合網格策略吃波段，設好上下界躺著賺 👍',
     params: { low: '2,700,000', high: '3,000,000', grids: 50, profit: 12.8 },
     stats: { apy: 85.4, runDays: 12, trades: 342, followers: 48 },
     risk: 'medium',
@@ -30,6 +31,7 @@ const MOCK_STRATEGIES = [
     type: 'dca',
     author: { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
     coin: 'BTC',
+    content: '不管漲跌每天固定買一點，長期下來成本平均比猜高低點強多了，推薦給跟我一樣懶的人 😂',
     params: { frequency: '每日', totalReturn: 42 },
     stats: { runDays: 180, followers: 126 },
     risk: 'low',
@@ -41,6 +43,7 @@ const MOCK_STRATEGIES = [
     type: 'martingale',
     author: { name: '陳Ｊ哥', personality: { code: 'AESI', name: '探險家', axes: { R: 82, E: 78, F: 85, S: 70 } } },
     coin: 'ETH',
+    content: 'ETH 跌越多我買越多，反彈 1.5% 就出場。高風險但配合倉位控制年化很甜 🔥',
     params: { dropPct: 2, multiplier: 1.5, maxLayers: 6, takeProfitPct: 1.5 },
     stats: { apy: 62.3, runDays: 28, trades: 89, followers: 35 },
     risk: 'high',
@@ -52,6 +55,7 @@ const MOCK_STRATEGIES = [
     type: 'arbitrage',
     author: { name: '王大壯', personality: { code: 'DCLQ', name: '長青樹', axes: { R: 20, E: 25, F: 15, S: 18 } } },
     coin: 'ETH',
+    content: '現貨做多 + 永續空單對沖，純吃資金費率，牛市熊市都能穩穩賺。適合不想盯盤的人。',
     params: { estApy: 18.5, fundingRate: 0.01 },
     stats: { apy: 18.5, runDays: 60, followers: 92 },
     risk: 'low',
@@ -63,6 +67,7 @@ const MOCK_STRATEGIES = [
     type: 'basket',
     author: { name: '趙柏翰', personality: { code: 'ACSQ', name: '狙擊手', axes: { R: 75, E: 22, F: 80, S: 15 } } },
     coin: 'Multi',
+    content: '把雞蛋分散到 SOL、DOT、ADA 三籃，偏離 5% 自動再平衡。組合收益比單押好很多。',
     params: { assets: ['SOL 40%', 'DOT 30%', 'ADA 30%'], rebalanceThreshold: 5, totalReturn: 28.5 },
     stats: { runDays: 45, followers: 67 },
     risk: 'medium',
@@ -74,6 +79,7 @@ const MOCK_STRATEGIES = [
     type: 'signal',
     author: { name: '李小雨', personality: { code: 'DELI', name: '造夢者', axes: { R: 25, E: 65, F: 20, S: 72 } } },
     coin: 'BTC',
+    content: '4 小時線 RSI 跌到 30 以下就是撿便宜的時候，回測勝率 72%，大家可以參考。',
     params: { condition: '4H RSI < 30 抄底', winRate: 72 },
     stats: { trades: 50, winRate: 72, followers: 41 },
     risk: 'medium',
@@ -143,7 +149,14 @@ const BOUNTY_POSITION = 5
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState(MOCK_POSTS)
+  const [bounties, setBounties] = useState(MOCK_BOUNTIES)
   const [activeTab, setActiveTab] = useState('recommended')
+
+  // 讓 SearchBar 能搜到動態貼文（包含使用者新發的）
+  useEffect(() => {
+    window.__communityPosts = posts
+    return () => { window.__communityPosts = null }
+  }, [posts])
 
   // 讀取重點關注幣種（與 Watchlist 元件共用 localStorage key）
   const [watchedCoins] = useState(() => {
@@ -173,7 +186,7 @@ export default function CommunityPage() {
       author: CURRENT_USER.name,
       personality: CURRENT_USER.personality,
       content: newPost.content,
-      images: [],
+      images: newPost.images || [],
       coin: newPost.coin,
       time: '剛剛',
       likes: 0,
@@ -183,6 +196,20 @@ export default function CommunityPage() {
       commentList: [],
     }
     setPosts((prev) => [post, ...prev])
+  }, [])
+
+  const handleNewBounty = useCallback((newBounty) => {
+    const bounty = {
+      id: Date.now(),
+      author: CURRENT_USER.name,
+      personality: CURRENT_USER.personality,
+      question: newBounty.question,
+      coin: newBounty.coin,
+      images: newBounty.images || [],
+      answers: 0,
+      time: '剛剛',
+    }
+    setBounties((prev) => [bounty, ...prev])
   }, [])
 
   // 根據 tab 決定排序
@@ -202,23 +229,52 @@ export default function CommunityPage() {
 
   // 插入特殊卡片到 feed 中
   const feedItems = []
+
+  // 使用者新發的懸賞放在最前面（bounties[0] 是最新的，原始 mock 是最後一個）
+  const userBounties = bounties.filter((b) => b.author === CURRENT_USER.name)
+  userBounties.forEach((b) => {
+    feedItems.push(
+      <div key={`bounty-${b.id}`} id={`bounty-${b.id}`}>
+        <BountyQuestion bounty={b} />
+      </div>
+    )
+  })
+
   sortedPosts.forEach((post, index) => {
     if (index === 2) {
-      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[0].id}`} strategy={MOCK_STRATEGIES[0]} />)
+      feedItems.push(
+        <div key={`strategy-${MOCK_STRATEGIES[0].id}`} id={`strategy-${MOCK_STRATEGIES[0].id}`}>
+          <StrategyCard strategy={MOCK_STRATEGIES[0]} />
+        </div>
+      )
     }
     if (index === QUESTIONNAIRE_POSITION) {
       feedItems.push(<QuestionnaireCard key="questionnaire" />)
     }
     if (index === 4) {
-      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[1].id}`} strategy={MOCK_STRATEGIES[1]} />)
-    }
-    if (index === BOUNTY_POSITION) {
       feedItems.push(
-        <BountyQuestion key={`bounty-${MOCK_BOUNTIES[0].id}`} bounty={MOCK_BOUNTIES[0]} />
+        <div key={`strategy-${MOCK_STRATEGIES[1].id}`} id={`strategy-${MOCK_STRATEGIES[1].id}`}>
+          <StrategyCard strategy={MOCK_STRATEGIES[1]} />
+        </div>
       )
     }
+    if (index === BOUNTY_POSITION) {
+      // 顯示第一則非使用者自己的懸賞
+      const otherBounty = bounties.find((b) => b.author !== CURRENT_USER.name)
+      if (otherBounty) {
+        feedItems.push(
+          <div key={`bounty-${otherBounty.id}`} id={`bounty-${otherBounty.id}`}>
+            <BountyQuestion bounty={otherBounty} />
+          </div>
+        )
+      }
+    }
     if (index === 6) {
-      feedItems.push(<StrategyCard key={`strategy-${MOCK_STRATEGIES[2].id}`} strategy={MOCK_STRATEGIES[2]} />)
+      feedItems.push(
+        <div key={`strategy-${MOCK_STRATEGIES[2].id}`} id={`strategy-${MOCK_STRATEGIES[2].id}`}>
+          <StrategyCard strategy={MOCK_STRATEGIES[2]} />
+        </div>
+      )
       feedItems.push(<WellnessCard key="wellness" />)
     }
     feedItems.push(
@@ -267,7 +323,7 @@ export default function CommunityPage() {
       {/* 巨鯨警報 */}
       <WhaleAlertCard />
 
-      <PostComposer onPost={handleNewPost} currentUser={CURRENT_USER} />
+      <PostComposer onPost={handleNewPost} onBounty={handleNewBounty} currentUser={CURRENT_USER} />
 
       <div className="community-feed">
         {feedItems}

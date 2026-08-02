@@ -77,7 +77,9 @@
 }
 
 /* 搜尋結果高亮 */
-.highlight > .post-card {
+.highlight > .post-card,
+.highlight > .strategy-card,
+.highlight > .bounty-question {
   animation: postHighlight 2s ease;
 }
 
