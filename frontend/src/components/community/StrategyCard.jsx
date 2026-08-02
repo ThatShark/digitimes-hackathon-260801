@@ -1,7 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../shared/PersonalityBadge'
-import VerifiedBadge from './VerifiedBadge'
-import CopyStrategyModal from './CopyStrategyModal'
 import './StrategyCard.css'
 
 /**
@@ -37,13 +36,38 @@ const TYPE_ICONS = {
 }
 
 export default function StrategyCard({ strategy }) {
-  const [showModal, setShowModal] = useState(false)
   const [copied, setCopied] = useState(false)
+  const navigate = useNavigate()
 
   const handleCopy = () => {
     setCopied(true)
-    setShowModal(false)
+    // 存策略參數到 sessionStorage，跳轉後自動填入
+    sessionStorage.setItem('strategy_prefill', JSON.stringify({
+      type: strategy.type,
+      coin: strategy.coin,
+      params: strategy.params,
+      author: strategy.author.name,
+    }))
+    navigate(`/coin/${strategy.coin}`)
+    window.scrollTo(0, 0)
     setTimeout(() => setCopied(false), 3000)
+  }
+
+  const handleAskAI = () => {
+    const prompt = `我在社群看到 ${strategy.author.name} 的${TYPE_LABELS[strategy.type]}策略（${strategy.coin}），${strategy.content ? `他說：「${strategy.content.slice(0, 80)}」，` : ''}請幫我分析這個策略是否適合我，你有什麼建議？`
+    const attachment = JSON.stringify({
+      type: 'post_card',
+      author: strategy.author.name,
+      content: strategy.content || `${TYPE_LABELS[strategy.type]} ${strategy.coin}`,
+      action: null,
+      coin: strategy.coin,
+    })
+    sessionStorage.setItem('ai_chat_prefill', '請幫我分析這個策略，你有什麼建議？')
+    sessionStorage.setItem('ai_chat_prompt', prompt)
+    sessionStorage.setItem('ai_chat_attachment', attachment)
+    sessionStorage.setItem('ai_chat_auto_send', 'true')
+    navigate(`/coin/${strategy.coin}`)
+    window.scrollTo(0, 0)
   }
 
   return (
@@ -112,24 +136,22 @@ export default function StrategyCard({ strategy }) {
         <div className="strategy-footer">
           <button
             className="strategy-copy-btn"
-            onClick={() => setShowModal(true)}
+            onClick={handleCopy}
             disabled={copied}
           >
             {copied ? '✓ 已複製策略' : `一鍵複製${TYPE_LABELS[strategy.type]}`}
+          </button>
+          <button
+            className="strategy-ai-btn"
+            onClick={handleAskAI}
+          >
+            🤖 詢問AI建議
           </button>
           {strategy.stats.followers && (
             <span className="strategy-followers">{strategy.stats.followers} 人跟隨</span>
           )}
         </div>
       </div>
-
-      {showModal && (
-        <CopyStrategyModal
-          strategy={strategy}
-          onClose={() => setShowModal(false)}
-          onConfirm={handleCopy}
-        />
-      )}
     </>
   )
 }

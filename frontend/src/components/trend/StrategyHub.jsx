@@ -96,6 +96,7 @@ export default function StrategyHub({ symbol, currency = 'TWD' }) {
 
   const handleStrategyClick = (key) => {
     setActiveStrategy(activeStrategy === key ? null : key)
+    setPrefillParams(null)
   }
 
   const ActiveForm = activeStrategy ? STRATEGY_FORM_MAP[activeStrategy] : null
@@ -125,12 +126,12 @@ export default function StrategyHub({ symbol, currency = 'TWD' }) {
         <section className="hub-section strategy-form-panel">
           <button
             className="sf-close-btn"
-            onClick={() => setActiveStrategy(null)}
+            onClick={() => { setActiveStrategy(null); setPrefillParams(null) }}
             aria-label="關閉"
           >
             ✕
           </button>
-          <ActiveForm symbol={symbol} currency={currency} />
+          <ActiveForm symbol={symbol} currency={currency} prefill={prefillParams} />
         </section>
       )}
 

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
 
-export default function DCAForm({ symbol, currency }) {
+export default function DCAForm({ symbol, currency, prefill }) {
   const [form, setForm] = useState({
     amountPerOrder: '',
     maxInvestment: '',
@@ -17,6 +17,15 @@ export default function DCAForm({ symbol, currency }) {
   })
   const [aiLoading, setAiLoading] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
+
+  useEffect(() => {
+    if (prefill) {
+      setForm((f) => ({
+        ...f,
+        frequency: prefill.frequency === '每日' ? 'daily' : prefill.frequency === '每週' ? 'weekly' : f.frequency,
+      }))
+    }
+  }, [prefill])
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
 

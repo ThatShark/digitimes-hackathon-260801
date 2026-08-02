@@ -105,9 +105,8 @@
 .strategy-stats {
   display: flex;
   gap: 16px;
-  padding: 10px 0;
+  padding: 10px 0 0 0;
   border-top: 1px solid var(--border-color, #334155);
-  margin-bottom: 12px;
 }
 
 .strategy-stat {
@@ -148,7 +147,7 @@
 
 .strategy-copy-btn {
   flex: 1;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -166,6 +165,23 @@
 .strategy-copy-btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.strategy-ai-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+}
+
+.strategy-ai-btn:hover {
+  background: rgba(59, 130, 246, 0.22);
 }
 
 .strategy-followers {
