@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
 
-export default function SpotGridForm({ symbol, currency }) {
+export default function SpotGridForm({ symbol, currency, prefill }) {
   const [form, setForm] = useState({
     lowerPrice: '',
     upperPrice: '',
@@ -17,6 +17,18 @@ export default function SpotGridForm({ symbol, currency }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
+
+  // 從社群策略卡片「一鍵複製」帶入的參數
+  useEffect(() => {
+    if (prefill) {
+      setForm((f) => ({
+        ...f,
+        lowerPrice: prefill.low ? String(prefill.low).replace(/,/g, '') : f.lowerPrice,
+        upperPrice: prefill.high ? String(prefill.high).replace(/,/g, '') : f.upperPrice,
+        gridCount: prefill.grids ? String(prefill.grids) : f.gridCount,
+      }))
+    }
+  }, [prefill])
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
 

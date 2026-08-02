@@ -10,6 +10,7 @@ import {
   getPortfolio,
   getTradeHistory,
 } from '../services/personalityApi'
+import { getBalance } from '../services/coinApi'
 import { getUserPersonality } from '../utils/userPersonality'
 import { CURRENT_USER_NAME, CURRENT_USER_AVATAR } from '../utils/currentUser'
 import { isBackendConfigured } from '../services/api'
@@ -115,12 +116,17 @@ export default function ProfilePage() {
     setTradeSummary(null)
     setTradeHistory(null)
 
-    const [pf, th] = await Promise.all([
+    const [pf, th, bal] = await Promise.all([
       getPortfolio().catch(() => null),
       getTradeHistory().catch(() => null),
+      getBalance().catch(() => null),
     ])
 
-    setPortfolio(pf ?? EMPTY_PORTFOLIO)
+    const portfolioData = pf ?? EMPTY_PORTFOLIO
+    // Attach TWD balance to the portfolio object for PortfolioOverview
+    portfolioData.twd_balance = bal?.twd_balance ?? 0
+
+    setPortfolio(portfolioData)
     setTradeSummary(th?.summary ?? EMPTY_TRADE_SUMMARY)
     setTradeHistory(th?.history ?? [])
   }, [])
