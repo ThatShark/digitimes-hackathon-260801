@@ -56,6 +56,7 @@ const LIVE_PROFITS_TWD = [
 
 export default function StrategyHub({ symbol, currency = 'TWD' }) {
   const [activeStrategy, setActiveStrategy] = useState(null)
+  const [prefillParams, setPrefillParams] = useState(null)
   const [aiTemplates, setAiTemplates] = useState(FALLBACK_TEMPLATES)
   const [aiTemplatesLoading, setAiTemplatesLoading] = useState(false)
 
