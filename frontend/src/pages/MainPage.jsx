@@ -5,7 +5,6 @@ import NotificationBanner from '../components/shared/NotificationBanner'
 import BookmarkButton from '../components/shared/BookmarkButton'
 import { formatPrice } from '../utils/currency'
 import { fetchLivePriceInfo } from '../services/coinApi'
-import { isBackendConfigured } from '../services/api'
 import './MainPage.css'
 
 // 平時關注 = 自己有持有的幣種
@@ -21,16 +20,6 @@ const TRENDING = [
   { symbol: 'ADA', name: 'Cardano', price: null, change: null },
   { symbol: 'DOT', name: 'Polkadot', price: null, change: null },
 ]
-
-// 後端請求失敗時的 fallback 假資料
-const FALLBACK_PRICES = {
-  BTC: { price: 2850000, change: 2.3 },
-  ETH: { price: 98500, change: -1.2 },
-  SOL: { price: 5420, change: 5.7 },
-  DOGE: { price: 8.2, change: 0.4 },
-  ADA: { price: 21.5, change: -0.8 },
-  DOT: { price: 245, change: 3.1 },
-}
 
 const COIN_NAMES = {
   BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', DOGE: 'Dogecoin',
@@ -57,13 +46,14 @@ function sortCoins(coins, sortBy) {
 
 function CoinCard({ coin, currency }) {
   const isLoading = coin.price === null || coin.price === undefined
+  const hasError = coin.error
   const isUp = coin.change >= 0
 
   return (
     <Link to={`/coin/${coin.symbol}`} className="coin-card">
       <div className="coin-card-header">
         <span className="coin-card-name">{coin.name}</span>
-        {!isLoading && (
+        {!isLoading && !hasError && (
           <span className={`coin-badge ${isUp ? 'up' : 'down'}`}>
             {isUp ? '▲' : '▼'}
           </span>
@@ -71,7 +61,9 @@ function CoinCard({ coin, currency }) {
       </div>
       <div className="coin-card-body">
         <div className="coin-symbol">{coin.symbol}</div>
-        {isLoading ? (
+        {hasError ? (
+          <div className="coin-price error">⚠️ {coin.error}</div>
+        ) : isLoading ? (
           <div className="coin-price loading">載入中...</div>
         ) : (
           <div className={`coin-price ${isUp ? 'up' : 'down'}`}>
@@ -79,7 +71,9 @@ function CoinCard({ coin, currency }) {
           </div>
         )}
         <div className="coin-card-bottom-row">
-          {isLoading ? (
+          {hasError ? (
+            <span className="coin-change error">--</span>
+          ) : isLoading ? (
             <span className="coin-change loading">--</span>
           ) : (
             <span className={`coin-change ${isUp ? 'up' : 'down'}`}>
@@ -99,24 +93,32 @@ export default function MainPage() {
   const [currency, setCurrency] = useState('TWD')
   const [sortBy, setSortBy] = useState('default') // 'default' | 'price' | 'change' | 'name'
 
+  const [error, setError] = useState(null)
+
   const refreshPrices = useCallback(async () => {
     const allSymbols = [...MOCK_COINS, ...TRENDING].map((c) => c.symbol)
-    const results = isBackendConfigured()
-      ? await Promise.all(allSymbols.map(fetchLivePrice))
-      : []
 
-    const liveBySymbol = new Map()
-    results.forEach((live) => {
-      if (live) liveBySymbol.set(live.symbol, live)
-    })
+    let results
+    try {
+      results = await Promise.all(
+        allSymbols.map(async (symbol) => {
+          try {
+            const live = await fetchLivePrice(symbol)
+            return live || { symbol, name: COIN_NAMES[symbol] || symbol, price: null, change: null, error: '無法取得報價' }
+          } catch (err) {
+            return { symbol, name: COIN_NAMES[symbol] || symbol, price: null, change: null, error: err.message || '請求失敗' }
+          }
+        })
+      )
+      setError(null)
+    } catch (err) {
+      setError(err.message || '無法連接後端服務')
+      return
+    }
 
-    // 套用即時價格；沒拿到即時價格的幣種 fallback 回假資料，
-    // 這樣「載入中...」只會在真正還在等待時顯示，不會卡住。
     const applyResult = (coin) => {
-      const live = liveBySymbol.get(coin.symbol)
-      if (live) return live
-      const fallback = FALLBACK_PRICES[coin.symbol]
-      return fallback ? { ...coin, ...fallback } : coin
+      const result = results.find((r) => r.symbol === coin.symbol)
+      return result || coin
     }
 
     setFocusCoins((prev) => prev.map(applyResult))
@@ -134,6 +136,10 @@ export default function MainPage() {
 
       {/* 行情看板 */}
       <MarketOverview currency={currency} coins={[...focusCoins, ...trendingCoins]} />
+
+      {error && (
+        <div className="main-page-error">⚠️ {error}</div>
+      )}
 
       <section className="coin-section">
         <div className="coin-section-header">
