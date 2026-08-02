@@ -453,6 +453,40 @@ Resources:
             Path: /quiz/submit
             Method: POST
 
+  GetCommentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-get-comments"
+      Handler: src.handlers.comments.get_comments_handler
+      CodeUri: .
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        GetComments:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /community/post/{postId}/comments
+            Method: GET
+
+  AddCommentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-add-comment"
+      Handler: src.handlers.comments.add_comment_handler
+      CodeUri: .
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref TradesBucket
+      Events:
+        PostComment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /community/post/{postId}/comments
+            Method: POST
+
   # ─────────────────────────────────────────────
   # S3 Bucket for trade data
   # ─────────────────────────────────────────────
