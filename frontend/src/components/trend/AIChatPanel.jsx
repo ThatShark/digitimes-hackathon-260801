@@ -40,6 +40,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [pendingSuggestion, setPendingSuggestion] = useState(null)
+  const [isMaximized, setIsMaximized] = useState(false)
   // 是否顯示「跳到最新訊息」按鈕
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
 
@@ -229,7 +230,7 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
   }
 
   return (
-    <div className="ai-chat-panel">
+    <div className={`ai-chat-panel ${isMaximized ? 'maximized' : ''}`}>
       {/* Tab header */}
       <div className="chat-panel-header">
         <button
@@ -243,6 +244,13 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
           onClick={() => setActiveTab('community')}
         >
           💬 彈幕聊天
+        </button>
+        <button
+          className="chat-maximize-btn"
+          onClick={() => setIsMaximized((v) => !v)}
+          title={isMaximized ? '縮小' : '最大化'}
+        >
+          {isMaximized ? '⊞' : '⊡'}
         </button>
       </div>
 
