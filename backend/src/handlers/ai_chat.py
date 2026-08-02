@@ -331,14 +331,14 @@ def _build_system_prompt(personality_context: str, avg_trade_amount: "float | No
             f"## 這位用戶的投資人格分析\n{personality_context}\n\n"
             f"請根據以上用戶特質，調整你的回覆風格和建議方向。"
         )
-    else:
+    elif quiz_context:
+        # User completed questionnaire but no CSV-based personality yet
         personality_section = (
             "## 用戶狀態\n"
-            "這位用戶尚未完成投資人格分析。在適當的時機（例如用戶詢問個人化建議時），"
-            "溫和地建議他：「建議你先完成投資人格問卷或上傳交易紀錄 CSV，"
-            "這樣我可以根據你的投資風格提供更精準的建議喔！」\n"
-            "但如果用戶只是問一般市場問題，不需要每次都提醒。"
+            "這位用戶已完成補充問卷，請根據下方問卷結果調整建議風格。"
         )
+    else:
+        personality_section = ""
 
     if avg_trade_amount:
         amount_section = (
