@@ -82,13 +82,28 @@ _MAX_TOOL_ROUNDS = 6
 
 
 def lambda_handler(event, context):
-    """POST /ai_chat"""
+    """POST /ai_chat (also handles OPTIONS preflight for Function URL)"""
+    # Handle CORS preflight for Lambda Function URL (no API Gateway to do it)
+    http_method = (
+        (event.get("requestContext", {}).get("http", {}).get("method"))
+        or event.get("httpMethod")
+        or ""
+    ).upper()
+    if http_method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Max-Age": "86400",
+            },
+            "body": "",
+        }
+
     try:
         return _handle(event, context)
     except Exception as exc:
-        # Catch-all so Lambda NEVER crashes without returning CORS headers.
-        # The GatewayResponses DEFAULT_5XX is a safety net, but this is better
-        # because it includes the actual error message for debugging.
         print(f"[AI_CHAT] Unhandled exception: {type(exc).__name__}: {exc}")
         return _error(500, f"內部錯誤：{type(exc).__name__}: {exc}")
 
@@ -97,16 +112,30 @@ def _handle(event, context):
     """Inner handler — separated so the outer lambda_handler can catch all."""
     start_time = _time.time()
 
-    # API Gateway has a HARD 29-second integration timeout that cannot be
-    # changed. Lambda must return within 29s or the gateway cuts it.
-    # Use 25s as our deadline (4s buffer for serialization + network).
+    # Detect if invoked via Lambda Function URL (no 29s API Gateway timeout)
+    # vs API Gateway (hard 29s limit). Function URL events have
+    # requestContext.http instead of requestContext.httpMethod.
+    is_function_url = "http" in (event.get("requestContext") or {})
+
     timeout_ms = getattr(context, "get_remaining_time_in_millis", lambda: 120000)()
     lambda_deadline = start_time + (timeout_ms / 1000) - 5
-    gateway_deadline = start_time + 25
-    deadline = min(lambda_deadline, gateway_deadline)
+
+    if is_function_url:
+        # Function URL: no gateway timeout, use full Lambda timeout
+        deadline = lambda_deadline
+    else:
+        # API Gateway: hard 29s integration timeout
+        gateway_deadline = start_time + 25
+        deadline = min(lambda_deadline, gateway_deadline)
+
     # ── Parse request body ────────────────────────────────────────────────────
+    # Function URL may base64-encode the body
+    raw_body = event.get("body") or "{}"
+    if event.get("isBase64Encoded"):
+        import base64
+        raw_body = base64.b64decode(raw_body).decode("utf-8")
     try:
-        body = json.loads(event.get("body") or "{}")
+        body = json.loads(raw_body)
     except (json.JSONDecodeError, TypeError):
         return _error(400, "無法解析請求內容")
 
