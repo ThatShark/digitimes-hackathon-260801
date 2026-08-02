@@ -168,7 +168,8 @@ def test_round_cap_returns_fallback_message(mock_converse, mock_execute, mock_pe
     assert resp["statusCode"] == 200
     body = json.loads(resp["body"])
     assert "暫時無法" in body["message"] or "無法" in body["message"]
-    assert mock_converse.call_count == ai_chat._MAX_TOOL_ROUNDS
+    # _MAX_TOOL_ROUNDS calls in the loop + 1 forced-answer attempt after
+    assert mock_converse.call_count == ai_chat._MAX_TOOL_ROUNDS + 1
 
 
 # ── Bedrock failure -> 503 ────────────────────────────────────────────────────

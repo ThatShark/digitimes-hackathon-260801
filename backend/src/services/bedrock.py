@@ -151,7 +151,20 @@ class BedrockChatClient:
         for attempt in range(1, RETRY_ATTEMPTS + 1):
             try:
                 return self._client.converse(**kwargs)
-            except (ClientError, Exception) as exc:
+            except ClientError as exc:
+                error_code = exc.response.get("Error", {}).get("Code", "")
+                # ValidationException means input is too large or malformed —
+                # retrying won't help, fail immediately.
+                if error_code == "ValidationException":
+                    print(f"[BEDROCK] ValidationException (no retry): {exc}")
+                    raise BedrockError(
+                        f"Bedrock validation error: {exc}"
+                    ) from exc
+                last_error = exc
+                print(f"[BEDROCK] Attempt {attempt}/{RETRY_ATTEMPTS} failed: {exc}")
+                if attempt < RETRY_ATTEMPTS:
+                    time.sleep(RETRY_DELAY_SECONDS)
+            except Exception as exc:
                 last_error = exc
                 print(f"[BEDROCK] Attempt {attempt}/{RETRY_ATTEMPTS} failed: {exc}")
                 if attempt < RETRY_ATTEMPTS:

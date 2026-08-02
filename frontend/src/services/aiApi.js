@@ -49,7 +49,7 @@ export function sendAiChat(message, currency) {
       message,
       ...(currency ? { currency } : {}),
       ...(personality && personality.code !== '????' ? { personality } : {}),
-      ...(history.length > 0 ? { before_messages: history } : {}),
+      ...(history.length > 0 ? { before_messages: history.slice(-3) } : {}),
     },
     timeoutMs: 120000,
   })

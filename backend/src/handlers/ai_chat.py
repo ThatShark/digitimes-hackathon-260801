@@ -123,7 +123,7 @@ def _handle(event, context):
     quiz_context = _load_quiz_results(user_id)
 
     # ── Build Bedrock messages (with conversation history) ───────────────────
-    before_messages = (body.get("before_messages") or [])[-20:]  # cap history length
+    before_messages = (body.get("before_messages") or [])[-3:]  # cap to last 3 turns to fit within model context limits
 
     messages = []
     for turn in before_messages:
@@ -131,6 +131,10 @@ def _handle(event, context):
             user_text = (turn.get("user") or "").strip()
             ai_text = (turn.get("ai") or "").strip()
             if user_text and ai_text:
+                # Truncate long AI responses in history to keep context manageable
+                # (full responses can be 2000+ chars each with tables/analysis)
+                if len(ai_text) > 500:
+                    ai_text = ai_text[:500] + "…（回覆已截斷）"
                 messages.append({"role": "user", "content": [{"text": user_text}]})
                 messages.append({"role": "assistant", "content": [{"text": ai_text}]})
 
@@ -149,8 +153,22 @@ def _handle(event, context):
             client, messages, system_prompt, tool_config, currency, deadline
         )
     except BedrockError as exc:
-        print(f"[AI_CHAT] Bedrock error: {exc}")
-        return _error(503, f"AI 服務暫時無法使用：{exc}")
+        error_msg = str(exc).lower()
+        # If context is too large, retry with reduced history
+        if "validation" in error_msg or "too long" in error_msg or "too many" in error_msg or "token" in error_msg:
+            print(f"[AI_CHAT] Context too large, retrying with no history")
+            # Strip all history, keep only the current user message
+            messages = [messages[-1]]
+            try:
+                final_text, suggestion_input = _run_tool_use_loop(
+                    client, messages, system_prompt, tool_config, currency, deadline
+                )
+            except BedrockError as exc2:
+                print(f"[AI_CHAT] Still failing after dropping history: {exc2}")
+                return _error(503, f"AI 服務暫時無法使用：{exc2}")
+        else:
+            print(f"[AI_CHAT] Bedrock error: {exc}")
+            return _error(503, f"AI 服務暫時無法使用：{exc}")
 
     suggestion = None
     if suggestion_input is not None and currency:
@@ -331,7 +349,11 @@ def _load_personality_analysis(user_id: "str | None") -> str:
         storage = S3StorageService(bucket_name=bucket)
         metrics_bytes = storage.get_trade_metrics(user_id)
         metrics = json.loads(metrics_bytes.decode("utf-8"))
-        return metrics.get("personality_analysis", "")
+        analysis = metrics.get("personality_analysis", "")
+        # Truncate to avoid blowing up Bedrock's context limit
+        if len(analysis) > 1500:
+            analysis = analysis[:1500] + "…（分析已截斷）"
+        return analysis
     except (S3StorageError, json.JSONDecodeError, UnicodeDecodeError):
         return ""
 

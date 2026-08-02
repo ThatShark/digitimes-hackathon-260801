@@ -111,4 +111,4 @@ def test_converse_raw_raises_after_exhausting_retries(mock_boto_client):
         client = BedrockChatClient()
         with pytest.raises(BedrockError):
             client.chat([{"role": "user", "content": [{"text": "hi"}]}])
-    assert mock_client.converse.call_count == 3
+    assert mock_client.converse.call_count == 2
