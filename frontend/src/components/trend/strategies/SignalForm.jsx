@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
+import ConfirmModal from './ConfirmModal'
 
 export default function SignalForm({ symbol, currency }) {
   const [form, setForm] = useState({
@@ -17,6 +18,7 @@ export default function SignalForm({ symbol, currency }) {
     stopLoss: '',
   })
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
@@ -240,28 +242,6 @@ export default function SignalForm({ symbol, currency }) {
         </div>
       </div>
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        <div className="sf-preview-row">
-          <span>指標</span>
-          <span>
-            {form.indicatorType === 'rsi' && `RSI(${form.rsiPeriod})`}
-            {form.indicatorType === 'macd' && 'MACD(12,26,9)'}
-            {form.indicatorType === 'ma' && `MA(${form.maFast}/${form.maSlow})`}
-            {form.indicatorType === 'webhook' && 'Webhook'}
-          </span>
-        </div>
-        <div className="sf-preview-row">
-          <span>K 線週期</span>
-          <span>{form.timeframe}</span>
-        </div>
-        <div className="sf-preview-row">
-          <span>單次下單金額</span>
-          <span>{form.orderSize || '--'} {currency}</span>
-        </div>
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -272,10 +252,51 @@ export default function SignalForm({ symbol, currency }) {
         >
           {aiLoading ? '⏳ AI 分析中...' : '🤖 AI 填入'}
         </button>
-        <button type="button" className="sf-btn sf-btn-primary">
+        <button type="button" className="sf-btn sf-btn-primary" onClick={() => setShowConfirm(true)}>
           綁定並開啟訊號策略
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認開啟訊號策略"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認開啟"
+      >
+        <div className="sf-preview">
+          <div className="sf-preview-row">
+            <span>指標</span>
+            <span>
+              {form.indicatorType === 'rsi' && `RSI(${form.rsiPeriod})`}
+              {form.indicatorType === 'macd' && 'MACD(12,26,9)'}
+              {form.indicatorType === 'ma' && `MA(${form.maFast}/${form.maSlow})`}
+              {form.indicatorType === 'webhook' && 'Webhook'}
+            </span>
+          </div>
+          <div className="sf-preview-row">
+            <span>K 線週期</span>
+            <span>{form.timeframe}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>單次下單金額</span>
+            <span>{form.orderSize || '--'} {currency}</span>
+          </div>
+          {form.takeProfit && (
+            <div className="sf-preview-row">
+              <span>止盈</span>
+              <span>{form.takeProfit}%</span>
+            </div>
+          )}
+          {form.stopLoss && (
+            <div className="sf-preview-row">
+              <span>止損</span>
+              <span>{form.stopLoss}%</span>
+            </div>
+          )}
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
+import ConfirmModal from './ConfirmModal'
 
 export default function SpotGridForm({ symbol, currency, prefill }) {
   const [form, setForm] = useState({
@@ -16,6 +17,7 @@ export default function SpotGridForm({ symbol, currency, prefill }) {
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   // 從社群策略卡片「一鍵複製」帶入的參數
@@ -196,28 +198,6 @@ export default function SpotGridForm({ symbol, currency, prefill }) {
         </div>
       )}
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        <div className="sf-preview-row">
-          <span>預計每格價差</span>
-          <span>
-            {form.lowerPrice && form.upperPrice && form.gridCount
-              ? ((Number(form.upperPrice) - Number(form.lowerPrice)) / Number(form.gridCount)).toFixed(2)
-              : '--'}
-          </span>
-        </div>
-        <div className="sf-preview-row">
-          <span>單格投入</span>
-          <span>
-            {form.investment && form.gridCount
-              ? (Number(form.investment) / Number(form.gridCount)).toFixed(2)
-              : '--'}{' '}
-            {currency}
-          </span>
-        </div>
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -228,10 +208,51 @@ export default function SpotGridForm({ symbol, currency, prefill }) {
         >
           {aiLoading ? '⏳ AI 分析中...' : '🤖 AI 填入'}
         </button>
-        <button type="button" className="sf-btn sf-btn-primary">
+        <button type="button" className="sf-btn sf-btn-primary" onClick={() => setShowConfirm(true)}>
           創建策略
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認建立現貨網格策略"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認建立"
+      >
+        <div className="sf-preview">
+          <div className="sf-preview-row">
+            <span>區間</span>
+            <span>{form.lowerPrice || '--'} ~ {form.upperPrice || '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>網格數</span>
+            <span>{form.gridCount} 格（{form.gridMode === 'arithmetic' ? '等差' : '等比'}）</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>預計每格價差</span>
+            <span>
+              {form.lowerPrice && form.upperPrice && form.gridCount
+                ? ((Number(form.upperPrice) - Number(form.lowerPrice)) / Number(form.gridCount)).toFixed(2)
+                : '--'}
+            </span>
+          </div>
+          <div className="sf-preview-row">
+            <span>投入金額</span>
+            <span>{form.investment || '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>單格投入</span>
+            <span>
+              {form.investment && form.gridCount
+                ? (Number(form.investment) / Number(form.gridCount)).toFixed(2)
+                : '--'}{' '}
+              {currency}
+            </span>
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

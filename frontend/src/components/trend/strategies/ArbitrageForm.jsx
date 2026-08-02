@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
+import ConfirmModal from './ConfirmModal'
 
 export default function ArbitrageForm({ symbol, currency }) {
   const [form, setForm] = useState({
@@ -10,6 +11,7 @@ export default function ArbitrageForm({ symbol, currency }) {
     spreadLimit: '0.5',
   })
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
@@ -114,32 +116,6 @@ export default function ArbitrageForm({ symbol, currency }) {
         />
       </div>
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        <div className="sf-preview-row">
-          <span>現貨買入</span>
-          <span>{form.totalCapital ? (Number(form.totalCapital) / 2).toFixed(0) : '--'} {currency}</span>
-        </div>
-        <div className="sf-preview-row">
-          <span>合約做空</span>
-          <span>{form.totalCapital ? (Number(form.totalCapital) / 2).toFixed(0) : '--'} {currency}</span>
-        </div>
-        <div className="sf-preview-row">
-          <span>槓桿</span>
-          <span>{form.leverage.toFixed(1)}x</span>
-        </div>
-        <div className="sf-preview-row">
-          <span>預估日收益（資金費率）</span>
-          <span className="sf-highlight">
-            {form.totalCapital
-              ? ((Number(form.totalCapital) / 2) * 0.00015 * 3).toFixed(2)
-              : '--'}{' '}
-            {currency}/日
-          </span>
-        </div>
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -150,10 +126,43 @@ export default function ArbitrageForm({ symbol, currency }) {
         >
           {aiLoading ? '⏳ AI 分析中...' : '🤖 AI 填入'}
         </button>
-        <button type="button" className="sf-btn sf-btn-primary">
+        <button type="button" className="sf-btn sf-btn-primary" onClick={() => setShowConfirm(true)}>
           ⚡ 一鍵套利
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認執行期現套利"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認執行"
+      >
+        <div className="sf-preview">
+          <div className="sf-preview-row">
+            <span>現貨買入</span>
+            <span>{form.totalCapital ? (Number(form.totalCapital) / 2).toFixed(0) : '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>合約做空</span>
+            <span>{form.totalCapital ? (Number(form.totalCapital) / 2).toFixed(0) : '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>槓桿</span>
+            <span>{form.leverage.toFixed(1)}x</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>預估日收益</span>
+            <span className="sf-highlight">
+              {form.totalCapital
+                ? ((Number(form.totalCapital) / 2) * 0.00015 * 3).toFixed(2)
+                : '--'}{' '}
+              {currency}/日
+            </span>
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

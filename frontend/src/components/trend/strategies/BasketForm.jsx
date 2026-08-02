@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
 import { SUPPORTED_COINS } from './constants'
+import ConfirmModal from './ConfirmModal'
 
 export default function BasketForm({ symbol, currency }) {
   const [tokens, setTokens] = useState([
@@ -15,6 +16,7 @@ export default function BasketForm({ symbol, currency }) {
     deviationThreshold: '5',
   })
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
@@ -198,25 +200,6 @@ export default function BasketForm({ symbol, currency }) {
         </div>
       )}
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        {tokens.map((t, i) => (
-          <div key={i} className="sf-preview-row">
-            <span>{t.coin || '未選'}</span>
-            <span>
-              {form.totalInvestment && t.weight
-                ? ((Number(form.totalInvestment) * Number(t.weight)) / 100).toFixed(0)
-                : '--'}{' '}
-              {currency} ({t.weight}%)
-            </span>
-          </div>
-        ))}
-        {totalWeight !== 100 && (
-          <div className="sf-preview-warning">⚠️ 總權重必須等於 100%</div>
-        )}
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -231,10 +214,42 @@ export default function BasketForm({ symbol, currency }) {
           type="button"
           className="sf-btn sf-btn-primary"
           disabled={totalWeight !== 100}
+          onClick={() => setShowConfirm(true)}
         >
           建立投資組合
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認建立投資組合"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認建立"
+      >
+        <div className="sf-preview">
+          {tokens.map((t, i) => (
+            <div key={i} className="sf-preview-row">
+              <span>{t.coin || '未選'}</span>
+              <span>
+                {form.totalInvestment && t.weight
+                  ? ((Number(form.totalInvestment) * Number(t.weight)) / 100).toFixed(0)
+                  : '--'}{' '}
+                {currency} ({t.weight}%)
+              </span>
+            </div>
+          ))}
+          <div className="sf-preview-row">
+            <span>總投資金額</span>
+            <span>{form.totalInvestment || '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>再平衡方式</span>
+            <span>{form.rebalanceMode === 'time' ? `按時間（${form.rebalancePeriod}）` : `按偏離（${form.deviationThreshold}%）`}</span>
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

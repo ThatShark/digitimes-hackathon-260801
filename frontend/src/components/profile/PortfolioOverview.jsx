@@ -45,17 +45,11 @@ export default function PortfolioOverview({ portfolio }) {
   const totalPnlPct = portfolio.total_pnl_pct ?? 0
   const isPositive = totalPnlPct >= 0
 
-  // Build allocation data including TWD for the bar
-  const allocationItems = []
-  if (twdBalance > 0 && totalValue > 0) {
-    allocationItems.push({
-      currency: 'TWD',
-      allocation_pct: (twdBalance / totalValue) * 100,
-    })
-  }
+  // Build allocation data — only crypto for the bar (no TWD)
+  const cryptoAllocationItems = []
   holdings.forEach((item) => {
-    const pct = totalValue > 0 ? (item.value / totalValue) * 100 : (item.allocation_pct ?? 0)
-    allocationItems.push({ ...item, allocation_pct: pct })
+    const pct = coinValue > 0 ? (item.value / coinValue) * 100 : (item.allocation_pct ?? 0)
+    cryptoAllocationItems.push({ ...item, allocation_pct: pct })
   })
 
   return (
@@ -65,9 +59,21 @@ export default function PortfolioOverview({ portfolio }) {
       {/* 總資產 + 損益 */}
       <div className="portfolio-summary">
         <div className="portfolio-stat">
-          <span className="portfolio-stat-label">總資產價值</span>
+          <span className="portfolio-stat-label">總資產價值（新台幣＋虛擬貨幣）</span>
           <span className="portfolio-stat-value">
             NT$ {totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+        </div>
+        <div className="portfolio-stat">
+          <span className="portfolio-stat-label">新台幣</span>
+          <span className="portfolio-stat-value">
+            NT$ {twdBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+        </div>
+        <div className="portfolio-stat">
+          <span className="portfolio-stat-label">虛擬貨幣</span>
+          <span className="portfolio-stat-value">
+            NT$ {coinValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
         </div>
         <div className="portfolio-stat">
@@ -82,13 +88,14 @@ export default function PortfolioOverview({ portfolio }) {
         </div>
       </div>
 
-      {allocationItems.length === 0 ? (
+      {cryptoAllocationItems.length === 0 ? (
         <p className="portfolio-empty">目前沒有持倉，快去交易頁面開始你的第一筆交易吧！</p>
       ) : (
         <>
-          {/* 分配比例長條圖（含 TWD） */}
+          {/* 虛擬貨幣持倉占比 */}
+          <h3 className="allocation-subtitle">虛擬貨幣持倉占比</h3>
           <div className="allocation-bar">
-            {allocationItems.map((item, i) => (
+            {cryptoAllocationItems.map((item, i) => (
               <div
                 key={item.currency}
                 className="allocation-segment"
@@ -101,9 +108,9 @@ export default function PortfolioOverview({ portfolio }) {
             ))}
           </div>
 
-          {/* 幣種圖例（含 TWD） */}
+          {/* 幣種圖例 */}
           <div className="allocation-legend">
-            {allocationItems.map((item, i) => (
+            {cryptoAllocationItems.map((item, i) => (
               <span key={item.currency} className="legend-chip">
                 <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
                 {item.currency} {item.allocation_pct.toFixed(1)}%
@@ -111,12 +118,12 @@ export default function PortfolioOverview({ portfolio }) {
             ))}
           </div>
 
-          {/* 逐幣明細（不含 TWD） */}
+          {/* 逐幣明細 */}
           <div className="holdings-grid">
             {holdings.map((item, i) => (
               <div key={item.currency} className="holding-card">
                 <div className="holding-card-header">
-                  <span className="holding-dot" style={{ background: COLORS[(twdBalance > 0 ? i + 1 : i) % COLORS.length] }} />
+                  <span className="holding-dot" style={{ background: COLORS[i % COLORS.length] }} />
                   <span className="holding-name">{item.currency}</span>
                   <span className={`holding-pnl ${item.pnl_pct >= 0 ? 'up' : 'down'}`}>
                     {item.pnl_pct >= 0 ? '+' : ''}{item.pnl_pct.toFixed(2)}%

@@ -55,7 +55,7 @@ function _buildPersonalityFromScores(r, e, f, s) {
     (r >= 50 ? 'A' : 'D') +
     (e >= 50 ? 'E' : 'C') +
     (f >= 50 ? 'S' : 'L') +
-    (s >= 50 ? 'I' : 'Q')
+    (s >= 50 ? 'Q' : 'I')
   return { code, name: PERSONALITY_NAMES[code] || '未知', axes: { R: r, E: e, F: f, S: s } }
 }
 

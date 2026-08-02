@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
+import ConfirmModal from './ConfirmModal'
 
 export default function MartingaleForm({ symbol, currency }) {
   const [form, setForm] = useState({
@@ -14,6 +15,7 @@ export default function MartingaleForm({ symbol, currency }) {
   })
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }))
@@ -156,36 +158,6 @@ export default function MartingaleForm({ symbol, currency }) {
         </div>
       )}
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        <div className="sf-preview-row">
-          <span>首單金額</span>
-          <span>{form.baseOrder || '--'} {currency}</span>
-        </div>
-        <div className="sf-preview-row">
-          <span>最大投入預估</span>
-          <span>
-            {form.baseOrder && form.volumeMultiplier && form.maxSafetyOrders
-              ? (() => {
-                  let total = Number(form.baseOrder)
-                  let orderSize = Number(form.baseOrder)
-                  for (let i = 0; i < Number(form.maxSafetyOrders); i++) {
-                    orderSize *= Number(form.volumeMultiplier)
-                    total += orderSize
-                  }
-                  return total.toFixed(0)
-                })()
-              : '--'}{' '}
-            {currency}
-          </span>
-        </div>
-        <div className="sf-preview-row">
-          <span>止盈目標</span>
-          <span>{form.takeProfit || '--'}%</span>
-        </div>
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -196,10 +168,59 @@ export default function MartingaleForm({ symbol, currency }) {
         >
           {aiLoading ? '⏳ AI 分析中...' : '🤖 AI 填入'}
         </button>
-        <button type="button" className="sf-btn sf-btn-primary">
+        <button type="button" className="sf-btn sf-btn-primary" onClick={() => setShowConfirm(true)}>
           創建馬丁格爾策略
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認建立馬丁格爾策略"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認建立"
+      >
+        <div className="sf-preview">
+          <div className="sf-preview-row">
+            <span>首單金額</span>
+            <span>{form.baseOrder || '--'} {currency}</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>加倉跌幅</span>
+            <span>{form.priceDrop}%</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>加倉倍數</span>
+            <span>{form.volumeMultiplier}x</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>最大加倉次數</span>
+            <span>{form.maxSafetyOrders} 次</span>
+          </div>
+          <div className="sf-preview-row">
+            <span>最大投入預估</span>
+            <span>
+              {form.baseOrder && form.volumeMultiplier && form.maxSafetyOrders
+                ? (() => {
+                    let total = Number(form.baseOrder)
+                    let orderSize = Number(form.baseOrder)
+                    for (let i = 0; i < Number(form.maxSafetyOrders); i++) {
+                      orderSize *= Number(form.volumeMultiplier)
+                      total += orderSize
+                    }
+                    return total.toFixed(0)
+                  })()
+                : '--'}{' '}
+              {currency}
+            </span>
+          </div>
+          <div className="sf-preview-row">
+            <span>止盈目標</span>
+            <span>{form.takeProfit || '--'}%</span>
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

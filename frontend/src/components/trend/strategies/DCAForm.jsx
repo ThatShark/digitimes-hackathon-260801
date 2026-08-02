@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useBalance } from './useBalance'
 import { getAiStrategyParams } from '../../../services/coinApi'
+import ConfirmModal from './ConfirmModal'
 
 export default function DCAForm({ symbol, currency, prefill }) {
   const [form, setForm] = useState({
@@ -16,6 +17,7 @@ export default function DCAForm({ symbol, currency, prefill }) {
     enableTargetProfit: false,
   })
   const [aiLoading, setAiLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { balance, loading: balanceLoading } = useBalance()
 
   useEffect(() => {
@@ -220,32 +222,6 @@ export default function DCAForm({ symbol, currency, prefill }) {
         )}
       </div>
 
-      {/* 預覽區 */}
-      <div className="sf-preview">
-        <div className="sf-preview-title">策略預覽</div>
-        <div className="sf-preview-row">
-          <span>投入頻率</span>
-          <span>
-            {form.frequency === 'hourly' && `每小時 :${form.hourMinute}`}
-            {form.frequency === 'daily' && `每天 ${form.time}`}
-            {form.frequency === 'weekly' && `每週${
-              { mon: '一', tue: '二', wed: '三', thu: '四', fri: '五', sat: '六', sun: '日' }[form.dayOfWeek]
-            } ${form.time}`}
-            {form.frequency === 'monthly' && `每月 ${form.dayOfMonth === 'last' ? '最後一天' : `${form.dayOfMonth} 日`} ${form.time}`}
-          </span>
-        </div>
-        <div className="sf-preview-row">
-          <span>每期金額</span>
-          <span>{form.amountPerOrder || '--'} {currency}</span>
-        </div>
-        {form.enableTargetProfit && form.targetProfit && (
-          <div className="sf-preview-row">
-            <span>止盈目標</span>
-            <span>{form.targetProfit}%</span>
-          </div>
-        )}
-      </div>
-
       {/* 操作按鈕 */}
       <div className="sf-actions">
         <button
@@ -256,10 +232,47 @@ export default function DCAForm({ symbol, currency, prefill }) {
         >
           {aiLoading ? '⏳ AI 分析中...' : '🤖 AI 填入'}
         </button>
-        <button type="button" className="sf-btn sf-btn-primary">
+        <button type="button" className="sf-btn sf-btn-primary" onClick={() => setShowConfirm(true)}>
           開啟定投計劃
         </button>
       </div>
+
+      {/* 確認彈窗 */}
+      <ConfirmModal
+        open={showConfirm}
+        title="確認開啟定投計劃"
+        onCancel={() => setShowConfirm(false)}
+        onConfirm={() => setShowConfirm(false)}
+        confirmText="確認開啟"
+      >
+        <div className="sf-preview">
+          <div className="sf-preview-row">
+            <span>投入頻率</span>
+            <span>
+              {form.frequency === 'hourly' && `每小時 :${form.hourMinute}`}
+              {form.frequency === 'daily' && `每天 ${form.time}`}
+              {form.frequency === 'weekly' && `每週${{ mon: '一', tue: '二', wed: '三', thu: '四', fri: '五', sat: '六', sun: '日' }[form.dayOfWeek]} ${form.time}`}
+              {form.frequency === 'monthly' && `每月 ${form.dayOfMonth === 'last' ? '最後一天' : `${form.dayOfMonth} 日`} ${form.time}`}
+            </span>
+          </div>
+          <div className="sf-preview-row">
+            <span>每期金額</span>
+            <span>{form.amountPerOrder || '--'} {currency}</span>
+          </div>
+          {form.maxInvestment && (
+            <div className="sf-preview-row">
+              <span>最大總投資</span>
+              <span>{form.maxInvestment} {currency}</span>
+            </div>
+          )}
+          {form.enableTargetProfit && form.targetProfit && (
+            <div className="sf-preview-row">
+              <span>止盈目標</span>
+              <span>{form.targetProfit}%</span>
+            </div>
+          )}
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

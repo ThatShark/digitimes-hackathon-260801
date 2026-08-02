@@ -634,3 +634,81 @@
   border-radius: 3px;
   background: #3b82f6;
 }
+
+
+/* ===== Confirmation Modal ===== */
+.sf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sf-modal {
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sf-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.sf-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+
+.sf-modal-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color, #334155);
+  background: var(--bg-tertiary, #0f172a);
+  color: var(--text-secondary, #94a3b8);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-modal-close:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.sf-modal-body {
+  margin-bottom: 16px;
+}
+
+.sf-modal-actions {
+  display: flex;
+  gap: 10px;
+}

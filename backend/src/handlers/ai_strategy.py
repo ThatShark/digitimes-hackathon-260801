@@ -139,10 +139,17 @@ def lambda_handler(event, context):
     else:
         system_prompt = _build_system_prompt(strategy_type, schema, symbol, avg_trade_amount, current_price)
 
-    user_message = (
-        f"請根據 {symbol} 的當前市場狀況，為「{schema['description']}」推薦最佳參數設定。"
-        f"直接回傳 JSON，不要任何其他文字。"
-    )
+    user_message_parts = [
+        f"請根據 {symbol} 的當前市場狀況，為「{schema['description']}」推薦最佳參數設定。",
+    ]
+    if current_price:
+        user_message_parts.append(
+            f"重要資訊：{symbol} 目前即時價格為 NT${current_price:,.0f}。"
+            f"你設定的所有價格參數（lowerPrice、upperPrice 等）必須以 NT${current_price:,.0f} 為中心，"
+            f"絕對不可偏離此價格超過 50%。"
+        )
+    user_message_parts.append("直接回傳 JSON，不要任何其他文字。")
+    user_message = "\n".join(user_message_parts)
 
     client = BedrockChatClient()
     messages = [{"role": "user", "content": [{"text": user_message}]}]
