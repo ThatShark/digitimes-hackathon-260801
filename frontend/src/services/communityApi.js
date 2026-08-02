@@ -1,5 +1,5 @@
 /**
- * /community/* 與 /tipping — 對應 backend/api.yaml Community 相關端點
+ * /community/* — 對應 backend/api.yaml Community 相關端點
  */
 import { apiFetch } from './api'
 
@@ -40,18 +40,5 @@ export function addComment(postId, content, images = []) {
   return apiFetch(`/community/post/${postId}/comments`, {
     method: 'POST',
     body: { content, images },
-  })
-}
-
-/**
- * 打賞貼文或留言
- * @param {'post'|'comment'} targetType
- * @param {string} targetId
- * @param {number} amount
- */
-export function sendTip(targetType, targetId, amount) {
-  return apiFetch('/tipping', {
-    method: 'POST',
-    body: { target_type: targetType, target_id: targetId, amount },
   })
 }

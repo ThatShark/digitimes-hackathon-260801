@@ -2,17 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../shared/PersonalityBadge'
 import VerifiedBadge from './VerifiedBadge'
-import TipButton from './TipButton'
 import CopyTradeButton from './CopyTradeButton'
 import { parseTickerTags } from './TickerCard'
 import ShareButton from './ShareButton'
 import Avatar from '../shared/Avatar'
 import './PostCard.css'
-
-import { getUserPersonality } from '../../utils/userPersonality'
-
-// 動態讀取當前用戶人格（從 localStorage）
-const CURRENT_USER_PERSONALITY = getUserPersonality()
 
 /**
  * 單篇社群貼文卡片
@@ -73,8 +67,7 @@ export default function PostCard({ post }) {
           <CopyTradeButton
             tradeSignal={post.tradeSignal}
             authorName={post.author}
-            authorPersonality={post.personality}
-            userPersonality={CURRENT_USER_PERSONALITY}
+            postContent={post.content}
           />
         </div>
       )}
@@ -91,9 +84,7 @@ export default function PostCard({ post }) {
           <span className="action-icon">💬</span>
           <span className="action-count">{post.comments || 0}</span>
         </button>
-        <span onClick={stop}>
-          <TipButton postId={post.id} initialTips={post.tips || 0} />
-        </span>
+
         <ShareButton postId={post.id} />
       </div>
     </article>

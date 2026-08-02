@@ -1,8 +1,9 @@
 .copy-trade-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -10,6 +11,7 @@
   border: none;
   transition: all 0.15s;
   margin-top: 8px;
+  width: fit-content;
 }
 
 .copy-trade-btn.buy {
@@ -24,198 +26,7 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.copy-trade-btn:hover:not(:disabled) {
+.copy-trade-btn:hover {
   transform: translateY(-1px);
   filter: brightness(1.1);
-}
-
-.copy-trade-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-/* Modal overlay */
-.copy-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  animation: overlayFade 0.15s ease;
-}
-
-@keyframes overlayFade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.copy-modal {
-  background: var(--bg-card, #1e293b);
-  border: 1px solid var(--border-color, #334155);
-  border-radius: 12px;
-  width: 380px;
-  max-width: 90vw;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  animation: modalSlide 0.2s ease;
-}
-
-@keyframes modalSlide {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.copy-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-color, #334155);
-}
-
-.copy-modal-header h3 {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
-  margin: 0;
-}
-
-.copy-modal-close {
-  background: none;
-  border: none;
-  color: var(--text-secondary, #94a3b8);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.copy-modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.copy-modal-body {
-  padding: 16px;
-}
-
-.copy-strategy-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.copy-info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.copy-info-label {
-  font-size: 13px;
-  color: var(--text-secondary, #94a3b8);
-}
-
-.copy-info-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
-}
-
-.copy-info-value.buy { color: #10b981; }
-.copy-info-value.sell { color: #ef4444; }
-
-.copy-risk-warning {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: rgba(251, 191, 36, 0.1);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  margin-bottom: 14px;
-}
-
-.risk-icon { font-size: 14px; }
-
-.risk-text {
-  font-size: 12px;
-  color: #fbbf24;
-  line-height: 1.4;
-}
-
-.copy-amount-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.copy-amount-label {
-  font-size: 13px;
-  color: var(--text-secondary, #94a3b8);
-}
-
-.copy-amount-input {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #334155);
-  background: var(--bg-secondary, #0f172a);
-  color: var(--text-primary, #f1f5f9);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.copy-amount-input:focus {
-  border-color: #3b82f6;
-}
-
-.copy-modal-footer {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border-color, #334155);
-}
-
-.copy-cancel-btn {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, #334155);
-  background: transparent;
-  color: var(--text-secondary, #94a3b8);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.copy-cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.copy-confirm-btn {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
-  border: none;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.copy-confirm-btn.buy {
-  background: #10b981;
-  color: white;
-}
-
-.copy-confirm-btn.sell {
-  background: #ef4444;
-  color: white;
-}
-
-.copy-confirm-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }

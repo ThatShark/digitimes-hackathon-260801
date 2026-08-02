@@ -41,7 +41,8 @@ export default function PersonalityBadge({ personality, compact = false, showNam
   if (compact) {
     return (
       <span className="personality-badge personality-badge--compact" title={`${code} ${name || ''}`}>
-        {code}{showName && name ? ` ${name}` : ''}
+        <span className="pb-compact-code">{code}</span>
+        {showName && name && <span className="pb-compact-name">{name}</span>}
       </span>
     )
   }

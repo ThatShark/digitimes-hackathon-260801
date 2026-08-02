@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import PersonalityBadge from '../components/shared/PersonalityBadge'
 import VerifiedBadge from '../components/community/VerifiedBadge'
-import TipButton from '../components/community/TipButton'
 import CopyTradeButton from '../components/community/CopyTradeButton'
 import CommentItem from '../components/community/CommentItem'
 import CommentComposer from '../components/community/CommentComposer'
@@ -11,8 +10,6 @@ import Avatar from '../components/shared/Avatar'
 import { parseTickerTags } from '../components/community/TickerCard'
 import { MOCK_POSTS, CURRENT_USER } from '../utils/mockCommunity'
 import './PostDetailPage.css'
-
-const CURRENT_USER_PERSONALITY = CURRENT_USER.personality
 
 export default function PostDetailPage() {
   const { postId } = useParams()
@@ -96,8 +93,7 @@ export default function PostDetailPage() {
           <CopyTradeButton
             tradeSignal={post.tradeSignal}
             authorName={post.author}
-            authorPersonality={post.personality}
-            userPersonality={CURRENT_USER_PERSONALITY}
+            postContent={post.content}
           />
         )}
 
@@ -113,7 +109,6 @@ export default function PostDetailPage() {
             <span className="action-icon">💬</span>
             <span className="action-count">{comments.length}</span>
           </span>
-          <TipButton postId={post.id} initialTips={post.tips || 0} />
           <ShareButton postId={post.id} />
         </div>
       </article>

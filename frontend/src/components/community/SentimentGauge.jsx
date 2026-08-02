@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './SentimentGauge.css'
 
 // 多空關鍵詞（簡易版前端 NLP）
@@ -21,8 +22,10 @@ const BEARISH_KEYWORDS = [
  * @param {object} props
  * @param {Array} props.posts - 貼文陣列 [{content: string}]
  * @param {string} [props.coin] - 篩選特定幣種（可選）
+ * @param {string} [props.linkTo] - 點擊跳轉的路由（可選）
  */
-export default function SentimentGauge({ posts, coin }) {
+export default function SentimentGauge({ posts, coin, linkTo }) {
+  const navigate = useNavigate()
   const sentiment = useMemo(() => {
     const relevantPosts = coin
       ? posts.filter((p) => p.coin === coin || p.content.includes(coin))
@@ -63,10 +66,19 @@ export default function SentimentGauge({ posts, coin }) {
       ? 'bearish'
       : 'neutral'
 
+  const handleClick = () => {
+    if (linkTo) navigate(linkTo)
+  }
+
   return (
-    <div className="sentiment-gauge">
-      <div className="sentiment-header">
+    <div
+      className={`sentiment-gauge ${linkTo ? 'clickable' : ''}`}
+      onClick={handleClick}
+      role={linkTo ? 'link' : undefined}
+      title={linkTo ? `前往 ${coin} 幣種頁面` : undefined}
+    >      <div className="sentiment-header">
         <span className="sentiment-title">
+          {coin && <span className="sentiment-star">★</span>}
           社群情緒 {coin && <span className="sentiment-coin">{coin}</span>}
         </span>
         <span className={`sentiment-label ${labelClass}`}>{label}</span>

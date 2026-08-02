@@ -43,14 +43,15 @@
 
 .chat-message {
   display: flex;
+  flex-direction: column;
 }
 
 .chat-message.ai {
-  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .chat-message.user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .message-bubble {
@@ -394,4 +395,65 @@
   margin: 8px 0 4px;
   font-size: 1em;
   font-weight: 600;
+}
+
+/* 社群貼文附件卡片（跟隨買入時顯示） */
+.chat-post-card-attach {
+  background: var(--bg-secondary, #0f172a);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 6px;
+  max-width: 260px;
+}
+
+.chat-message.user .chat-post-card-attach {
+  margin-left: auto;
+}
+
+.attach-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.attach-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.attach-action {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.attach-action.buy {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.attach-action.sell {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.attach-author {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 4px;
+}
+
+.attach-content {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
