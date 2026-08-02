@@ -39,9 +39,24 @@ export default function PortfolioOverview({ portfolio }) {
   }
 
   const holdings = portfolio.holdings || []
-  const totalValue = portfolio.total_value ?? 0
+  const twdBalance = portfolio.twd_balance ?? 0
+  const coinValue = portfolio.total_value ?? 0
+  const totalValue = coinValue + twdBalance
   const totalPnlPct = portfolio.total_pnl_pct ?? 0
   const isPositive = totalPnlPct >= 0
+
+  // Build allocation data including TWD for the bar
+  const allocationItems = []
+  if (twdBalance > 0 && totalValue > 0) {
+    allocationItems.push({
+      currency: 'TWD',
+      allocation_pct: (twdBalance / totalValue) * 100,
+    })
+  }
+  holdings.forEach((item) => {
+    const pct = totalValue > 0 ? (item.value / totalValue) * 100 : (item.allocation_pct ?? 0)
+    allocationItems.push({ ...item, allocation_pct: pct })
+  })
 
   return (
     <section className="portfolio-overview">
@@ -67,41 +82,41 @@ export default function PortfolioOverview({ portfolio }) {
         </div>
       </div>
 
-      {holdings.length === 0 ? (
+      {allocationItems.length === 0 ? (
         <p className="portfolio-empty">目前沒有持倉，快去交易頁面開始你的第一筆交易吧！</p>
       ) : (
         <>
-          {/* 分配比例長條圖 */}
+          {/* 分配比例長條圖（含 TWD） */}
           <div className="allocation-bar">
-            {holdings.map((item, i) => (
+            {allocationItems.map((item, i) => (
               <div
                 key={item.currency}
                 className="allocation-segment"
                 style={{
-                  width: `${item.allocation_pct ?? 0}%`,
+                  width: `${item.allocation_pct}%`,
                   background: COLORS[i % COLORS.length],
                 }}
-                title={`${item.currency}: ${(item.allocation_pct ?? 0).toFixed(1)}%`}
+                title={`${item.currency}: ${item.allocation_pct.toFixed(1)}%`}
               />
             ))}
           </div>
 
-          {/* 幣種圖例 */}
+          {/* 幣種圖例（含 TWD） */}
           <div className="allocation-legend">
-            {holdings.map((item, i) => (
+            {allocationItems.map((item, i) => (
               <span key={item.currency} className="legend-chip">
                 <span className="legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                {item.currency} {(item.allocation_pct ?? 0).toFixed(1)}%
+                {item.currency} {item.allocation_pct.toFixed(1)}%
               </span>
             ))}
           </div>
 
-          {/* 逐幣明細 */}
+          {/* 逐幣明細（不含 TWD） */}
           <div className="holdings-grid">
             {holdings.map((item, i) => (
               <div key={item.currency} className="holding-card">
                 <div className="holding-card-header">
-                  <span className="holding-dot" style={{ background: COLORS[i % COLORS.length] }} />
+                  <span className="holding-dot" style={{ background: COLORS[(twdBalance > 0 ? i + 1 : i) % COLORS.length] }} />
                   <span className="holding-name">{item.currency}</span>
                   <span className={`holding-pnl ${item.pnl_pct >= 0 ? 'up' : 'down'}`}>
                     {item.pnl_pct >= 0 ? '+' : ''}{item.pnl_pct.toFixed(2)}%
