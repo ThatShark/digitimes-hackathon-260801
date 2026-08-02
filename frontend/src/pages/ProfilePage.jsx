@@ -401,10 +401,10 @@ export default function ProfilePage() {
                           </span>
                         </td>
                         <td className="trade-currency">{trade.currency}</td>
-                        <td>NT$ {trade.amount_twd.toLocaleString()}</td>
-                        <td>NT$ {trade.price.toLocaleString()}</td>
+                        <td>NT$ {trade.amount_twd.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+                        <td>NT$ {trade.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
                         <td className={trade.pnl_pct === null ? '' : trade.pnl_pct >= 0 ? 'pnl-positive' : 'pnl-negative'}>
-                          {trade.pnl_pct === null ? '—' : `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct}%`}
+                          {trade.pnl_pct === null ? '—' : `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%`}
                         </td>
                       </tr>
                     ))

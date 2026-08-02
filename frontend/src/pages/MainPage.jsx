@@ -83,7 +83,7 @@ function CoinCard({ coin, currency }) {
             <span className="coin-change loading">--</span>
           ) : (
             <span className={`coin-change ${isUp ? 'up' : 'down'}`}>
-              {isUp ? '+' : ''}{coin.change}%
+              {isUp ? '+' : ''}{coin.change.toFixed(2)}%
             </span>
           )}
           <BookmarkButton symbol={coin.symbol} size="sm" />

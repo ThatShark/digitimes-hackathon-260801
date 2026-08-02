@@ -240,7 +240,7 @@ export default function CoinTrendPage() {
                 <span className={`coin-page-price ${isUp ? 'up' : 'down'}`}>
                   {prefix} {displayPrice.toLocaleString(undefined, { maximumFractionDigits: currency === 'USD' ? 2 : 0 })}
                   <span className="coin-page-change">
-                    {isUp ? '+' : ''}{priceInfo.change}%
+                    {isUp ? '+' : ''}{priceInfo.change.toFixed(2)}%
                   </span>
                 </span>
               )
