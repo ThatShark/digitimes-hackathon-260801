@@ -1,9 +1,10 @@
 """Tool definitions + dispatcher for the AI chat assistant's Bedrock Tool Use.
 
-Gives the AI 4 tools it can call during a conversation (POST /ai_chat):
-  - get_current_price       : real-time price for the currency the user is viewing (MAX)
+Gives the AI 5 tools it can call during a conversation (POST /ai_chat):
+  - get_current_price        : real-time price for the currency the user is viewing (MAX)
   - get_fear_greed_index     : current Fear & Greed Index (CoinMarketCap)
   - get_fund_flow_analysis   : 資金流向分析 (real MAX trades classified into buckets, see market_fund_flow.py)
+  - get_technical_indicators : 技術指標 (MACD/RSI/MA/Bollinger/KDJ from MAX K-line data)
   - propose_trade            : the AI's own decision to surface a structured buy/sell suggestion
 
 The model decides for itself whether/which tools to call before answering
@@ -29,11 +30,13 @@ is on, not any currency mentioned in conversation.
 from src.handlers.market_fund_flow import get_fund_flow_data
 from src.services.coinmarketcap import CoinMarketCapClient, CoinMarketCapError
 from src.services.max_api import MaxApiClient, MaxApiError
+from src.utils.indicators import compute_indicators
 
 # Tool name constants (avoid typos when comparing toolUse.name elsewhere)
 TOOL_GET_CURRENT_PRICE = "get_current_price"
 TOOL_GET_FEAR_GREED_INDEX = "get_fear_greed_index"
 TOOL_GET_FUND_FLOW_ANALYSIS = "get_fund_flow_analysis"
+TOOL_GET_TECHNICAL_INDICATORS = "get_technical_indicators"
 TOOL_PROPOSE_TRADE = "propose_trade"
 
 _TRADE_TOOL_NAMES = {TOOL_GET_CURRENT_PRICE, TOOL_GET_FUND_FLOW_ANALYSIS}
@@ -88,6 +91,34 @@ def build_tool_config(current_currency: "str | None") -> dict:
                                 "type": "string",
                                 "enum": ["5m", "1h", "4h", "1d"],
                                 "description": "分析近期多久以內的成交紀錄，預設 1h",
+                            }
+                        },
+                    }
+                },
+            }
+        })
+        tools.append({
+            "toolSpec": {
+                "name": TOOL_GET_TECHNICAL_INDICATORS,
+                "description": (
+                    f"取得使用者目前正在查看的幣種（{current_currency}）的技術指標分析，"
+                    "包含 MA（7/25/99 均線趨勢）、MACD（金叉/死叉）、RSI（超買/超賣）、"
+                    "布林帶（價格在帶中的位置）、KDJ（隨機指標）。"
+                    "適合在使用者詢問技術面分析、趨勢判斷、是否超買超賣、"
+                    "進出場時機、或需要綜合技術面判斷來支持交易建議時呼叫。"
+                ),
+                "inputSchema": {
+                    "json": {
+                        "type": "object",
+                        "properties": {
+                            "timeframe": {
+                                "type": "string",
+                                "enum": ["1h", "4h", "1d"],
+                                "description": (
+                                    "K 線時間週期。1h=小時線（短期）、"
+                                    "4h=四小時線（中期）、1d=日線（中長期）。"
+                                    "預設 4h，適合大多數分析場景。"
+                                ),
                             }
                         },
                     }
@@ -160,6 +191,9 @@ def execute_tool(tool_name: str, tool_input: dict, current_currency: "str | None
         if tool_name == TOOL_GET_FUND_FLOW_ANALYSIS:
             period = tool_input.get("period") or "1h"
             return _get_fund_flow_analysis(current_currency, period)
+        if tool_name == TOOL_GET_TECHNICAL_INDICATORS:
+            timeframe = tool_input.get("timeframe") or "4h"
+            return _get_technical_indicators(current_currency, timeframe)
         if tool_name == TOOL_PROPOSE_TRADE:
             return dict(tool_input)
         return {"error": f"未知的工具名稱: {tool_name}"}
@@ -222,3 +256,41 @@ def _get_fund_flow_analysis(currency: "str | None", period: str) -> dict:
         return get_fund_flow_data(currency, "TWD", period)
     except MaxApiError:
         return {"error": "無法取得資金流向資料"}
+
+
+def _get_technical_indicators(currency: "str | None", timeframe: str) -> dict:
+    """Fetch K-line data from MAX and compute technical indicators."""
+    if not currency:
+        return {"error": "沒有指定幣種"}
+
+    # Map timeframe to MAX API period (minutes)
+    period_map = {"1h": 60, "4h": 240, "1d": 1440}
+    period_minutes = period_map.get(timeframe, 240)
+
+    # Need ~100 candles for reliable indicator calculation (RSI needs 15+,
+    # MACD needs 35+, MA99 needs 99+, so 100 is a good baseline)
+    limit = 100
+
+    client = MaxApiClient()
+    try:
+        candles = client.get_klines(
+            market=f"{currency.lower()}twd",
+            period=period_minutes,
+            limit=limit,
+        )
+    except MaxApiError:
+        return {"error": f"無法取得 {currency} 的 K 線資料"}
+
+    if not candles or not isinstance(candles, list):
+        return {"error": f"找不到 {currency}TWD 的 K 線數據"}
+
+    indicators = compute_indicators(candles)
+    if "error" in indicators:
+        return indicators
+
+    # Add metadata
+    indicators["currency"] = currency
+    indicators["timeframe"] = timeframe
+    indicators["candles_used"] = len(candles)
+
+    return indicators

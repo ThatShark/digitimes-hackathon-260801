@@ -228,10 +228,6 @@ export default function AIChatPanel({ symbol, communityMessages = [], onSendComm
                   <span className="suggestion-label">金額</span>
                   <span className="suggestion-value">NT$ {pendingSuggestion.amount.toLocaleString()}</span>
                 </div>
-                <div className="suggestion-row">
-                  <span className="suggestion-label">原因</span>
-                  <span className="suggestion-value reason">{pendingSuggestion.reason}</span>
-                </div>
               </div>
               <div className="suggestion-actions">
                 <button className="suggestion-btn confirm" onClick={handleConfirmTrade} disabled={isTrading}>
